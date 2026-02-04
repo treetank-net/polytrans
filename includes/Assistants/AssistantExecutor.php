@@ -223,12 +223,56 @@ class AssistantExecutor
 	public static function process_response($response, $config)
 	{
 		$expected_format = $config['expected_format'] ?? 'text';
+		$provider = $config['provider'] ?? 'openai';
+
+		// Check for truncated responses (partial response due to timeout or max_tokens)
+		// OpenAI uses finish_reason: 'length', Claude uses stop_reason: 'max_tokens'
+		if ($provider === 'openai' && isset($response['choices'][0]['finish_reason'])) {
+			$finish_reason = $response['choices'][0]['finish_reason'];
+			if ($finish_reason === 'length') {
+				LogsManager::log(
+					'Rejecting truncated OpenAI response (finish_reason: length)',
+					'error',
+					array('finish_reason' => $finish_reason, 'usage' => $response['usage'] ?? null)
+				);
+				return new \WP_Error(
+					'truncated_response',
+					__('AI response was truncated due to max_tokens limit. Increase max_tokens or simplify the request.', 'polytrans')
+				);
+			}
+		}
+		if ($provider === 'claude' && isset($response['stop_reason'])) {
+			if ($response['stop_reason'] === 'max_tokens') {
+				LogsManager::log(
+					'Rejecting truncated Claude response (stop_reason: max_tokens)',
+					'error',
+					array('stop_reason' => $response['stop_reason'], 'usage' => $response['usage'] ?? null)
+				);
+				return new \WP_Error(
+					'truncated_response',
+					__('AI response was truncated due to max_tokens limit. Increase max_tokens or simplify the request.', 'polytrans')
+				);
+			}
+		}
 
 		// Extract content from response (handle different API formats)
-		$content = self::extract_content_from_response($response, $config['provider'] ?? 'openai');
+		$content = self::extract_content_from_response($response, $provider);
 
 		if (null === $content) {
 			return new \WP_Error('invalid_response', __('Failed to extract content from API response', 'polytrans'));
+		}
+
+		// Reject empty or whitespace-only responses
+		if (trim($content) === '') {
+			LogsManager::log(
+				'Rejecting empty AI response',
+				'error',
+				array('provider' => $provider, 'raw_content_length' => strlen($content))
+			);
+			return new \WP_Error(
+				'empty_response',
+				__('AI returned an empty response. This may indicate a timeout or API issue.', 'polytrans')
+			);
 		}
 
 		// Process based on expected format
@@ -266,21 +310,7 @@ class AssistantExecutor
 		// Use client's extract_content method
 		$content = $client->extract_content($response);
 		
-		// Log truncation warnings for OpenAI (backward compatibility)
-		if ($provider === 'openai' && isset($response['choices'][0]['finish_reason'])) {
-			$finish_reason = $response['choices'][0]['finish_reason'];
-			if ($finish_reason === 'length') {
-				LogsManager::log(
-					'OpenAI response truncated due to max_tokens limit',
-					'warning',
-					array(
-						'finish_reason' => $finish_reason,
-						'content_length' => strlen($content ?? ''),
-						'usage' => $response['usage'] ?? null,
-					)
-				);
-			}
-		}
+		// Note: Truncation detection moved to process_response() which returns WP_Error
 		
 		return $content;
 	}

@@ -104,6 +104,22 @@ class ManagedAssistantStep implements WorkflowStepInterface
             // Get the AI output
             $ai_output = $result['output'] ?? $result['data'] ?? null;
 
+            // Validate AI output is not empty (fallback check - primary validation in AssistantExecutor)
+            if ($ai_output === null || (is_string($ai_output) && trim($ai_output) === '')) {
+                \PolyTrans\Core\LogsManager::log(
+                    "Assistant '{$assistant['name']}' returned empty output - step rejected",
+                    'error',
+                    ['assistant_id' => $assistant_id]
+                );
+                return [
+                    'success' => false,
+                    'error' => 'AI returned empty response - step rejected to prevent data loss',
+                    'execution_time' => $execution_time,
+                    'assistant_id' => $assistant_id,
+                    'assistant_name' => $assistant['name']
+                ];
+            }
+
             // Parse output using schema if defined
             $parsed_data = ['ai_response' => $ai_output];
             $parse_warnings = [];

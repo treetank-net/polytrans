@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.8.3] - 2026-02-04
+
+### Fixed
+- Workflow steps now reject empty AI responses instead of treating them as success (prevents wiping post content)
+- Workflow steps now reject truncated AI responses (OpenAI `finish_reason: length`, Claude `stop_reason: max_tokens`)
+- Added fallback validation in ManagedAssistantStep for empty responses
+
 ## [1.8.2] - 2026-02-04
 
 ### Fixed
