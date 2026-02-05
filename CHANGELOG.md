@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.8.5] - 2026-02-05
+
+### Added
+- Meta pattern for ACF group fields (e.g., `loginLink_textBefore`, `ctaButton_text`)
+
+### Changed
+- Managed assistants now receive unfiltered meta - when a `managed_*` assistant is configured on the translation path, all meta fields are passed without filtering, allowing output schemas to access any field via Twig templates
+
 ## [1.8.4] - 2026-02-05
 
 ### Added
