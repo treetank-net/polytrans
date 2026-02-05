@@ -484,57 +484,18 @@ class BackgroundProcessor
             $assistants_mapping = $settings['assistants_mapping'] ?? $settings['openai_assistants'] ?? [];
             $has_paths = !empty($path_rules) || !empty($assistants_mapping);
 
-            // Check if any managed assistant is used on the path
-            // Managed assistants have their own output schema, so they need full meta (unfiltered)
-            $uses_managed_assistant = false;
+            // Find managed assistant ID if any
+            $managed_assistant_id = null;
             foreach ($assistants_mapping as $assistant_id) {
                 if (is_string($assistant_id) && strpos($assistant_id, 'managed_') === 0) {
-                    $uses_managed_assistant = true;
+                    $managed_assistant_id = $assistant_id;
                     break;
                 }
             }
 
-            // Filter meta only if NOT using managed assistant
-            // Managed assistants define their own schema and need access to all meta fields
-            if ($uses_managed_assistant) {
-                // Pass all meta but clean up noise (ACF field keys, empty values, serialized arrays)
-                $meta = [];
-                foreach ($all_meta as $key => $values) {
-                    // Skip ACF field reference keys (start with _ but not SEO fields)
-                    if (strpos($key, '_') === 0) {
-                        // Allow SEO fields through
-                        if (strpos($key, '_yoast_') !== 0 && strpos($key, '_rank_math') !== false) {
-                            continue;
-                        }
-                        // Skip ACF internal field keys
-                        if (strpos($key, '_pageComponents') === 0 || strpos($key, '_postComponents') === 0) {
-                            continue;
-                        }
-                        // Skip other internal fields
-                        if (in_array($key, ['_edit_lock', '_edit_last', '_wp_page_template', '_thumbnail_id'])) {
-                            continue;
-                        }
-                    }
-
-                    // Flatten single-value arrays
-                    $value = is_array($values) && count($values) === 1 ? $values[0] : $values;
-
-                    // Skip empty values
-                    if ($value === '' || $value === null) {
-                        continue;
-                    }
-
-                    // Skip serialized PHP arrays (like "a:9:{...}")
-                    if (is_string($value) && preg_match('/^[aOC]:\d+:/', $value)) {
-                        continue;
-                    }
-
-                    $meta[$key] = $value;
-                }
-                self::log("Using cleaned meta for managed assistant", "debug", [
-                    'original_count' => count($all_meta),
-                    'cleaned_count' => count($meta)
-                ]);
+            // Filter meta based on managed assistant schema or use default filtering
+            if ($managed_assistant_id) {
+                $meta = self::filter_meta_by_schema($all_meta, $managed_assistant_id, $post);
             } else {
                 $meta = TranslationHandler::filter_meta_for_translation($all_meta);
             }
@@ -1050,5 +1011,138 @@ class BackgroundProcessor
         
         // Clean up transient after reading
         delete_transient($error_transient_key);
+    }
+
+    /**
+     * Filter meta based on managed assistant's output schema
+     *
+     * Interpolates the schema with original meta to discover which keys are needed,
+     * then returns only those meta fields.
+     *
+     * @param array $all_meta All post meta from get_post_meta()
+     * @param string $managed_assistant_id Assistant ID (e.g., "managed_1")
+     * @param WP_Post $post The post being translated
+     * @return array Filtered meta
+     */
+    private static function filter_meta_by_schema($all_meta, $managed_assistant_id, $post)
+    {
+        // Flatten all meta first (get_post_meta returns arrays)
+        $flat_meta = [];
+        foreach ($all_meta as $key => $values) {
+            $value = is_array($values) && count($values) === 1 ? $values[0] : $values;
+            // Skip serialized PHP arrays
+            if (is_string($value) && preg_match('/^[aOC]:\d+:/', $value)) {
+                continue;
+            }
+            $flat_meta[$key] = $value;
+        }
+
+        // Get assistant
+        $numeric_id = (int) str_replace('managed_', '', $managed_assistant_id);
+        $assistant = \PolyTrans\Assistants\AssistantManager::get_assistant($numeric_id);
+
+        if (!$assistant || empty($assistant['expected_output_schema'])) {
+            self::log("No schema found for managed assistant, using all meta", "debug", [
+                'assistant_id' => $managed_assistant_id
+            ]);
+            return $flat_meta;
+        }
+
+        // Build context for schema interpolation
+        $context = [
+            'original' => [
+                'title' => $post->post_title,
+                'content' => $post->post_content,
+                'excerpt' => $post->post_excerpt,
+                'meta' => $flat_meta
+            ],
+            'translated' => [
+                'title' => $post->post_title,
+                'content' => $post->post_content,
+                'excerpt' => $post->post_excerpt,
+                'meta' => $flat_meta
+            ]
+        ];
+
+        // Interpolate schema
+        $schema_str = $assistant['expected_output_schema'];
+        if (is_array($schema_str)) {
+            $schema_str = json_encode($schema_str);
+        }
+
+        try {
+            $variable_manager = new \PolyTrans\PostProcessing\VariableManager();
+            $interpolated = $variable_manager->interpolate_template($schema_str, $context);
+            $schema = json_decode($interpolated, true);
+
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                self::log("Schema interpolation produced invalid JSON, using all meta", "warning", [
+                    'json_error' => json_last_error_msg(),
+                    'schema_preview' => substr($interpolated, 0, 500)
+                ]);
+                return $flat_meta;
+            }
+        } catch (\Exception $e) {
+            self::log("Schema interpolation failed, using all meta", "warning", [
+                'error' => $e->getMessage()
+            ]);
+            return $flat_meta;
+        }
+
+        // Extract meta keys from schema (look for "target": "meta.KEY")
+        $needed_keys = self::extract_meta_keys_from_schema($schema);
+
+        if (empty($needed_keys)) {
+            self::log("No meta keys found in schema, using all meta", "debug");
+            return $flat_meta;
+        }
+
+        // Filter meta to only needed keys
+        $filtered_meta = [];
+        foreach ($needed_keys as $key) {
+            if (isset($flat_meta[$key])) {
+                $filtered_meta[$key] = $flat_meta[$key];
+            }
+        }
+
+        self::log("Filtered meta by schema", "debug", [
+            'original_count' => count($flat_meta),
+            'schema_keys_count' => count($needed_keys),
+            'filtered_count' => count($filtered_meta)
+        ]);
+
+        return $filtered_meta;
+    }
+
+    /**
+     * Recursively extract meta keys from schema
+     * Looks for objects with "target": "meta.KEY" pattern
+     *
+     * @param array $schema Parsed schema array
+     * @return array List of meta keys
+     */
+    private static function extract_meta_keys_from_schema($schema)
+    {
+        $keys = [];
+
+        if (!is_array($schema)) {
+            return $keys;
+        }
+
+        foreach ($schema as $field => $config) {
+            if (is_array($config)) {
+                // Check if this field has a target pointing to meta
+                if (isset($config['target']) && is_string($config['target'])) {
+                    if (strpos($config['target'], 'meta.') === 0) {
+                        $meta_key = substr($config['target'], 5); // Remove "meta." prefix
+                        $keys[] = $meta_key;
+                    }
+                }
+                // Recurse into nested structures
+                $keys = array_merge($keys, self::extract_meta_keys_from_schema($config));
+            }
+        }
+
+        return array_unique($keys);
     }
 }
