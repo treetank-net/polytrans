@@ -48,6 +48,8 @@ class TranslationHandler
         '/^(post|page)Components_\d+_(title|subtitle|sectionTitle|sectionSubtitle|sectionTitleHighlight|titleHighlight|description|text|label|badge|offerText|leftTitle|rightTitle|leftSubtitle|rightSubtitle|perfectForTitle|headerTitle|formTitle)$/',
         // Flynt/ACF Flexible Content - nested repeater text fields
         '/^(post|page)Components_\d+_\w+_\d+_(title|description|text|label|number|linkText|textBefore)$/',
+        // Flynt/ACF Flexible Content - nested group text fields (e.g., loginLink, ctaButton)
+        '/^(post|page)Components_\d+_\w+_(text|linkText|textBefore)$/',
     ];
 
     /**
