@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.8.6] - 2026-02-05
+
+### Fixed
+- Clean meta for managed assistants - filter out ACF field keys (`_pageComponents_*`), internal WP fields, empty values, and serialized PHP arrays to reduce payload size and prevent AI confusion
+
 ## [1.8.5] - 2026-02-05
 
 ### Added
