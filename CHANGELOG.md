@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.8.7] - 2026-02-05
+
+### Changed
+- Meta filtering for managed assistants now uses output schema - interpolates schema with `original.meta`, extracts keys with `target: "meta.*"`, passes only those fields to AI
+
 ## [1.8.6] - 2026-02-05
 
 ### Fixed
