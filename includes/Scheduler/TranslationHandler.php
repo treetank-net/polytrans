@@ -41,9 +41,13 @@ class TranslationHandler
     // Additional meta key patterns (regex) to include in translation context
     // These are passed to assistants but not necessarily translated by default providers
     public const POLYTRANS_ADDITIONAL_META_PATTERNS = [
-        // Flynt/ACF Flexible Content components
+        // Flynt/ACF Flexible Content components - contentHtml (WYSIWYG)
         '/^postComponents_\d+_contentHtml$/',
         '/^pageComponents_\d+_contentHtml$/',
+        // Flynt/ACF Flexible Content - all text fields (title, subtitle, description, text, label, etc.)
+        '/^(post|page)Components_\d+_(title|subtitle|sectionTitle|sectionSubtitle|sectionTitleHighlight|titleHighlight|description|text|label|badge|offerText|leftTitle|rightTitle|leftSubtitle|rightSubtitle|perfectForTitle|headerTitle|formTitle)$/',
+        // Flynt/ACF Flexible Content - nested repeater text fields
+        '/^(post|page)Components_\d+_\w+_\d+_(title|description|text|label|number|linkText|textBefore)$/',
     ];
 
     /**
@@ -58,6 +62,9 @@ class TranslationHandler
         $filtered = [];
         $allowed_keys = self::POLYTRANS_ALLOWED_SEO_META_KEYS;
         $patterns = self::POLYTRANS_ADDITIONAL_META_PATTERNS;
+
+        // Allow themes/plugins to extend patterns
+        $patterns = apply_filters('polytrans_meta_patterns', $patterns);
 
         foreach ($all_meta as $key => $value) {
             // Check explicit keys

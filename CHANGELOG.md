@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.8.4] - 2026-02-05
+
+### Added
+- Extended Flynt/ACF meta patterns for text fields (title, subtitle, description, label, etc.)
+- Extended Flynt/ACF meta patterns for nested repeater fields
+- Filter hook `polytrans_meta_patterns` allowing themes/plugins to extend translation patterns
+
 ## [1.8.3] - 2026-02-04
 
 ### Fixed
