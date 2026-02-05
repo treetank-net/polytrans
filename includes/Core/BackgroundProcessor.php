@@ -476,9 +476,38 @@ class BackgroundProcessor
 
         try {
             // Get post content and metadata
-
             $all_meta = get_post_meta($post_id);
-            $meta = TranslationHandler::filter_meta_for_translation($all_meta);
+
+            // Check if translation paths are configured (need this early to decide on meta filtering)
+            // Use universal names with backward compatibility
+            $path_rules = $settings['translation_path_rules'] ?? $settings['openai_path_rules'] ?? [];
+            $assistants_mapping = $settings['assistants_mapping'] ?? $settings['openai_assistants'] ?? [];
+            $has_paths = !empty($path_rules) || !empty($assistants_mapping);
+
+            // Check if any managed assistant is used on the path
+            // Managed assistants have their own output schema, so they need full meta (unfiltered)
+            $uses_managed_assistant = false;
+            foreach ($assistants_mapping as $assistant_id) {
+                if (is_string($assistant_id) && strpos($assistant_id, 'managed_') === 0) {
+                    $uses_managed_assistant = true;
+                    break;
+                }
+            }
+
+            // Filter meta only if NOT using managed assistant
+            // Managed assistants define their own schema and need access to all meta fields
+            if ($uses_managed_assistant) {
+                // Flatten meta values (get_post_meta returns arrays)
+                $meta = [];
+                foreach ($all_meta as $key => $values) {
+                    $meta[$key] = is_array($values) && count($values) === 1 ? $values[0] : $values;
+                }
+                self::log("Using unfiltered meta for managed assistant", "debug", [
+                    'meta_count' => count($meta)
+                ]);
+            } else {
+                $meta = TranslationHandler::filter_meta_for_translation($all_meta);
+            }
 
             // Get featured image metadata for translation
             $featured_image_data = null;
@@ -502,15 +531,9 @@ class BackgroundProcessor
                 'title' => $post->post_title,
                 'content' => $post->post_content,
                 'excerpt' => $post->post_excerpt,
-                'meta' => $meta, // Already an array, no need for json_decode/json_encode
-                'featured_image' => $featured_image_data // Array with image metadata (id, alt, title, caption, description, filename)
+                'meta' => $meta,
+                'featured_image' => $featured_image_data
             ];
-
-            // Check if translation paths are configured
-            // Use universal names with backward compatibility
-            $path_rules = $settings['translation_path_rules'] ?? $settings['openai_path_rules'] ?? [];
-            $assistants_mapping = $settings['assistants_mapping'] ?? $settings['openai_assistants'] ?? [];
-            $has_paths = !empty($path_rules) || !empty($assistants_mapping);
             
             if ($has_paths) {
                 // Use TranslationPathExecutor to respect path rules and provider/assistant mappings
