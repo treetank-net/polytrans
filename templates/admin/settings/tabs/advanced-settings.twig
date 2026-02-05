@@ -155,7 +155,8 @@
 
 <h4>{{ __('Endpoint Secret', 'polytrans') }}</h4>
 <div style="display:flex;gap:0.5em;align-items:center;max-width:600px;">
-    <input type="text" id="translation-endpoint-secret" name="translation_endpoint_secret" value="{{ settings.translation_endpoint_secret|default('')|esc_attr }}" data-initial="{{ settings.translation_endpoint_secret|default('')|esc_attr }}" style="width:100%" placeholder="{{ __('Leave empty to use Receiver Secret', 'polytrans')|esc_attr }}" autocomplete="off" />
+    <input type="password" id="translation-endpoint-secret" name="translation_endpoint_secret" value="{{ settings.translation_endpoint_secret|default('')|esc_attr }}" data-initial="{{ settings.translation_endpoint_secret|default('')|esc_attr }}" style="width:100%" placeholder="{{ __('Leave empty to use Receiver Secret', 'polytrans')|esc_attr }}" autocomplete="off" />
+    <button type="button" class="button toggle-secret-btn" data-target="translation-endpoint-secret" style="white-space:nowrap;">{{ __('Show', 'polytrans') }}</button>
     <button type="button" class="button generate-secret-btn" data-target="translation-endpoint-secret" style="white-space:nowrap;">{{ __('Generate', 'polytrans') }}</button>
 </div>
 <br><small>{{ __('Secret for authenticating to the translation endpoint. If empty, uses the Receiver Secret below.', 'polytrans') }}</small><br><br>
@@ -187,7 +188,8 @@
 
 <h4>{{ __('Receiver Secret', 'polytrans') }}</h4>
 <div style="display:flex;gap:0.5em;align-items:center;max-width:600px;">
-    <input type="text" id="translation-receiver-secret" name="translation_receiver_secret" value="{{ settings.translation_receiver_secret|default('')|esc_attr }}" data-initial="{{ settings.translation_receiver_secret|default('')|esc_attr }}" style="width:100%" placeholder="{{ __('Enter secret for receiver authentication', 'polytrans')|esc_attr }}" autocomplete="off" />
+    <input type="password" id="translation-receiver-secret" name="translation_receiver_secret" value="{{ settings.translation_receiver_secret|default('')|esc_attr }}" data-initial="{{ settings.translation_receiver_secret|default('')|esc_attr }}" style="width:100%" placeholder="{{ __('Enter secret for receiver authentication', 'polytrans')|esc_attr }}" autocomplete="off" />
+    <button type="button" class="button toggle-secret-btn" data-target="translation-receiver-secret" style="white-space:nowrap;">{{ __('Show', 'polytrans') }}</button>
     <button type="button" class="button generate-secret-btn" data-target="translation-receiver-secret" style="white-space:nowrap;">{{ __('Generate', 'polytrans') }}</button>
 </div>
 <br><small>{{ __('Secret for authenticating to the receiver. Passed to the translator in the payload.', 'polytrans') }}</small><br><br>

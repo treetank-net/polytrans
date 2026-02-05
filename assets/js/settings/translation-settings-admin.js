@@ -467,6 +467,25 @@
             });
         });
 
+        // Toggle secret visibility (show/hide)
+        $('.toggle-secret-btn').each(function() {
+            var btn = $(this);
+            var targetId = btn.data('target');
+            var input = document.getElementById(targetId);
+            if (!input) return;
+
+            btn.on('click', function(e) {
+                e.preventDefault();
+                if (input.type === 'password') {
+                    input.type = 'text';
+                    btn.text(polytransSettings.i18n?.hide || 'Hide');
+                } else {
+                    input.type = 'password';
+                    btn.text(polytransSettings.i18n?.show || 'Show');
+                }
+            });
+        });
+
         // Handle secret method changes to show/hide custom header field (receiver)
         $('select[name="translation_receiver_secret_method"]').on('change', function() {
             var selectedMethod = $(this).val();
