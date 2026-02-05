@@ -497,13 +497,43 @@ class BackgroundProcessor
             // Filter meta only if NOT using managed assistant
             // Managed assistants define their own schema and need access to all meta fields
             if ($uses_managed_assistant) {
-                // Flatten meta values (get_post_meta returns arrays)
+                // Pass all meta but clean up noise (ACF field keys, empty values, serialized arrays)
                 $meta = [];
                 foreach ($all_meta as $key => $values) {
-                    $meta[$key] = is_array($values) && count($values) === 1 ? $values[0] : $values;
+                    // Skip ACF field reference keys (start with _ but not SEO fields)
+                    if (strpos($key, '_') === 0) {
+                        // Allow SEO fields through
+                        if (strpos($key, '_yoast_') !== 0 && strpos($key, '_rank_math') !== false) {
+                            continue;
+                        }
+                        // Skip ACF internal field keys
+                        if (strpos($key, '_pageComponents') === 0 || strpos($key, '_postComponents') === 0) {
+                            continue;
+                        }
+                        // Skip other internal fields
+                        if (in_array($key, ['_edit_lock', '_edit_last', '_wp_page_template', '_thumbnail_id'])) {
+                            continue;
+                        }
+                    }
+
+                    // Flatten single-value arrays
+                    $value = is_array($values) && count($values) === 1 ? $values[0] : $values;
+
+                    // Skip empty values
+                    if ($value === '' || $value === null) {
+                        continue;
+                    }
+
+                    // Skip serialized PHP arrays (like "a:9:{...}")
+                    if (is_string($value) && preg_match('/^[aOC]:\d+:/', $value)) {
+                        continue;
+                    }
+
+                    $meta[$key] = $value;
                 }
-                self::log("Using unfiltered meta for managed assistant", "debug", [
-                    'meta_count' => count($meta)
+                self::log("Using cleaned meta for managed assistant", "debug", [
+                    'original_count' => count($all_meta),
+                    'cleaned_count' => count($meta)
                 ]);
             } else {
                 $meta = TranslationHandler::filter_meta_for_translation($all_meta);
