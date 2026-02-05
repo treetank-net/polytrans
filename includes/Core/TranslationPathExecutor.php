@@ -297,36 +297,87 @@ class TranslationPathExecutor
         }
         
         $ai_output = $result['output'] ?? '';
-        
+
+        \PolyTrans_Logs_Manager::log(
+            "Managed Assistant raw output",
+            "debug",
+            [
+                'output_type' => gettype($ai_output),
+                'output_length' => is_string($ai_output) ? strlen($ai_output) : 'N/A',
+                'output_preview' => is_string($ai_output) ? substr($ai_output, 0, 500) : 'not a string',
+                'is_array' => is_array($ai_output),
+                'array_keys' => is_array($ai_output) ? array_keys($ai_output) : []
+            ]
+        );
+
         // Parse JSON output if needed
         if (!empty($assistant['expected_output_schema']) && $assistant['expected_format'] === 'json') {
             if (is_string($ai_output)) {
                 $decoded = json_decode($ai_output, true);
                 if (json_last_error() === JSON_ERROR_NONE) {
                     $ai_output = $decoded;
+                    \PolyTrans_Logs_Manager::log(
+                        "Managed Assistant JSON parsed successfully",
+                        "debug",
+                        ['keys' => array_keys($decoded)]
+                    );
+                } else {
+                    \PolyTrans_Logs_Manager::log(
+                        "Managed Assistant JSON parse failed",
+                        "error",
+                        [
+                            'json_error' => json_last_error_msg(),
+                            'output_preview' => substr($ai_output, 0, 1000)
+                        ]
+                    );
                 }
             }
         }
-        
+
         // If output is already an array, use it directly
         if (is_array($ai_output)) {
+            \PolyTrans_Logs_Manager::log(
+                "Managed Assistant returning array output",
+                "info",
+                [
+                    'keys' => array_keys($ai_output),
+                    'has_title' => isset($ai_output['title']),
+                    'has_content' => isset($ai_output['content']),
+                    'has_meta' => isset($ai_output['meta']),
+                    'meta_keys' => isset($ai_output['meta']) && is_array($ai_output['meta']) ? array_keys($ai_output['meta']) : []
+                ]
+            );
             return [
                 'success' => true,
                 'translated_content' => $ai_output
             ];
         }
-        
+
         // Otherwise, try to parse as JSON
         if (is_string($ai_output)) {
             $decoded = json_decode($ai_output, true);
             if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                \PolyTrans_Logs_Manager::log(
+                    "Managed Assistant fallback JSON parse succeeded",
+                    "info",
+                    ['keys' => array_keys($decoded)]
+                );
                 return [
                     'success' => true,
                     'translated_content' => $decoded
                 ];
             }
         }
-        
+
+        \PolyTrans_Logs_Manager::log(
+            "Managed Assistant invalid output format",
+            "error",
+            [
+                'final_type' => gettype($ai_output),
+                'final_preview' => is_string($ai_output) ? substr($ai_output, 0, 500) : 'not a string'
+            ]
+        );
+
         return [
             'success' => false,
             'error' => 'Invalid output format from Managed Assistant',
