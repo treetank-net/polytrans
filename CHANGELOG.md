@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.8.8] - 2026-02-05
+
+### Added
+- Show/Hide toggle for secret fields in Advanced settings (Endpoint Secret, Receiver Secret)
+
 ## [1.8.7] - 2026-02-05
 
 ### Changed
