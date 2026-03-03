@@ -1,6 +1,21 @@
-# PolyTrans Plugin
+# PolyTrans
 
-A comprehensive WordPress plugin for managing multilingual content translation workflows with AI-powered translation support and advanced workflow automation.
+**WordPress translation plugin with bring-your-own AI.** Connect your own AI provider (Google Translate, OpenAI, Claude, Gemini) — pay only for tokens consumed, not $200–800+/year in plugin subscriptions. Translation orchestration with post-processing workflows, multi-server architecture, and review management.
+
+> **The problem:** WordPress translation plugins like WPML ($299/yr), Weglot ($200–790/yr), and TranslatePress ($99–349/yr) charge flat subscription fees that scale with content volume, not actual usage. With Weglot, you lose all translations if you stop paying.
+>
+> **PolyTrans takes a different approach:** bring your own AI account. The plugin connects to any AI provider you already use — you pay only for the tokens you actually consume. No vendor lock-in, no recurring license fees, and you always own your translations.
+
+### Why PolyTrans?
+
+| | WPML | Weglot | TranslatePress | PolyTrans |
+|---|---|---|---|---|
+| **Annual cost** | $299+ | $200–790+ | $99–349+ | Free (pay only AI tokens) |
+| **Own your translations** | Yes | No (SaaS-hosted) | Yes | Yes |
+| **AI provider choice** | None | Built-in only | Built-in only | Google, OpenAI, Claude, Gemini |
+| **Post-processing workflows** | No | No | No | Yes (multi-step AI chains) |
+| **Multi-server support** | No | No | No | Yes (sender/translator/receiver) |
+| **Open source** | No | No | Freemium | Yes |
 
 ## 📚 Documentation
 
@@ -597,12 +612,14 @@ polytrans/
 
 ## License
 
-This plugin is proprietary software developed for the PolyTrans platform.
+MIT License — see [LICENSE](LICENSE) for details.
 
-## Support
+## Links
 
-For support and documentation updates, please contact the development team.
+- **Source code:** [gitlab.com/treetank/polytrans](https://gitlab.com/treetank/polytrans)
+- **Case study:** [treetank.net/projects/polytrans](https://treetank.net/projects/polytrans)
+- **Author:** [Jacek Mariański](https://treetank.net)
 
 ---
 
-*Last updated: December 2024*
+*Last updated: March 2026*
