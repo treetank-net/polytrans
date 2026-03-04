@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
+namespace PolyTrans\Workflows;
+
 if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
-
-namespace PolyTrans\Workflows;
 
 use PolyTrans\Workflows\Context\VirtualWorkflowContext;
 use PolyTrans\Workflows\Context\DatabaseWorkflowContext;
