@@ -2,11 +2,10 @@
 
 /**
  * Plugin Name: PolyTrans
- * Plugin URI: https://github.com/your-username/polytrans
+ * Plugin URI: https://gitlab.com/treetank/polytrans
  * Description: Advanced multilingual translation management system with AI-powered translation, scheduling, and review workflow
  * Version: 1.9.0
- * Author: PolyTrans Team
- * Author URI: https://github.com/your-username/polytrans
+ * Author: jmarianski
  * Text Domain: polytrans
  * Domain Path: /languages
  * Requires at least: 5.0
