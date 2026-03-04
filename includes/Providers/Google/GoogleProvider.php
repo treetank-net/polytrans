@@ -64,6 +64,7 @@ class GoogleProvider implements TranslationProviderInterface
                 'error' => null
             ];
         } catch (\Exception $e) {
+            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Intentional error logging for debugging
             error_log("[polytrans] Google Translate error: " . $e->getMessage());
             return [
                 'success' => false,
@@ -170,6 +171,7 @@ class GoogleProvider implements TranslationProviderInterface
                 if ($decoded_result !== null) {
                     return $decoded_result; // Return the translated array
                 } else {
+                    // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Intentional error logging for debugging
                     error_log("[polytrans] Failed to decode JSON from Google Translate response: " . json_last_error_msg() . "\n" . $text_result);
                 }
             }
@@ -210,6 +212,7 @@ class GoogleProvider implements TranslationProviderInterface
         ]);
 
         if (is_wp_error($response)) {
+            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Intentional error logging for debugging
             error_log("[polytrans] Google Translate API error: " . $response->get_error_message());
             return null;
         }

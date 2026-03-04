@@ -51,11 +51,11 @@ class TranslationReceiverExtension
 
         if (!$result['success']) {
             $status_code = (isset($result['code']) && $result['code'] === 'missing_data') ? 400 : 500;
-            error_log("[polytrans] Translation processing failed: " . $result['error']);
+            error_log("[polytrans] Translation processing failed: " . $result['error']); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
             return new \WP_REST_Response(['error' => $result['error']], $status_code);
         }
 
-        error_log("[polytrans] Translation processing succeeded, created post ID: " . $result['created_post_id']);
+        error_log("[polytrans] Translation processing succeeded, created post ID: " . $result['created_post_id']); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 
         // Check if we should trigger workflows for received translations
         $settings = get_option('polytrans_settings', []);
@@ -105,6 +105,7 @@ class TranslationReceiverExtension
             'status' => $result['status'],
             'original_post_id' => $original_post_id,
             'target_language' => $target_language,
+            /* translators: %d: the ID of the newly created translated post */
             'message' => sprintf(__('Translation successfully created with post ID %d', 'polytrans'), $result['created_post_id'])
         ], 201);
     }

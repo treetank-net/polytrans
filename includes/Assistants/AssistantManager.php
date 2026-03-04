@@ -75,6 +75,7 @@ class AssistantManager
 			}
 		} catch (\Exception $e) {
 			// Fallback to hardcoded list if registry fails
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log("[PolyTrans] Failed to get providers from registry: " . $e->getMessage());
 		}
 		
@@ -112,6 +113,7 @@ class AssistantManager
 		$table_name      = $wpdb->prefix . 'polytrans_assistants';
 		$charset_collate = $wpdb->get_charset_collate();
 
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.SchemaChange -- Plugin installation/upgrade
 		$sql = "CREATE TABLE IF NOT EXISTS {$table_name} (
 			id bigint(20) unsigned AUTO_INCREMENT PRIMARY KEY,
 			name varchar(255) NOT NULL,
@@ -177,6 +179,7 @@ class AssistantManager
 		if (isset($data['provider'])) {
 			$valid_providers = self::get_valid_providers_from_registry();
 			if (!in_array($data['provider'], $valid_providers, true)) {
+					/* translators: %s: comma-separated list of valid provider names */
 				$errors['provider'] = sprintf(__('Invalid provider. Allowed providers: %s', 'polytrans'), implode(', ', $valid_providers));
 			}
 		}
@@ -263,6 +266,7 @@ class AssistantManager
 		);
 
 		$table_name = $wpdb->prefix . 'polytrans_assistants';
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		$result     = $wpdb->insert($table_name, $insert_data);
 
 		if (false === $result) {
@@ -283,8 +287,10 @@ class AssistantManager
 		global $wpdb;
 
 		$table_name = $wpdb->prefix . 'polytrans_assistants';
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name from trusted source ($wpdb->prefix)
 		$assistant  = $wpdb->get_row(
-			$wpdb->prepare("SELECT * FROM {$table_name} WHERE id = %d", $id),
+			$wpdb->prepare("SELECT * FROM `{$table_name}` WHERE id = %d", $id),
 			ARRAY_A
 		);
 
@@ -357,6 +363,7 @@ class AssistantManager
 		);
 
 		$table_name = $wpdb->prefix . 'polytrans_assistants';
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$result     = $wpdb->update(
 			$table_name,
 			$update_data,
@@ -383,6 +390,7 @@ class AssistantManager
 		global $wpdb;
 
 		$table_name = $wpdb->prefix . 'polytrans_assistants';
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$result     = $wpdb->delete($table_name, array('id' => $id), array('%d'));
 
 		return $result !== false && $result > 0;
@@ -415,13 +423,22 @@ class AssistantManager
 		}
 
 		$where_clause = implode(' AND ', $where);
-		$sql          = "SELECT * FROM {$table_name} WHERE {$where_clause} ORDER BY name ASC";
 
 		if (! empty($params)) {
-			$sql = $wpdb->prepare($sql, $params);
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name and WHERE clause from trusted sources
+			$assistants = $wpdb->get_results(
+				$wpdb->prepare("SELECT * FROM `{$table_name}` WHERE {$where_clause} ORDER BY name ASC", $params),
+				ARRAY_A
+			);
+		} else {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name from trusted source ($wpdb->prefix)
+			$assistants = $wpdb->get_results(
+				"SELECT * FROM `{$table_name}` WHERE 1=1 ORDER BY name ASC",
+				ARRAY_A
+			);
 		}
-
-		$assistants = $wpdb->get_results($sql, ARRAY_A);
 
 		// Decode JSON fields
 		foreach ($assistants as &$assistant) {
@@ -480,9 +497,12 @@ class AssistantManager
 
 		// Check workflows
 		$workflows_table = $wpdb->prefix . 'polytrans_workflows';
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		if ($wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $workflows_table)) === $workflows_table) {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name from trusted source ($wpdb->prefix)
 			$workflows = $wpdb->get_results(
-				"SELECT id, name, steps FROM {$workflows_table}",
+				"SELECT id, name, steps FROM `{$workflows_table}`",
 				ARRAY_A
 			);
 

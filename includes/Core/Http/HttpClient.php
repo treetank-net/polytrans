@@ -164,9 +164,10 @@ class HttpClient
                 $error_message = $http_response->get_error_message();
                 
                 // If timeout and we have attempts left, retry
-                if ($attempt < $max_attempts && 
-                    (strpos(strtolower($error_message), 'timeout') !== false || 
+                if ($attempt < $max_attempts &&
+                    (strpos(strtolower($error_message), 'timeout') !== false ||
                      strpos(strtolower($error_message), 'timed out') !== false)) {
+                    // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Intentional error logging for debugging
                     error_log(sprintf(
                         '[PolyTrans HttpClient] Request timeout on attempt %d/%d, retrying... URL: %s',
                         $attempt,

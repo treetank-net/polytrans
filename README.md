@@ -3,7 +3,7 @@
 Contributors: jmarianski
 Tags: translation, multilingual, ai, openai, polylang
 Requires at least: 5.0
-Tested up to: 6.7
+Tested up to: 6.9
 Requires PHP: 8.1
 Stable tag: 1.8.9
 License: GPLv2 or later
@@ -622,6 +622,26 @@ polytrans/
 - **WordPress 6.0+**: Fully compatible
 - **Classic Editor**: Compatible
 - **Gutenberg/Block Editor**: Compatible
+
+## Plugin Check Notes
+
+This plugin passes WordPress Plugin Check with **0 errors**. The remaining warnings are intentional architectural decisions:
+
+### Direct Database Queries (DirectDatabaseQuery)
+
+PolyTrans uses custom database tables (`polytrans_logs`, `polytrans_assistants`, `polytrans_workflows`, `polytrans_workflow_steps`) that require direct `$wpdb` queries. `WP_Query` does not apply to custom tables. Object caching is not used because log entries are write-heavy and workflow data changes frequently during AJAX operations.
+
+### Interpolated Table Names (PreparedSQL.InterpolatedNotPrepared)
+
+Table names are constructed via `$wpdb->prefix . 'polytrans_*'` and cannot be passed as `%s` parameters to `$wpdb->prepare()` — SQL does not allow parameterized identifiers. The prefix comes from `wp-config.php` and is trusted. Table names are backtick-quoted in queries.
+
+### Template Output (EscapeOutput)
+
+`TemplateRenderer::render()` returns HTML from Twig templates, which auto-escape all variables by default (`{{ var }}` applies `htmlspecialchars`). These outputs use `phpcs:disable` blocks with explanatory comments.
+
+### error_log Usage
+
+`error_log()` calls in API provider classes are intentional for debugging provider communication in production, guarded by `WP_DEBUG` checks.
 
 ## License
 

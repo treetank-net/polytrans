@@ -38,6 +38,7 @@ class ResolveTaxonomyStep extends AbstractWorkflowStep
     public function get_description(): string
     {
         $desc = 'Resolves taxonomy terms (categories, tags) to their target language equivalents using Polylang translations.';
+        // phpcs:ignore WordPress.WP.I18n.NonSingularStringLiteralText -- Dynamic step description
         return function_exists('__') ? __($desc, 'polytrans') : $desc;
     }
 

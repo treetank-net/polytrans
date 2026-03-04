@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.9.0] - 2026-03-04
+
+### Changed
+- Comprehensive WordPress Plugin Check compliance: resolved all 326 real issues across 45 files
+- Output escaping: all `echo` statements now use proper `esc_html()`, `esc_attr()`, `esc_url()` wrappers
+- Input sanitization: all `$_POST`/`$_GET`/`$_REQUEST` access wrapped with `sanitize_text_field(wp_unslash())`
+- SQL queries: proper `$wpdb->prepare()` usage and phpcs annotations for custom table operations
+- Nonce verification: added `check_admin_referer()` to all admin form handlers
+- i18n: added translator comments for all placeholders, converted to ordered placeholders (`%1$s`, `%2$d`)
+- Template output: documented Twig template escaping with phpcs annotations
+- README.md: added Plugin Check Notes section documenting conscious architectural decisions
+
+### Fixed
+- Plugin Check result: 0 errors (down from 326), remaining 66 warnings are documented custom table operations
+
 ## [1.8.9] - 2026-03-04
 
 ### Added

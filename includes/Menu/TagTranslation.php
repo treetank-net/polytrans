@@ -169,6 +169,7 @@ class TagTranslation
             $source_lang_name = strtoupper($source_language);
         }
 
+        // phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped -- Twig template handles escaping
         echo TemplateRenderer::render('admin/tag-translation/page.twig', [
             'tags' => $tags_data,
             'langs' => $langs,
@@ -176,6 +177,7 @@ class TagTranslation
             'source_lang_name' => $source_lang_name,
             'can_manage_options' => current_user_can('manage_options'),
         ]);
+        // phpcs:enable WordPress.Security.EscapeOutput.OutputNotEscaped
     }
 
 
@@ -192,8 +194,8 @@ class TagTranslation
 
         $tag_id = intval($_POST['tag_id'] ?? 0);
         // Use target_lang if available, fallback to lang for backward compatibility
-        $lang = sanitize_text_field($_POST['target_lang'] ?? $_POST['lang'] ?? '');
-        $translation_name = sanitize_text_field($_POST['value'] ?? '');
+        $lang = sanitize_text_field(wp_unslash($_POST['target_lang'] ?? $_POST['lang'] ?? ''));
+        $translation_name = sanitize_text_field(wp_unslash($_POST['value'] ?? ''));
 
         if (!$tag_id || !$lang) {
             wp_send_json_error(['message' => __('Invalid parameters.', 'polytrans')]);
@@ -251,9 +253,9 @@ class TagTranslation
     {
         check_ajax_referer('polytrans_tag_translation', 'nonce');
 
-        $search = sanitize_text_field($_POST['search'] ?? '');
+        $search = sanitize_text_field(wp_unslash($_POST['search'] ?? ''));
         // Use target_lang if available, fallback to lang for backward compatibility
-        $lang = sanitize_text_field($_POST['target_lang'] ?? $_POST['lang'] ?? '');
+        $lang = sanitize_text_field(wp_unslash($_POST['target_lang'] ?? $_POST['lang'] ?? ''));
 
         if (strlen($search) < 2) {
             wp_send_json_success(['tags' => []]);
@@ -294,7 +296,7 @@ class TagTranslation
         }
 
         // Verify nonce if provided
-        if (isset($_GET['nonce']) && !wp_verify_nonce($_GET['nonce'], 'polytrans_tag_translation')) {
+        if (isset($_GET['nonce']) && !wp_verify_nonce(sanitize_text_field(wp_unslash($_GET['nonce'])), 'polytrans_tag_translation')) {
             \PolyTrans_Logs_Manager::log("Export CSV: Invalid nonce", "info");
             wp_die('Invalid nonce', 403);
         }
@@ -344,10 +346,11 @@ class TagTranslation
         \PolyTrans_Logs_Manager::log("Export CSV: Outputting CSV with ' . count($csv_data) . ' rows", "info");
         header('Content-Type: text/csv; charset=utf-8');
         header('Content-Disposition: attachment; filename="tag-translations.csv"');
-        $output = fopen('php://output', 'w');
+        $output = fopen('php://output', 'w'); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen -- Direct stream output required for CSV download
         foreach ($csv_data as $row) {
-            fputcsv($output, $row);
+            fputcsv($output, $row); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fputcsv -- Direct stream output required for CSV download
         }
+        // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- Direct file operation required
         fclose($output);
         exit;
     }
@@ -363,7 +366,7 @@ class TagTranslation
             wp_die('Unauthorized', 403);
         }
 
-        $csv_content =  $_POST['csv'] ?? '';
+        $csv_content = isset($_POST['csv']) ? wp_unslash($_POST['csv']) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- CSV content needs to preserve formatting
         if (empty($csv_content)) {
             wp_send_json_error(['message' => __('No CSV data provided.', 'polytrans')]);
         }
@@ -447,6 +450,7 @@ class TagTranslation
             $imported_count++;
         }
 
+        /* translators: %d: number of imported translations */
         wp_send_json_success(['message' => sprintf(__('%d tag translations imported successfully.', 'polytrans'), $imported_count)]);
     }
 

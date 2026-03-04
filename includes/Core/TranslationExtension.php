@@ -56,7 +56,7 @@ class TranslationExtension
         $provider = $this->providers[$provider_name] ?? null;
 
         if (!$provider) {
-            error_log("[polytrans] Provider '$provider_name' not found. Available providers: " . implode(', ', array_keys($this->providers)));
+            error_log("[polytrans] Provider '$provider_name' not found. Available providers: " . implode(', ', array_keys($this->providers))); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
         }
 
         return $provider;
@@ -174,7 +174,7 @@ class TranslationExtension
                 $this->update_translation_failure($original_post_id, $target_lang, $result['error']);
             }
 
-            error_log("[polytrans] Translation failed: " . $result['error']);
+            error_log("[polytrans] Translation failed: " . $result['error']); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
             return new WP_REST_Response(['error' => $result['error']], 500);
         }
 
@@ -311,6 +311,7 @@ class TranslationExtension
 
         $log[] = [
             'timestamp' => time(),
+            /* translators: %s: error message describing why the translation failed */
             'msg' => sprintf(__('Translation failed: %s', 'polytrans'), $error_message)
         ];
 
@@ -327,7 +328,7 @@ class TranslationExtension
      */
     private function post_to_target($endpoint, $payload)
     {
-        error_log("[polytrans] postToTarget: endpoint=$endpoint, payload=" . json_encode($payload));
+        error_log("[polytrans] postToTarget: endpoint=$endpoint, payload=" . wp_json_encode($payload)); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 
         // Extract data from payload for potential status updates
         $original_post_id = $payload['original_post_id'] ?? null;
@@ -387,7 +388,7 @@ class TranslationExtension
         $result = wp_remote_post($endpoint, $args);
 
         if (is_wp_error($result)) {
-            error_log("[polytrans] postToTarget error: " . $result->get_error_message());
+            error_log("[polytrans] postToTarget error: " . $result->get_error_message()); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 
             // Update the original post's status if we have post ID and language info
             if ($original_post_id && $target_language) {
@@ -425,7 +426,8 @@ class TranslationExtension
                         $log[] = [
                             'timestamp' => time(),
                             'msg' => sprintf(
-                                __('Translation completed successfully. New post ID: <a href="%s">%d</a>', 'polytrans'),
+                                /* translators: %1$s: edit post URL, %2$d: created post ID */
+                                __('Translation completed successfully. New post ID: <a href="%1$s">%2$d</a>', 'polytrans'),
                                 esc_url(admin_url('post.php?post=' . $created_post_id . '&action=edit')),
                                 $created_post_id
                             )
@@ -444,7 +446,7 @@ class TranslationExtension
                         LogsManager::log("Translation delivered to receiver (post $created_post_id) - skipping local status update", "info");
                     }
                 } catch (\Exception $e) {
-                    error_log("[polytrans] Error processing translation response: " . $e->getMessage());
+                    error_log("[polytrans] Error processing translation response: " . $e->getMessage()); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
                 }
             }
             // If failed response, update the failure status
@@ -618,7 +620,7 @@ class TranslationExtension
                 break;
             case 'post_param':
                 $params = $request->get_json_params();
-                error_log("[polytrans] post_param received params: " . json_encode($params));
+                error_log("[polytrans] post_param received params: " . wp_json_encode($params)); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
                 $received_secret = $params['secret'] ?? '';
                 break;
         }

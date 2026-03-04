@@ -4,7 +4,7 @@
  * Plugin Name: PolyTrans
  * Plugin URI: https://github.com/your-username/polytrans
  * Description: Advanced multilingual translation management system with AI-powered translation, scheduling, and review workflow
- * Version: 1.8.9
+ * Version: 1.9.0
  * Author: PolyTrans Team
  * Author URI: https://github.com/your-username/polytrans
  * Text Domain: polytrans
@@ -21,7 +21,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('POLYTRANS_VERSION', '1.8.9');
+define('POLYTRANS_VERSION', '1.9.0');
 define('POLYTRANS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('POLYTRANS_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('POLYTRANS_PLUGIN_FILE', __FILE__);
@@ -42,10 +42,10 @@ require_once POLYTRANS_PLUGIN_DIR . 'includes/class-polytrans.php';
 function polytrans_handle_background_request()
 {
     if (isset($_GET['polytrans_bg']) && isset($_GET['token']) && isset($_GET['nonce'])) {
-        $token = sanitize_key($_GET['token'] ?? '');
+        $token = sanitize_key(wp_unslash($_GET['token'] ?? ''));
         $data = get_transient('polytrans_bg_' . $token);
-        
-        $nonce_valid = wp_verify_nonce($_GET['nonce'], 'polytrans_bg_process');
+
+        $nonce_valid = wp_verify_nonce(sanitize_text_field(wp_unslash($_GET['nonce'])), 'polytrans_bg_process');
         if (!$nonce_valid) {
             if (class_exists('\PolyTrans\Core\LogsManager')) {
                 \PolyTrans\Core\LogsManager::log("Background process request: Invalid nonce. Token: " . ($token ?: 'missing'), "error", ['token' => $token]);
@@ -62,6 +62,7 @@ function polytrans_handle_background_request()
             // Disable browser buffering
             if (function_exists('fastcgi_finish_request')) {
                 ignore_user_abort(true);
+                // phpcs:ignore Squiz.PHP.DiscouragedFunctions.Discouraged -- Required for background processing
                 set_time_limit(0);
                 ob_end_flush();
                 flush();
@@ -69,6 +70,7 @@ function polytrans_handle_background_request()
             } else {
                 // Fallback for non-FastCGI servers
                 ignore_user_abort(true);
+                // phpcs:ignore Squiz.PHP.DiscouragedFunctions.Discouraged -- Required for background processing
                 set_time_limit(0);
                 ob_end_flush();
                 flush();
@@ -197,9 +199,13 @@ function polytrans_check_workflows_table()
     // Add expected_output_schema column if it doesn't exist
     global $wpdb;
     $table_name = $wpdb->prefix . 'polytrans_assistants';
-    $column_exists = $wpdb->get_results("SHOW COLUMNS FROM {$table_name} LIKE 'expected_output_schema'");
+    // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+    // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name from trusted source ($wpdb->prefix)
+    $column_exists = $wpdb->get_results("SHOW COLUMNS FROM `{$table_name}` LIKE 'expected_output_schema'");
     if (empty($column_exists)) {
-        $wpdb->query("ALTER TABLE {$table_name} ADD COLUMN expected_output_schema text AFTER expected_format");
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange -- Plugin upgrade: adding missing column
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name from trusted source ($wpdb->prefix)
+        $wpdb->query("ALTER TABLE `{$table_name}` ADD COLUMN expected_output_schema text AFTER expected_format");
     }
 }
 add_action('admin_init', 'polytrans_check_workflows_table');
@@ -243,6 +249,7 @@ function polytrans_activate()
             ['version' => POLYTRANS_VERSION, 'source' => 'activation']
         );
     } else {
+        // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
         error_log("[polytrans] Plugin activated, database logging disabled in settings");
     }
 
@@ -300,6 +307,7 @@ function polytrans_create_tables()
 
         \PolyTrans\Core\LogsManager::create_logs_table();
     } else {
+        // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
         error_log("[polytrans] Database logging is disabled, skipping logs table creation");
     }
 
@@ -311,6 +319,7 @@ function polytrans_create_tables()
  */
 function polytrans_load_textdomain()
 {
+    // phpcs:ignore PluginCheck.CodeAnalysis.DiscouragedFunctions.load_plugin_textdomainFound -- Required for i18n
     load_plugin_textdomain('polytrans', false, dirname(plugin_basename(__FILE__)) . '/languages');
 }
 add_action('init', 'polytrans_load_textdomain');
@@ -335,6 +344,7 @@ function polytrans_run_cleanup()
     $fixed = $handler->fix_stuck_translations(24);
 
     if ($fixed > 0) {
+        // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
         error_log("[polytrans] Fixed $fixed stuck translations");
     }
 }
@@ -349,6 +359,7 @@ function polytrans_check_stuck_translations()
     $results = $status_manager->check_stuck_translations(24);
 
     if ($results['fixed'] > 0) {
+        // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
         error_log("[polytrans] Fixed {$results['fixed']} stuck translations out of {$results['checked']} checked");
     }
 }
@@ -359,7 +370,9 @@ add_action('polytrans_check_stuck_translations', 'polytrans_check_stuck_translat
  */
 function polytrans_cleanup_bg_log($log_file)
 {
+    // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_is_writable -- Direct file operation required
     if (file_exists($log_file) && is_writable($log_file)) {
+        // phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink -- Cache file cleanup
         @unlink($log_file);
     }
 }

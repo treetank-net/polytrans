@@ -30,7 +30,8 @@ class WorkflowStorageManager
         $table_name = $wpdb->prefix . self::TABLE_NAME;
 
         // Check if table exists
-        $table_exists = ($wpdb->get_var("SHOW TABLES LIKE '$table_name'") === $table_name);
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+        $table_exists = ($wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $table_name)) === $table_name);
 
         if (!$table_exists) {
             // Create table
@@ -94,6 +95,7 @@ class WorkflowStorageManager
 
         dbDelta($sql);
 
+        // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
         error_log("[PolyTrans] Created workflows table: $table_name");
     }
 
@@ -134,6 +136,7 @@ class WorkflowStorageManager
                 ];
 
                 // Insert into table
+                // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
                 $result = $wpdb->insert($table_name, $data);
 
                 if ($result) {
@@ -150,8 +153,10 @@ class WorkflowStorageManager
         update_option(self::MIGRATION_FLAG, true);
 
         // Log results
+        // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
         error_log("[PolyTrans] Workflow migration complete: $migrated_count workflows migrated");
         if (!empty($errors)) {
+            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
             error_log("[PolyTrans] Migration errors: " . implode("; ", $errors));
         }
 
@@ -197,6 +202,7 @@ class WorkflowStorageManager
         global $wpdb;
         $table_name = $wpdb->prefix . self::TABLE_NAME;
 
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name from $wpdb->prefix constant
         $results = $wpdb->get_results("SELECT * FROM $table_name ORDER BY name ASC", ARRAY_A);
 
         if (!$results) {
@@ -228,8 +234,10 @@ class WorkflowStorageManager
         $table_name = $wpdb->prefix . self::TABLE_NAME;
 
         // Get workflows for this specific language OR workflows with empty language (all languages)
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
         $results = $wpdb->get_results(
             $wpdb->prepare(
+                // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name from $wpdb->prefix constant
                 "SELECT * FROM $table_name WHERE language = %s OR language = '' OR language IS NULL ORDER BY name ASC",
                 $language
             ),
@@ -259,7 +267,9 @@ class WorkflowStorageManager
         global $wpdb;
         $table_name = $wpdb->prefix . self::TABLE_NAME;
 
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
         $row = $wpdb->get_row(
+            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name from $wpdb->prefix constant
             $wpdb->prepare("SELECT * FROM $table_name WHERE workflow_id = %s", $workflow_id),
             ARRAY_A
         );
@@ -291,7 +301,9 @@ class WorkflowStorageManager
         $workflow_id = $workflow['id'];
 
         // Check if workflow exists
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
         $exists = $wpdb->get_var(
+            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name from $wpdb->prefix constant
             $wpdb->prepare("SELECT id FROM $table_name WHERE workflow_id = %s", $workflow_id)
         );
 
@@ -313,6 +325,7 @@ class WorkflowStorageManager
 
         if ($exists) {
             // Update existing workflow
+            // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
             $result = $wpdb->update(
                 $table_name,
                 $data,
@@ -325,6 +338,7 @@ class WorkflowStorageManager
             $data['created_at'] = current_time('mysql');
             $data['created_by'] = get_current_user_id();
 
+            // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
             $result = $wpdb->insert($table_name, $data);
 
             $success = $result !== false;
@@ -349,6 +363,7 @@ class WorkflowStorageManager
         global $wpdb;
         $table_name = $wpdb->prefix . self::TABLE_NAME;
 
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
         $result = $wpdb->delete($table_name, ['workflow_id' => $workflow_id]);
 
         return $result !== false;
@@ -527,7 +542,7 @@ class WorkflowStorageManager
             'workflows' => array_values($workflows)
         ];
 
-        return json_encode($export_data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+        return wp_json_encode($export_data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
     }
 
     /**
@@ -649,6 +664,7 @@ class WorkflowStorageManager
             $validation = $this->validate_workflow($workflow);
             if (!$validation['valid']) {
                 // Delete invalid workflow
+                // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
                 $wpdb->delete($table_name, ['workflow_id' => $workflow['id']]);
                 $cleaned++;
             }
@@ -670,8 +686,10 @@ class WorkflowStorageManager
         $table_name = $wpdb->prefix . self::TABLE_NAME;
 
         // Search for assistant_id in steps JSON
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
         $results = $wpdb->get_results(
             $wpdb->prepare(
+                // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name from $wpdb->prefix constant
                 "SELECT * FROM $table_name WHERE steps LIKE %s",
                 '%"assistant_id":' . $wpdb->esc_like($assistant_id) . '%'
             ),

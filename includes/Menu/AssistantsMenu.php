@@ -2,7 +2,7 @@
 
 /**
  * AI Assistants Menu
- * 
+ *
  * Handles the admin menu page for managing AI assistants.
  * Part of Phase 1: AI Assistants Management System.
  */
@@ -108,7 +108,9 @@ class AssistantsMenu
         // Get current model and provider from assistant being edited (if any)
         $current_model = '';
         $current_provider = 'openai';
-        if (isset($_GET['action']) && $_GET['action'] === 'edit' && isset($_GET['id'])) {
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Page rendering parameter, no state change
+        if (isset($_GET['action']) && sanitize_text_field(wp_unslash($_GET['action'])) === 'edit' && isset($_GET['id'])) {
+            // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Page rendering parameter, no state change
             $assistant_id = intval($_GET['id']);
             $assistant = AssistantManager::get_assistant($assistant_id);
             if ($assistant) {
@@ -120,7 +122,7 @@ class AssistantsMenu
                 }
             }
         }
-        
+
         // Localize script
         wp_localize_script('polytrans-assistants', 'polytransAssistants', [
             'ajaxUrl' => admin_url('admin-ajax.php'),
@@ -237,7 +239,9 @@ class AssistantsMenu
     public function render_assistants_page()
     {
         // Get current action
-        $action = $_GET['action'] ?? 'list';
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Page rendering parameter, no state change
+        $action = isset($_GET['action']) ? sanitize_text_field(wp_unslash($_GET['action'])) : 'list';
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Page rendering parameter, no state change
         $assistant_id = isset($_GET['assistant_id']) ? intval($_GET['assistant_id']) : 0;
 
         switch ($action) {
@@ -259,18 +263,18 @@ class AssistantsMenu
     {
         $assistants = AssistantManager::get_all_assistants();
         $migration_status = AssistantMigration::get_migration_status();
-        
+
         // Get enabled providers to check if provider is disabled
         $settings = get_option('polytrans_settings', []);
         $enabled_providers = $settings['enabled_translation_providers'] ?? ['google'];
-        
+
         // Map assistant data for display
         foreach ($assistants as &$assistant) {
             // Extract model from api_parameters
             $assistant['model'] = $assistant['api_parameters']['model'] ?? '';
             // Map expected_format to response_format
             $assistant['response_format'] = $assistant['expected_format'] ?? 'text';
-            
+
             // Check if model is empty and if there's a default model in settings
             $assistant['has_default_model'] = false;
             if (empty($assistant['model'])) {
@@ -283,11 +287,13 @@ class AssistantsMenu
         unset($assistant); // Break reference
 
         // Render using Twig template
+        // phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped -- Twig templates handle escaping
         echo TemplateRenderer::render('admin/assistants/list.twig', [
             'assistants' => $assistants,
             'migration_status' => $migration_status,
             'enabled_providers' => $enabled_providers,
         ]);
+        // phpcs:enable WordPress.Security.EscapeOutput.OutputNotEscaped
     }
 
     /**
@@ -313,7 +319,7 @@ class AssistantsMenu
         } else {
             $assistant = AssistantManager::get_assistant($assistant_id);
             if (!$assistant) {
-                wp_die(__('Assistant not found.', 'polytrans'));
+                wp_die(esc_html__('Assistant not found.', 'polytrans'));
             }
 
             // Map expected_format to response_format for UI consistency
@@ -338,14 +344,14 @@ class AssistantsMenu
         $settings = get_option('polytrans_settings', []);
         $enabled_providers = $settings['enabled_translation_providers'] ?? ['google'];
         $all_providers = $registry->get_providers();
-        
+
         $available_assistant_providers = [];
         $provider_manifests = [];
         foreach ($all_providers as $provider_id => $provider) {
             if (!in_array($provider_id, $enabled_providers)) {
                 continue;
             }
-            
+
             $settings_provider_class = $provider->get_settings_provider_class();
             if ($settings_provider_class && class_exists($settings_provider_class)) {
                 $settings_provider = new $settings_provider_class();
@@ -365,7 +371,7 @@ class AssistantsMenu
                 }
             }
         }
-        
+
         // If no providers found, fallback to hardcoded list
         if (empty($available_assistant_providers)) {
             $available_assistant_providers = [
@@ -417,6 +423,7 @@ class AssistantsMenu
         }
 
         // Render using Twig template
+        // phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped -- Twig templates handle escaping
         echo TemplateRenderer::render('admin/assistants/editor.twig', [
             'assistant' => $assistant,
             'is_new' => $is_new,
@@ -430,6 +437,7 @@ class AssistantsMenu
             'polytrans_plugin_url' => POLYTRANS_PLUGIN_URL,
             'polytrans_version' => POLYTRANS_VERSION,
         ]);
+        // phpcs:enable WordPress.Security.EscapeOutput.OutputNotEscaped
     }
 
     /**
@@ -447,11 +455,11 @@ class AssistantsMenu
         $name = isset($_POST['name']) ? sanitize_text_field(wp_unslash($_POST['name'])) : '';
         $provider = isset($_POST['provider']) ? sanitize_text_field(wp_unslash($_POST['provider'])) : '';
         $model = isset($_POST['model']) ? sanitize_text_field(wp_unslash($_POST['model'])) : '';
-        $system_prompt = isset($_POST['system_prompt']) ? wp_unslash($_POST['system_prompt']) : '';
-        $user_message_template = isset($_POST['user_message_template']) ? wp_unslash($_POST['user_message_template']) : '';
+        $system_prompt = isset($_POST['system_prompt']) ? sanitize_textarea_field(wp_unslash($_POST['system_prompt'])) : '';
+        $user_message_template = isset($_POST['user_message_template']) ? sanitize_textarea_field(wp_unslash($_POST['user_message_template'])) : '';
         $response_format = isset($_POST['response_format']) ? sanitize_text_field(wp_unslash($_POST['response_format'])) : 'text';
-        $expected_output_schema = isset($_POST['expected_output_schema']) ? wp_unslash($_POST['expected_output_schema']) : null;
-        $config = isset($_POST['config']) ? wp_unslash($_POST['config']) : [];
+        $expected_output_schema = isset($_POST['expected_output_schema']) ? sanitize_textarea_field(wp_unslash($_POST['expected_output_schema'])) : null;
+        $config = isset($_POST['config']) ? array_map('sanitize_text_field', wp_unslash($_POST['config'])) : [];
 
         // Check if provider supports system prompt
         $supports_system_prompt = true; // Default to true for backward compatibility
@@ -470,13 +478,13 @@ class AssistantsMenu
                     }
             }
         }
-        
+
         // Validate required fields
         // System prompt is only required if provider supports it
         if (empty($name) || empty($provider)) {
             wp_send_json_error(['message' => __('Required fields are missing.', 'polytrans')]);
         }
-        
+
         // If provider doesn't support system prompt, ensure it's empty
         if (!$supports_system_prompt) {
             $system_prompt = ''; // Clear system prompt if provider doesn't support it
@@ -497,7 +505,7 @@ class AssistantsMenu
             'provider' => $provider,
             'system_prompt' => $system_prompt,
             'user_message_template' => $user_message_template,
-            'api_parameters' => json_encode($api_parameters),
+            'api_parameters' => wp_json_encode($api_parameters),
             'expected_format' => $response_format,
             'expected_output_schema' => $expected_output_schema,
             'output_variables' => null
@@ -521,7 +529,7 @@ class AssistantsMenu
                 wp_send_json_error(['message' => __('Failed to save assistant.', 'polytrans')]);
             }
         } catch (\Exception $e) {
-            wp_send_json_error(['message' => $e->getMessage()]);
+            wp_send_json_error(['message' => esc_html($e->getMessage())]);
         }
     }
 
@@ -551,7 +559,7 @@ class AssistantsMenu
                 wp_send_json_error(['message' => __('Failed to delete assistant.', 'polytrans')]);
             }
         } catch (\Exception $e) {
-            wp_send_json_error(['message' => $e->getMessage()]);
+            wp_send_json_error(['message' => esc_html($e->getMessage())]);
         }
     }
 
@@ -581,7 +589,7 @@ class AssistantsMenu
                 wp_send_json_error(['message' => __('Assistant not found.', 'polytrans')]);
             }
         } catch (\Exception $e) {
-            wp_send_json_error(['message' => $e->getMessage()]);
+            wp_send_json_error(['message' => esc_html($e->getMessage())]);
         }
     }
 
@@ -608,7 +616,8 @@ class AssistantsMenu
             } else {
                 wp_send_json_success([
                     'message' => sprintf(
-                        __('Migration completed successfully! Migrated %d steps and created %d assistants.', 'polytrans'),
+                        /* translators: %1$d: number of steps migrated, %2$d: number of assistants created */
+                        __('Migration completed successfully! Migrated %1$d steps and created %2$d assistants.', 'polytrans'),
                         $stats['steps_migrated'],
                         $stats['assistants_created']
                     ),
@@ -616,13 +625,13 @@ class AssistantsMenu
                 ]);
             }
         } catch (\Exception $e) {
-            wp_send_json_error(['message' => $e->getMessage()]);
+            wp_send_json_error(['message' => esc_html($e->getMessage())]);
         }
     }
 
     /**
      * Get model options for select dropdown based on provider
-     * 
+     *
      * @param string|null $provider_id Provider ID (e.g., 'openai', 'claude')
      * @param string|null $selected_model Currently selected model (for backward compatibility)
      * @return array Grouped model options
@@ -633,23 +642,23 @@ class AssistantsMenu
         if (empty($provider_id)) {
             $provider_id = 'openai';
         }
-        
+
         $registry = \PolyTrans_Provider_Registry::get_instance();
         $provider = $registry->get_provider($provider_id);
-        
+
         if (!$provider) {
             return $this->get_fallback_models();
         }
-        
+
         $settings_provider_class = $provider->get_settings_provider_class();
         if (!$settings_provider_class || !class_exists($settings_provider_class)) {
             return $this->get_fallback_models();
         }
-        
+
         try {
             $settings_provider = new $settings_provider_class();
             $settings = get_option('polytrans_settings', []);
-            
+
             // Check if provider implements SettingsProviderInterface and has load_models method
             if ($settings_provider instanceof SettingsProviderInterface) {
                 if (method_exists($settings_provider, 'load_models')) {
@@ -670,22 +679,23 @@ class AssistantsMenu
                     }
                 }
             }
-            
+
             // Legacy: Check if provider has get_grouped_models method (for backward compatibility)
             if (method_exists($settings_provider, 'get_grouped_models')) {
                 return $settings_provider->get_grouped_models($selected_model);
             }
         } catch (\Exception $e) {
+            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
             error_log("[PolyTrans] Failed to get models for provider $provider_id: " . $e->getMessage());
         }
-        
+
         // Provider-specific fallback based on provider_id
         return $this->get_fallback_models($provider_id);
     }
 
     /**
      * Get API key setting key for provider
-     * 
+     *
      * @param string $provider_id Provider ID
      * @return string API key setting key
      */
@@ -693,10 +703,10 @@ class AssistantsMenu
     {
         return $provider_id . '_api_key';
     }
-    
+
     /**
      * Get fallback model options
-     * 
+     *
      * @param string|null $provider_id Provider ID to get provider-specific fallback
      * @return array Fallback model options (empty - no hardcoded models)
      */
@@ -706,7 +716,7 @@ class AssistantsMenu
         // Models must be loaded from API
         return [];
     }
-    
+
     /**
      * AJAX handler for getting provider models
      */
@@ -716,7 +726,7 @@ class AssistantsMenu
         // Universal JS uses polytrans_nonce, AssistantsMenu uses polytrans_assistants
         $nonce_check = false;
         if (isset($_POST['nonce'])) {
-            $nonce = sanitize_text_field($_POST['nonce']);
+            $nonce = sanitize_text_field(wp_unslash($_POST['nonce']));
             // Try different nonce types:
             // 1. polytrans_assistants (from AssistantsMenu)
             // 2. polytrans_nonce (from SettingsMenu - Universal JS)
@@ -725,24 +735,24 @@ class AssistantsMenu
                           wp_verify_nonce($nonce, 'polytrans_nonce') ||
                           wp_verify_nonce($nonce, 'polytrans_openai_nonce');
         }
-        
+
         if (!$nonce_check) {
             wp_send_json_error(__('Security check failed.', 'polytrans'));
             return;
         }
-        
+
         if (!current_user_can('manage_options')) {
             wp_send_json_error(__('You do not have sufficient permissions to access this page.', 'polytrans'));
             return;
         }
-        
-        $provider_id = sanitize_text_field($_POST['provider_id'] ?? 'openai');
-        $selected_model = sanitize_text_field($_POST['selected_model'] ?? '');
-        $force_refresh = isset($_POST['force_refresh']) && $_POST['force_refresh'] === '1';
-        
+
+        $provider_id = isset($_POST['provider_id']) ? sanitize_text_field(wp_unslash($_POST['provider_id'])) : 'openai';
+        $selected_model = isset($_POST['selected_model']) ? sanitize_text_field(wp_unslash($_POST['selected_model'])) : '';
+        $force_refresh = isset($_POST['force_refresh']) && sanitize_text_field(wp_unslash($_POST['force_refresh'])) === '1';
+
         // Get models for the specified provider
         $models = $this->get_model_options($provider_id, $selected_model, $force_refresh);
-        
+
         wp_send_json_success([
             'models' => $models,
             'selected_model' => $selected_model

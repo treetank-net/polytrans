@@ -77,6 +77,7 @@ class TemplateRenderer
         // Ensure cache directory exists
         if ($use_cache && !file_exists(self::$cache_dir)) {
             if (wp_mkdir_p(self::$cache_dir)) {
+                // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_chmod -- Cache directory management
                 @chmod(self::$cache_dir, 0777);
             } else {
                 $use_cache = false;
@@ -142,6 +143,7 @@ class TemplateRenderer
             
             return $return;
         } catch (\Throwable $e) {
+            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Intentional error logging for debugging
             error_log(sprintf(
                 '[PolyTrans] Template rendering failed: %s. Template: %s',
                 $e->getMessage(),
@@ -250,6 +252,7 @@ class TemplateRenderer
         // Action hook function (for do_action in templates)
         self::$twig->addFunction(new TwigFunction('action', function ($hook, ...$args) {
             ob_start();
+            // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- Dynamic hook intentional
             do_action($hook, ...$args);
             return ob_get_clean();
         }, ['is_safe' => ['html']]));

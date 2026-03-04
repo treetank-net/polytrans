@@ -92,7 +92,7 @@ class BackgroundProcessor
     private static function spawn_exec($args, $action)
     {
         // Generate a unique token for this process
-        $token = md5(uniqid(mt_rand(), true));
+        $token = md5(uniqid(wp_rand(), true));
 
         // Store the args in a transient for retrieval by the background process
         set_transient('polytrans_bg_' . $token, [
@@ -228,6 +228,7 @@ class BackgroundProcessor
         try {
             // Make sure we run for as long as needed
             ignore_user_abort(true);
+            // phpcs:ignore Squiz.PHP.DiscouragedFunctions.Discouraged -- Required for background processing
             set_time_limit(0);
 
             // Log the start of processing
@@ -285,6 +286,7 @@ class BackgroundProcessor
                 if (!is_array($log)) $log = [];
                 $log[] = [
                     'timestamp' => time(),
+                    /* translators: %s: error message */
                     'msg' => sprintf(__('Background process failed: %s', 'polytrans'), $e->getMessage())
                 ];
                 update_post_meta($post_id, $log_key, $log);
@@ -302,7 +304,7 @@ class BackgroundProcessor
     private static function spawn_http_request($args, $action)
     {
         // Generate a unique token for this process
-        $token = md5(uniqid(mt_rand(), true));
+        $token = md5(uniqid(wp_rand(), true));
 
         // Store the args in a transient
         // Note: No log_file needed for HTTP request - endpoint runs in WordPress context
@@ -360,19 +362,20 @@ class BackgroundProcessor
         }
 
         // Method 3: Try cURL if available
+        // phpcs:ignore WordPress.WP.AlternativeFunctions.curl_curl_init -- fallback when wp_remote_post fails
         if (!$success && function_exists('curl_init')) {
-            $ch = curl_init();
-            curl_setopt($ch, CURLOPT_URL, $url);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, false);
-            curl_setopt($ch, CURLOPT_TIMEOUT, 1);
-            curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 1);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
-            curl_setopt($ch, CURLOPT_USERAGENT, 'PolyTrans Background Process');
-            curl_setopt($ch, CURLOPT_HTTPHEADER, ['X-Polytrans-BG: Processing']);
-            curl_setopt($ch, CURLOPT_NOBODY, true);
-            @curl_exec($ch);
-            curl_close($ch);
+            $ch = curl_init(); // phpcs:ignore WordPress.WP.AlternativeFunctions.curl_curl_init
+            curl_setopt($ch, CURLOPT_URL, $url); // phpcs:ignore WordPress.WP.AlternativeFunctions.curl_curl_setopt
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, false); // phpcs:ignore WordPress.WP.AlternativeFunctions.curl_curl_setopt
+            curl_setopt($ch, CURLOPT_TIMEOUT, 1); // phpcs:ignore WordPress.WP.AlternativeFunctions.curl_curl_setopt
+            curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 1); // phpcs:ignore WordPress.WP.AlternativeFunctions.curl_curl_setopt
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // phpcs:ignore WordPress.WP.AlternativeFunctions.curl_curl_setopt
+            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0); // phpcs:ignore WordPress.WP.AlternativeFunctions.curl_curl_setopt
+            curl_setopt($ch, CURLOPT_USERAGENT, 'PolyTrans Background Process'); // phpcs:ignore WordPress.WP.AlternativeFunctions.curl_curl_setopt
+            curl_setopt($ch, CURLOPT_HTTPHEADER, ['X-Polytrans-BG: Processing']); // phpcs:ignore WordPress.WP.AlternativeFunctions.curl_curl_setopt
+            curl_setopt($ch, CURLOPT_NOBODY, true); // phpcs:ignore WordPress.WP.AlternativeFunctions.curl_curl_setopt
+            @curl_exec($ch); // phpcs:ignore WordPress.WP.AlternativeFunctions.curl_curl_exec
+            curl_close($ch); // phpcs:ignore WordPress.WP.AlternativeFunctions.curl_curl_close
             $success = true; // Can't verify success with curl non-blocking
         }
 
@@ -470,6 +473,7 @@ class BackgroundProcessor
         // Log start in post meta
         $log[] = [
             'timestamp' => time(),
+            /* translators: %s: translation provider name */
             'msg' => sprintf(__('Starting translation with %s.', 'polytrans'), ucfirst($translation_provider))
         ];
         update_post_meta($post_id, $log_key, $log);
@@ -558,6 +562,7 @@ class BackgroundProcessor
             $provider = $registry->get_provider($translation_provider);
 
             if (!$provider) {
+                /* translators: %s: translation provider name */
                 throw new Exception(sprintf(__('Translation provider %s not found.', 'polytrans'), $translation_provider));
             }
 
@@ -620,7 +625,8 @@ class BackgroundProcessor
             $log[] = [
                 'timestamp' => time(),
                 'msg' => sprintf(
-                    __('Translation completed successfully. New post ID: <a href="%s">%d</a>', 'polytrans'),
+                    /* translators: %1$s: edit post URL, %2$d: created post ID */
+                    __('Translation completed successfully. New post ID: <a href="%1$s">%2$d</a>', 'polytrans'),
                     esc_url(admin_url('post.php?post=' . $result['created_post_id'] . '&action=edit')),
                     $result['created_post_id']
                 )
@@ -660,6 +666,7 @@ class BackgroundProcessor
 
             $log[] = [
                 'timestamp' => time(),
+                /* translators: %s: error message */
                 'msg' => sprintf(__('Translation failed: %s', 'polytrans'), $e->getMessage())
             ];
 
@@ -676,6 +683,7 @@ class BackgroundProcessor
         $log[] = [
             'timestamp' => time(),
             'msg' => sprintf(
+                /* translators: %s: URL to system logs page */
                 __('Process complete. View detailed <a href="%s" target="_blank">system logs</a>.', 'polytrans'),
                 esc_url($logs_url)
             )
@@ -921,21 +929,27 @@ class BackgroundProcessor
         // Note: PolyTrans_Logs_Manager is autoloaded
 
         // Check if the logs table exists
-        $table_exists = $wpdb->get_var("SHOW TABLES LIKE '$table_name'") === $table_name;
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+        $table_exists = $wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $table_name)) === $table_name;
 
         if ($table_exists) {
+            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
             error_log("[polytrans] Logs table exists: $table_name");
 
             // Check the table columns
-            $columns = $wpdb->get_results("SHOW COLUMNS FROM `$table_name`");
+            // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name from trusted source ($wpdb->prefix)
+            $columns = $wpdb->get_results("SHOW COLUMNS FROM `{$table_name}`");
             $column_names = [];
 
             if ($columns) {
                 foreach ($columns as $col) {
                     $column_names[] = $col->Field;
                 }
+                // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
                 error_log("[polytrans] Logs table columns: " . implode(', ', $column_names));
             } else {
+                // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
                 error_log("[polytrans] Could not retrieve logs table columns");
             }
 
@@ -944,23 +958,31 @@ class BackgroundProcessor
                 'source' => 'activation_check'
             ]);
         } else {
+            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
             error_log("[polytrans] Logs table does not exist, using postmeta only");
         }
 
         // Test post meta logging
-        $test_post_id = $wpdb->get_var("SELECT ID FROM $wpdb->posts WHERE post_type = 'post' ORDER BY ID DESC LIMIT 1");
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- $wpdb->posts is a trusted WordPress core property
+        $test_post_id = $wpdb->get_var(
+            $wpdb->prepare("SELECT ID FROM `{$wpdb->posts}` WHERE post_type = %s ORDER BY ID DESC LIMIT 1", 'post')
+        );
         if ($test_post_id) {
             $meta_key = '_polytrans_activation_test';
             update_post_meta($test_post_id, $meta_key, time());
             $meta_value = get_post_meta($test_post_id, $meta_key, true);
             if ($meta_value) {
+                // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
                 error_log("[polytrans] Post meta test successful on post ID: $test_post_id");
                 // Clean up
                 delete_post_meta($test_post_id, $meta_key);
             } else {
+                // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
                 error_log("[polytrans] Post meta test failed on post ID: $test_post_id");
             }
         } else {
+            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
             error_log("[polytrans] No posts found to test post meta");
         }
     }
@@ -1067,7 +1089,7 @@ class BackgroundProcessor
         // Interpolate schema
         $schema_str = $assistant['expected_output_schema'];
         if (is_array($schema_str)) {
-            $schema_str = json_encode($schema_str);
+            $schema_str = wp_json_encode($schema_str);
         }
 
         try {

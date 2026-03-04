@@ -304,7 +304,7 @@ class PostDataProvider implements VariableProviderInterface
             'featured_image' => $featured_image,
             'permalink' => get_permalink($post->ID),
             'edit_link' => get_edit_post_link($post->ID),
-            'word_count' => str_word_count(strip_tags($post->post_content)),
+            'word_count' => str_word_count(wp_strip_all_tags($post->post_content)),
             'character_count' => strlen($post->post_content)
         ];
     }

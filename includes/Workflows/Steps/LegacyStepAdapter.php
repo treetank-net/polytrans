@@ -102,7 +102,7 @@ class LegacyStepAdapter extends AbstractWorkflowStep
         // Process result
         if (!isset($result['success']) || !$result['success']) {
             $error = $result['error'] ?? 'Legacy step execution failed';
-            throw new \RuntimeException($error);
+            throw new \RuntimeException(esc_html($error));
         }
 
         // Apply output data back to context

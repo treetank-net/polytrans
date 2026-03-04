@@ -211,13 +211,13 @@ class ArticlesDataProvider implements VariableProviderInterface
         // Get excerpt
         $excerpt = $post->post_excerpt;
         if (empty($excerpt)) {
-            $excerpt = wp_trim_words(strip_tags($post->post_content), 30);
+            $excerpt = wp_trim_words(wp_strip_all_tags($post->post_content), 30);
         }
 
         // Get some useful meta data
         $meta = [
             'reading_time' => $this->estimate_reading_time($post->post_content),
-            'word_count' => str_word_count(strip_tags($post->post_content))
+            'word_count' => str_word_count(wp_strip_all_tags($post->post_content))
         ];
 
         // Add SEO title if available (Yoast)
@@ -265,7 +265,7 @@ class ArticlesDataProvider implements VariableProviderInterface
                 $article['slug'],
                 $article['url'],
                 wp_trim_words($article['excerpt'], 15),
-                mb_substr(strip_tags($article['content']), 0, 500),
+                mb_substr(wp_strip_all_tags($article['content']), 0, 500),
                 !empty($article['categories']) ? implode(', ', array_column($article['categories'], 'name')) : 'None',
                 !empty($article['tags']) ? implode(', ', array_column($article['tags'], 'name')) : 'None',
                 $article['meta']['word_count'] ?? 0
@@ -283,7 +283,7 @@ class ArticlesDataProvider implements VariableProviderInterface
      */
     private function estimate_reading_time($content)
     {
-        $word_count = str_word_count(strip_tags($content));
+        $word_count = str_word_count(wp_strip_all_tags($content));
         $reading_speed = 200; // Average words per minute
         return max(1, ceil($word_count / $reading_speed));
     }

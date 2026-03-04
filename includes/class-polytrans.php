@@ -76,6 +76,7 @@ class PolyTrans
     public function init()
     {
         // Load plugin text domain for internationalization
+        // phpcs:ignore PluginCheck.CodeAnalysis.DiscouragedFunctions.load_plugin_textdomainFound -- Required for i18n
         load_plugin_textdomain('polytrans', false, dirname(plugin_basename(POLYTRANS_PLUGIN_FILE)) . '/languages');
 
         // Initialize components
@@ -110,6 +111,7 @@ class PolyTrans
         // Initialize provider-specific AJAX handlers
         $this->init_provider_ajax_handlers();
 
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Admin-only check, verified by current_user_can
         if (is_admin() && isset($_GET['check_stuck']) && current_user_can('manage_options')) {
             $this->handle_check_stuck_translations();
         }
@@ -303,14 +305,16 @@ class PolyTrans
 
         // Query for all post meta entries with non-terminal statuses
         $non_terminal_states = ['started', 'translating', 'processing'];
-        $meta_query = $wpdb->prepare(
-            "SELECT post_id, meta_key, meta_value FROM {$wpdb->postmeta} 
-            WHERE meta_key LIKE %s 
-            AND meta_value IN ('started', 'translating', 'processing')",
-            '_polytrans_translation_status_%'
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- $wpdb->postmeta is a trusted WordPress core property
+        $stuck_translations = $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT post_id, meta_key, meta_value FROM `{$wpdb->postmeta}`
+                WHERE meta_key LIKE %s
+                AND meta_value IN ('started', 'translating', 'processing')",
+                '_polytrans_translation_status_%'
+            )
         );
-
-        $stuck_translations = $wpdb->get_results($meta_query);
         $checked = count($stuck_translations);
 
         if ($checked === 0) {
@@ -345,7 +349,8 @@ class PolyTrans
                 // This translation has been stuck for too long
                 $status_key = '_polytrans_translation_status_' . $language;
                 $error_message = sprintf(
-                    __('Translation timed out after %d hours in "%s" status.', 'polytrans'),
+                    /* translators: %1$d: number of hours, %2$s: translation status */
+                    __('Translation timed out after %1$d hours in "%2$s" status.', 'polytrans'),
                     $timeout_hours,
                     $item->meta_value
                 );
@@ -376,6 +381,7 @@ class PolyTrans
                 ];
 
                 // Optional: Log to WordPress error log
+                // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
                 error_log(sprintf(
                     '[polytrans] Marked stuck translation as failed: Post ID %d, Language %s, Previous Status %s',
                     $post_id,
@@ -387,7 +393,8 @@ class PolyTrans
 
         // Show admin notice with results
         $message = sprintf(
-            __('Checked %d translations, fixed %d stuck translations.', 'polytrans'),
+            /* translators: %1$d: number of translations checked, %2$d: number of stuck translations fixed */
+            __('Checked %1$d translations, fixed %2$d stuck translations.', 'polytrans'),
             $checked,
             $fixed
         );

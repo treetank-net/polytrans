@@ -62,7 +62,7 @@ class TranslationMetaBox
      */
     public function save($post_id)
     {
-        if (!isset($_POST['translation_meta_box_nonce']) || !wp_verify_nonce($_POST['translation_meta_box_nonce'], 'translation_meta_box')) {
+        if (!isset($_POST['translation_meta_box_nonce']) || !wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['translation_meta_box_nonce'])), 'translation_meta_box')) {
             return;
         }
 
@@ -76,7 +76,7 @@ class TranslationMetaBox
 
         // Save translation fields
         foreach ($this->translation_fields as $key => $field) {
-            $field_value = isset($_POST[$key]) ? "true" : "false";
+            $field_value = isset($_POST[$key]) ? "true" : "false"; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput -- Only checking isset(), value is hardcoded
             update_post_meta($post_id, $key, $field_value);
         }
     }

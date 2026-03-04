@@ -210,6 +210,7 @@ class OpenAIProvider implements TranslationProviderInterface
                 'error' => null
             ];
         } catch (\Exception $e) {
+            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Intentional error logging for debugging
             error_log("[polytrans] OpenAI translation error: " . $e->getMessage());
             \PolyTrans_Logs_Manager::log("OpenAI: exception: " . $e->getMessage(), "error");
             return [

@@ -28,3 +28,6 @@ debug-workflows.php export-ignore
 check-logging-config.php export-ignore
 install-translation-assistant.php export-ignore
 includes/Menu/TagTranslation_temp.php export-ignore
+includes/process-task.php export-ignore
+/docs/examples export-ignore
+/includes/Debug export-ignore

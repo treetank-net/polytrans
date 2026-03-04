@@ -61,6 +61,7 @@ class Bootstrap
         } else {
             // Log error if autoloader is missing
             if (function_exists('error_log')) {
+                // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Intentional error logging for debugging
                 error_log('PolyTrans: Composer autoloader not found. Run "composer install".');
             }
         }

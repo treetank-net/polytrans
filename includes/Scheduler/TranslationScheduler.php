@@ -188,7 +188,7 @@ class TranslationScheduler
                                 <strong><?php echo esc_html($lang_name); ?></strong>
                                 <small></small>
                             </span>
-                            <a href="<?php echo $edit_url; ?>" class="polytrans-edit-btn" target="_blank" style="<?php echo $is_finished ? '' : 'display:none;'; ?>" title="<?php esc_attr_e('Edit translation', 'polytrans'); ?>">
+                            <a href="<?php echo esc_url($edit_url); ?>" class="polytrans-edit-btn" target="_blank" style="<?php echo $is_finished ? '' : 'display:none;'; ?>" title="<?php esc_attr_e('Edit translation', 'polytrans'); ?>">
                                 <span class="dashicons dashicons-visibility"></span>
                             </a>
                             <button type="button" class="polytrans-retry-translation" data-lang="<?php echo esc_attr($lang); ?>" data-post-id="<?php echo esc_attr($post->ID); ?>" title="<?php esc_attr_e('Retry translation', 'polytrans'); ?>">

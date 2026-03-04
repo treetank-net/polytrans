@@ -711,7 +711,7 @@ class WorkflowOutputProcessor
         // Try strtotime as fallback
         $timestamp = strtotime($value);
         if ($timestamp !== false) {
-            return date('Y-m-d H:i:s', $timestamp);
+            return gmdate('Y-m-d H:i:s', $timestamp);
         }
 
         return null;

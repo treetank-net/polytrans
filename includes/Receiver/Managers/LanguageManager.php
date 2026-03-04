@@ -28,6 +28,7 @@ class LanguageManager
         if (!$is_ephemeral) {
             $this->setup_translation_relationship($new_post_id, $original_post_id, $target_language);
         } else {
+            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Intentional error logging for debugging
             error_log("[polytrans] Skipping translation relationship setup for ephemeral post $new_post_id");
         }
 
@@ -59,6 +60,7 @@ class LanguageManager
         // Check if original post exists locally before setting up relationships
         $original_post = get_post($original_post_id);
         if (!$original_post) {
+            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Intentional error logging for debugging
             error_log("[polytrans] Cannot setup translation relationship: original post $original_post_id does not exist locally");
             return;
         }

@@ -119,8 +119,8 @@ class TranslationHandler
         check_ajax_referer('polytrans_schedule_translation');
 
         $post_id = intval($_POST['post_id'] ?? 0);
-        $scope = sanitize_text_field($_POST['scope'] ?? 'local');
-        $targets = array_map('sanitize_text_field', $_POST['targets'] ?? []);
+        $scope = sanitize_text_field(wp_unslash($_POST['scope'] ?? 'local'));
+        $targets = array_map('sanitize_text_field', wp_unslash($_POST['targets'] ?? []));
         $source_lang = function_exists('pll_get_post_language') ? pll_get_post_language($post_id) : 'pl';
         $targets = array_diff($targets, [$source_lang]);
         $needs_review = !empty($_POST['needs_review']);
@@ -214,6 +214,7 @@ class TranslationHandler
         // Add a status update log entry
         $log[] = [
             'timestamp' => time(),
+            /* translators: %s: transport mode (internal or external) */
             'msg' => sprintf(__('Translation process scheduled (mode: %s).', 'polytrans'), $transport_mode)
         ];
         update_post_meta($post_id, $log_key, $log);
@@ -270,6 +271,7 @@ class TranslationHandler
             $log[] = [
                 'timestamp' => time(),
                 'msg' => sprintf(
+                    /* translators: %s: URL to the logs page */
                     __('Translation request queued in background process. <a href="%s" target="_blank">View logs</a> for more details.', 'polytrans'),
                     esc_url($logs_url)
                 )
@@ -331,6 +333,7 @@ class TranslationHandler
         // Add log entry about sending to external service
         $log[] = [
             'timestamp' => time(),
+            /* translators: %s: translation endpoint URL */
             'msg' => sprintf(__('Sending translation request to external endpoint: %s', 'polytrans'), $translation_endpoint)
         ];
         update_post_meta($post_id, $log_key, $log);
@@ -390,7 +393,8 @@ class TranslationHandler
             $log[] = [
                 'timestamp' => time(),
                 'msg' => sprintf(
-                    __('Payload includes: source article + %d context articles in %s', 'polytrans'),
+                    /* translators: %1$d: number of context articles, %2$s: target language code */
+                    __('Payload includes: source article + %1$d context articles in %2$s', 'polytrans'),
                     count($context_articles),
                     $target_lang
                 )
@@ -405,6 +409,7 @@ class TranslationHandler
             $log[] = [
                 'timestamp' => time(),
                 'msg' => sprintf(
+                    /* translators: %s: target language code */
                     __('No context articles found in %s - sending only source article', 'polytrans'),
                     $target_lang
                 )
@@ -427,7 +432,7 @@ class TranslationHandler
                 'title' => $post->post_title,
                 'content' => $post->post_content,
                 'excerpt' => $post->post_excerpt,
-                'meta' => json_decode(json_encode($meta), true)
+                'meta' => json_decode(wp_json_encode($meta), true)
             ],
             'context_articles' => $context_articles,
             // Receiver credentials - translator will use these when sending to receiver
@@ -496,7 +501,7 @@ class TranslationHandler
         // Log success if request was accepted
         $log[] = [
             'timestamp' => time(),
-            'msg' => sprintf(__('Translation request sent successfully to external endpoint. Awaiting response.', 'polytrans'))
+            'msg' => __('Translation request sent successfully to external endpoint. Awaiting response.', 'polytrans')
         ];
         LogsManager::log("External translation request sent successfully for post $post_id", "info");
 
@@ -521,6 +526,7 @@ class TranslationHandler
         if ($lock) {
             $user = get_userdata($lock);
             $lock_user = $user ? $user->display_name : __('another user', 'polytrans');
+            /* translators: %s: display name of the user currently editing the post */
             return ['message' => sprintf(__('Cannot translate: the post is currently being edited by %s.', 'polytrans'), $lock_user)];
         }
 
@@ -600,7 +606,7 @@ class TranslationHandler
 
         $post_id = intval($_POST['post_id'] ?? 0);
         // Use target_lang if available, fallback to lang for backward compatibility
-        $lang = sanitize_text_field($_POST['target_lang'] ?? $_POST['lang'] ?? '');
+        $lang = sanitize_text_field(wp_unslash($_POST['target_lang'] ?? $_POST['lang'] ?? ''));
         $langs_key = '_polytrans_translation_langs';
         $scheduled_langs = get_post_meta($post_id, $langs_key, true);
         if (!is_array($scheduled_langs)) $scheduled_langs = [];
@@ -674,7 +680,7 @@ class TranslationHandler
 
         $post_id = intval($_POST['post_id'] ?? 0);
         // Use target_lang if available, fallback to lang for backward compatibility
-        $lang = sanitize_text_field($_POST['target_lang'] ?? $_POST['lang'] ?? '');
+        $lang = sanitize_text_field(wp_unslash($_POST['target_lang'] ?? $_POST['lang'] ?? ''));
 
         if (!$post_id || !$lang) {
             wp_send_json_error(['message' => 'Invalid parameters']);
@@ -736,6 +742,7 @@ class TranslationHandler
         $this->send_translation_request($post_id, $source_lang, $lang, $settings);
 
         wp_send_json_success([
+            /* translators: %s: uppercase language code */
             'message' => sprintf(__('Translation retry started for %s', 'polytrans'), strtoupper($lang)),
             'scheduled_langs' => $scheduled_langs,
             'lang' => $lang
@@ -756,6 +763,7 @@ class TranslationHandler
         $fixed = 0;
 
         // Get posts with translation metadata
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
         $posts = $wpdb->get_results("
             SELECT post_id, meta_key, meta_value
             FROM {$wpdb->postmeta}
@@ -800,6 +808,7 @@ class TranslationHandler
                 $logs[] = [
                     'timestamp' => $current_time,
                     'msg' => sprintf(
+                        /* translators: %d: number of hours of inactivity */
                         __('Translation automatically marked as failed after %d hours of inactivity.', 'polytrans'),
                         $timeout_hours
                     )
@@ -830,6 +839,7 @@ class TranslationHandler
         ];
 
         // Get all translation statuses
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
         $statuses = $wpdb->get_results("
             SELECT meta_key, meta_value, COUNT(*) as count
             FROM {$wpdb->postmeta}
@@ -872,6 +882,7 @@ class TranslationHandler
             // Check for potentially stuck translations
             if (in_array($status_value, ['started', 'translating', 'processing', 'in-progress'])) {
                 // Get posts with this status
+                // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
                 $posts = $wpdb->get_col($wpdb->prepare("
                     SELECT post_id
                     FROM {$wpdb->postmeta}

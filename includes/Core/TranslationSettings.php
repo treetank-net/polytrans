@@ -73,7 +73,7 @@ class TranslationSettings
         // Check nonce - accept multiple nonce types for compatibility
         $nonce_check = false;
         if (isset($_POST['nonce'])) {
-            $nonce = sanitize_text_field($_POST['nonce']);
+            $nonce = sanitize_text_field(wp_unslash($_POST['nonce']));
             // Try different nonce types (in order of preference):
             // 1. polytrans_nonce (from SettingsMenu - Universal JS)
             // 2. polytrans_settings (form nonce)
@@ -86,8 +86,8 @@ class TranslationSettings
         }
         
         if (!$nonce_check) {
-            // Log for debugging
-            error_log("PolyTrans: Nonce check failed. Nonce: " . ($_POST['nonce'] ?? 'not set') . ", Action: " . ($_POST['action'] ?? 'not set'));
+            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+            error_log("PolyTrans: Nonce check failed. Nonce: " . sanitize_text_field(wp_unslash($_POST['nonce'] ?? 'not set')) . ", Action: " . sanitize_text_field(wp_unslash($_POST['action'] ?? 'not set')));
             wp_send_json_error(__('Security check failed.', 'polytrans'));
             return;
         }
@@ -97,8 +97,8 @@ class TranslationSettings
             return;
         }
         
-        $provider_id = sanitize_text_field($_POST['provider_id'] ?? '');
-        $api_key = sanitize_text_field($_POST['api_key'] ?? '');
+        $provider_id = sanitize_text_field(wp_unslash($_POST['provider_id'] ?? ''));
+        $api_key = sanitize_text_field(wp_unslash($_POST['api_key'] ?? ''));
         
         if (empty($provider_id)) {
             wp_send_json_error(__('Provider ID is required.', 'polytrans'));
@@ -115,6 +115,7 @@ class TranslationSettings
         $provider = $registry->get_provider($provider_id);
         
         if (!$provider) {
+            /* translators: %s: provider identifier */
             wp_send_json_error(sprintf(__('Provider "%s" not found.', 'polytrans'), $provider_id));
             return;
         }
@@ -122,6 +123,7 @@ class TranslationSettings
         // Get settings provider
         $settings_provider_class = $provider->get_settings_provider_class();
         if (!$settings_provider_class || !class_exists($settings_provider_class)) {
+            /* translators: %s: provider identifier */
             wp_send_json_error(sprintf(__('Settings provider not found for "%s".', 'polytrans'), $provider_id));
             return;
         }
@@ -140,6 +142,7 @@ class TranslationSettings
                     $error_message = __('Invalid API key.', 'polytrans');
                 }
             } catch (\Exception $e) {
+                // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
                 error_log("PolyTrans: Failed to validate API key for {$provider_id}: " . $e->getMessage());
                 $error_message = __('Validation failed due to an error: ', 'polytrans') . $e->getMessage();
                 wp_send_json_error($error_message);
@@ -233,7 +236,8 @@ class TranslationSettings
             }
             
             $settings_provider = new $settings_provider_class();
-            $provider_settings = $settings_provider->validate_settings($_POST);
+            // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Provider's validate_settings() handles sanitization
+            $provider_settings = $settings_provider->validate_settings(wp_unslash($_POST));
             
             // For OpenAI: always save path rules and assistants (used by TranslationPathExecutor)
             // Also save API key and model if provided (needed for assistants and managed assistants)
@@ -310,7 +314,7 @@ class TranslationSettings
         // Notification filters
         
         $settings['notification_allowed_domains'] = \PolyTrans\Core\NotificationFilter::sanitize_domains(
-            wp_unslash($_POST['notification_allowed_domains'] ?? '')
+            sanitize_textarea_field(wp_unslash($_POST['notification_allowed_domains'] ?? ''))
         );
 
         update_option('polytrans_settings', $settings);
@@ -408,12 +412,14 @@ class TranslationSettings
         
         // Add languages data for JS (used in path rules management)
         add_action('admin_footer', function() use ($template_context) {
+            // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- JSON encoded data for JS
             echo '<script type="text/javascript">';
+            // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
             echo 'window.polytransLanguages = ' . wp_json_encode(array_combine($template_context['langs'], $template_context['lang_names'])) . ';';
             echo '</script>';
         }, 999);
         
-        // Render using Twig template
+        // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Twig templates handle escaping
         echo TemplateRenderer::render('admin/settings/page.twig', $template_context);
     }
 
@@ -422,12 +428,14 @@ class TranslationSettings
      */
     private function render_language_config_table($settings)
     {
+        // phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped -- Twig templates handle escaping
         echo TemplateRenderer::render('admin/settings/tabs/language-config-table.twig', [
             'settings' => $settings,
             'langs' => $this->langs,
             'lang_names' => $this->lang_names,
             'statuses' => $this->statuses,
         ], false);
+        // phpcs:enable WordPress.Security.EscapeOutput.OutputNotEscaped
     }
 
     /**
@@ -436,6 +444,7 @@ class TranslationSettings
     private function render_email_settings($reviewer_email, $reviewer_email_title, $author_email, $author_email_title)
     {
         $settings = get_option('polytrans_settings', []);
+        // phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped -- Twig templates handle escaping
         echo TemplateRenderer::render('admin/settings/tabs/email-settings.twig', [
             'reviewer_email' => $reviewer_email,
             'reviewer_email_title' => $reviewer_email_title,
@@ -443,6 +452,7 @@ class TranslationSettings
             'author_email_title' => $author_email_title,
             'settings' => $settings,
         ], false);
+        // phpcs:enable WordPress.Security.EscapeOutput.OutputNotEscaped
     }
 
     /**
@@ -450,11 +460,13 @@ class TranslationSettings
      */
     private function render_advanced_settings($translation_endpoint, $translation_receiver_endpoint, $settings)
     {
+        // phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped -- Twig templates handle escaping
         echo TemplateRenderer::render('admin/settings/tabs/advanced-settings.twig', [
             'translation_endpoint' => $translation_endpoint,
             'translation_receiver_endpoint' => $translation_receiver_endpoint,
             'settings' => $settings,
         ], false);
+        // phpcs:enable WordPress.Security.EscapeOutput.OutputNotEscaped
     }
 
     /**
@@ -462,12 +474,14 @@ class TranslationSettings
      */
     private function render_tag_settings($source_language, $base_tags)
     {
+        // phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped -- Twig templates handle escaping
         echo TemplateRenderer::render('admin/settings/tabs/tag-settings.twig', [
             'source_language' => $source_language,
             'base_tags' => $base_tags,
             'langs' => $this->langs,
             'lang_names' => $this->lang_names,
         ], false);
+        // phpcs:enable WordPress.Security.EscapeOutput.OutputNotEscaped
     }
 
     /**
@@ -479,6 +493,7 @@ class TranslationSettings
         $path_rules = self::get_path_rules($settings);
         $language_pairs = $this->get_language_pairs();
         
+        // phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped -- Twig templates handle escaping
         echo TemplateRenderer::render('admin/settings/tabs/language-paths.twig', [
             'settings' => $settings,
             'assistants_mapping' => $assistants_mapping,
@@ -487,6 +502,7 @@ class TranslationSettings
             'langs' => $this->langs,
             'lang_names' => $this->lang_names,
         ], false);
+        // phpcs:enable WordPress.Security.EscapeOutput.OutputNotEscaped
     }
 
     /**
@@ -506,12 +522,14 @@ class TranslationSettings
             return;
         }
 
+        // phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped -- Twig templates handle escaping
         echo TemplateRenderer::render('admin/settings/tabs/assistant-mapping-table.twig', [
             'assistants_mapping' => $assistants_mapping,
             'language_pairs' => $language_pairs,
             'langs' => $this->langs,
             'lang_names' => $this->lang_names,
         ], false);
+        // phpcs:enable WordPress.Security.EscapeOutput.OutputNotEscaped
     }
 
     /**
@@ -519,11 +537,13 @@ class TranslationSettings
      */
     private function render_path_rules_table($rules)
     {
+        // phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped -- Twig templates handle escaping
         echo TemplateRenderer::render('admin/settings/tabs/path-rules-table.twig', [
             'rules' => $rules,
             'langs' => $this->langs,
             'lang_names' => $this->lang_names,
         ], false);
+        // phpcs:enable WordPress.Security.EscapeOutput.OutputNotEscaped
     }
 
     /**
@@ -584,10 +604,12 @@ class TranslationSettings
      */
     private function render_universal_provider_ui($provider_id, $settings_provider, $settings)
     {
+        // phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped -- Twig templates handle escaping
         echo TemplateRenderer::render('admin/settings/tabs/universal-provider-ui.twig', [
             'provider_id' => $provider_id,
             'settings_provider' => $settings_provider,
             'settings' => $settings,
         ], false);
+        // phpcs:enable WordPress.Security.EscapeOutput.OutputNotEscaped
     }
 }

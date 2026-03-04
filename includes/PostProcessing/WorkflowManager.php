@@ -499,10 +499,10 @@ class WorkflowManager
             wp_die('Insufficient permissions');
         }
 
-        $workflow_id = sanitize_text_field($_POST['workflow_id'] ?? '');
+        $workflow_id = sanitize_text_field(wp_unslash($_POST['workflow_id'] ?? ''));
         $original_post_id = intval($_POST['original_post_id'] ?? 0);
         $translated_post_id = intval($_POST['translated_post_id'] ?? 0);
-        $target_language = sanitize_text_field($_POST['target_language'] ?? '');
+        $target_language = sanitize_text_field(wp_unslash($_POST['target_language'] ?? ''));
 
         if (empty($workflow_id) || empty($original_post_id) || empty($translated_post_id)) {
             wp_send_json_error('Missing required parameters');
@@ -548,8 +548,8 @@ class WorkflowManager
         }
 
         // Check if this is a status check request
-        if (isset($_POST['check_status'])) {
-            $test_id = sanitize_text_field($_POST['test_id']);
+        if (isset($_POST['check_status']) && sanitize_text_field(wp_unslash($_POST['check_status']))) {
+            $test_id = isset($_POST['test_id']) ? sanitize_text_field(wp_unslash($_POST['test_id'])) : '';
             $result = get_transient('polytrans_workflow_test_' . $test_id);
 
             if ($result === false) {
@@ -568,12 +568,10 @@ class WorkflowManager
         }
 
         // Get test data from request
-        $workflow_data = $_POST['workflow'] ?? [];
-        $test_context = $_POST['test_context'] ?? [];
-
-        // Remove WordPress magic quotes if they exist
-        $workflow_data = wp_unslash($workflow_data);
-        $test_context = wp_unslash($test_context);
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Complex nested array, sanitized per-field during workflow execution
+        $workflow_data = wp_unslash($_POST['workflow'] ?? []);
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Complex nested array, sanitized per-field during workflow execution
+        $test_context = wp_unslash($_POST['test_context'] ?? []);
 
         // Validate workflow data
         if (empty($workflow_data)) {
@@ -674,10 +672,10 @@ class WorkflowManager
             wp_die('Insufficient permissions');
         }
 
-        $workflow_id = sanitize_text_field($_POST['workflow_id'] ?? '');
+        $workflow_id = sanitize_text_field(wp_unslash($_POST['workflow_id'] ?? ''));
         $original_post_id = intval($_POST['original_post_id'] ?? 0);
         $translated_post_id = intval($_POST['translated_post_id'] ?? 0);
-        $target_language = sanitize_text_field($_POST['target_language'] ?? '');
+        $target_language = sanitize_text_field(wp_unslash($_POST['target_language'] ?? ''));
 
         // Validate required parameters
         // Note: original_post_id is optional for manual workflows
@@ -819,7 +817,7 @@ class WorkflowManager
             wp_die('Insufficient permissions');
         }
 
-        $execution_id = sanitize_text_field($_POST['execution_id'] ?? '');
+        $execution_id = sanitize_text_field(wp_unslash($_POST['execution_id'] ?? ''));
 
         if (empty($execution_id)) {
             wp_send_json_error(['message' => 'Missing execution ID']);

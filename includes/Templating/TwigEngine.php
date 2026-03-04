@@ -101,6 +101,7 @@ final class TwigEngine {
 			// Try to create cache directory with proper permissions
 			if ( wp_mkdir_p( self::$cache_dir ) ) {
 				// Set permissions to 777 so Docker container (www-data) can write
+				// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_chmod -- Cache directory management
 				@chmod( self::$cache_dir, 0777 );
 			} else {
 				// If creation fails, disable caching
@@ -445,10 +446,12 @@ final class TwigEngine {
 			if ( is_dir( $path ) ) {
 				self::recursive_rmdir( $path );
 			} else {
+				// phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink -- Cache file cleanup
 				unlink( $path );
 			}
 		}
 
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_rmdir -- Cache directory cleanup
 		return rmdir( $dir );
 	}
 

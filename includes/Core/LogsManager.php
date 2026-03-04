@@ -27,7 +27,8 @@ class LogsManager
         $table_name = $wpdb->prefix . 'polytrans_logs';
 
         // Check if the table already exists
-        if ($wpdb->get_var("SHOW TABLES LIKE '$table_name'") === $table_name) {
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+        if ($wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $table_name)) === $table_name) {
             // Table exists - let's check the structure and adapt if needed
             self::check_and_adapt_table_structure($table_name);
             return true;
@@ -44,7 +45,8 @@ class LogsManager
 
         // Create a standard logs table with all commonly needed columns
         // Using created_at instead of timestamp to avoid conflicts with reserved words
-        $sql = "CREATE TABLE $table_name (
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.SchemaChange -- Plugin installation/upgrade
+        $sql = "CREATE TABLE {$wpdb->prefix}polytrans_logs (
             id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
             created_at datetime NOT NULL,
             level varchar(20) NOT NULL DEFAULT 'info',
@@ -68,6 +70,7 @@ class LogsManager
         delete_option('polytrans_logs_table_needed');
 
         // Log successful creation
+        // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
         error_log("[polytrans] Created logs table $table_name");
 
         return true;
@@ -86,6 +89,7 @@ class LogsManager
 
         // If we have an empty array, something went wrong with the table
         if (empty($existing_columns)) {
+            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
             error_log("[polytrans] Error checking logs table structure: Could not retrieve columns");
             return;
         }
@@ -139,7 +143,9 @@ class LogsManager
             if (!isset($existing_columns[$column_name])) {
                 // Column doesn't exist - add it
                 $sql = self::build_add_column_sql($table_name, $column_name, $expected);
+                // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.NotPrepared -- Plugin table migration with safe internal schema definitions
                 $wpdb->query($sql);
+                // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
                 error_log("[polytrans] Added missing column '$column_name' to logs table");
             } else {
                 // Column exists - check if type matches
@@ -152,12 +158,14 @@ class LogsManager
                 if ($expected_type !== $existing_type) {
                     // Type mismatch detected - this indicates corrupted data
                     $data_corrupted = true;
+                    // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
                     error_log("[polytrans] Type mismatch detected for column '$column_name': expected '$expected_type', found '$existing_type'");
                 }
 
                 // Check if NULL constraint matches
                 if ($expected['null'] !== $existing['null']) {
                     $data_corrupted = true;
+                    // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
                     error_log("[polytrans] NULL constraint mismatch for column '$column_name': expected '{$expected['null']}', found '{$existing['null']}'");
                 }
             }
@@ -165,6 +173,7 @@ class LogsManager
 
         // If data corruption detected, clean and recreate table
         if ($data_corrupted) {
+            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
             error_log("[polytrans] Data corruption detected in logs table. Cleaning and recreating table structure.");
             self::clean_and_recreate_logs_table($table_name);
         } else {
@@ -186,23 +195,30 @@ class LogsManager
         try {
             // Backup any existing data that might be salvageable
             $backup_data = [];
-            $salvage_query = "SELECT * FROM `$table_name` ORDER BY id DESC LIMIT 1000";
-            $existing_data = $wpdb->get_results($salvage_query, ARRAY_A);
+            // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom table salvage
+            $existing_data = $wpdb->get_results(
+                "SELECT * FROM `{$wpdb->prefix}polytrans_logs` ORDER BY id DESC LIMIT 1000",
+                ARRAY_A
+            );
 
             if ($existing_data) {
+                // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
                 error_log("[polytrans] Attempting to salvage " . count($existing_data) . " recent log entries");
                 $backup_data = $existing_data;
             }
 
             // Drop the corrupted table
-            $wpdb->query("DROP TABLE IF EXISTS `$table_name`");
+            // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange -- Plugin table maintenance
+            $wpdb->query("DROP TABLE IF EXISTS `{$wpdb->prefix}polytrans_logs`");
+            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
             error_log("[polytrans] Dropped corrupted logs table");
 
             // Get charset collate
             $charset_collate = $wpdb->get_charset_collate();
 
             // Recreate table with correct structure
-            $sql = "CREATE TABLE $table_name (
+            $recreate_table = $wpdb->prefix . 'polytrans_logs';
+            $sql = "CREATE TABLE {$wpdb->prefix}polytrans_logs (
                 id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
                 created_at datetime NOT NULL,
                 level varchar(20) NOT NULL DEFAULT 'info',
@@ -220,9 +236,11 @@ class LogsManager
                 KEY post_id (post_id)
             ) $charset_collate;";
 
+            // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.NotPrepared -- Plugin installation/upgrade, DDL statement
             $result = $wpdb->query($sql);
 
             if ($result !== false) {
+                // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
                 error_log("[polytrans] Successfully recreated logs table with correct structure");
 
                 // Try to restore salvageable data
@@ -230,9 +248,11 @@ class LogsManager
                     self::restore_salvageable_data($table_name, $backup_data);
                 }
             } else {
+                // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
                 error_log("[polytrans] Failed to recreate logs table: " . $wpdb->last_error);
             }
         } catch (\Exception $e) {
+            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
             error_log("[polytrans] Error during table cleanup and recreation: " . $e->getMessage());
         }
     }
@@ -275,6 +295,7 @@ class LogsManager
                 }
 
                 // Insert the cleaned data
+                // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
                 $result = $wpdb->insert($table_name, $clean_data);
 
                 if ($result !== false) {
@@ -284,10 +305,12 @@ class LogsManager
                 }
             } catch (\Exception $e) {
                 $failed_count++;
+                // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
                 error_log("[polytrans] Failed to restore log entry: " . $e->getMessage());
             }
         }
 
+        // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
         error_log("[polytrans] Data restoration complete: $restored_count entries restored, $failed_count failed");
     }
 
@@ -322,14 +345,18 @@ class LogsManager
                     continue;
                 } else {
                     // Index exists but on different column - drop and recreate
+                    // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
                     error_log("[polytrans] Index '$index_name' exists but on wrong column (expected '$column_name', found '{$existing_indexes[$index_name]}'). Recreating.");
-                    $wpdb->query("ALTER TABLE `$table_name` DROP INDEX `$index_name`");
+                    // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange -- Plugin table maintenance
+                    $wpdb->query("ALTER TABLE `{$wpdb->prefix}polytrans_logs` DROP INDEX `$index_name`");
                 }
             }
 
             // Add the index
-            $result = $wpdb->query("ALTER TABLE `$table_name` ADD INDEX `$index_name` (`$column_name`)");
+            // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange -- Plugin table maintenance
+            $result = $wpdb->query("ALTER TABLE `{$wpdb->prefix}polytrans_logs` ADD INDEX `$index_name` (`$column_name`)");
             if ($result === false) {
+                // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
                 error_log("[polytrans] Failed to add index '$index_name' on column '$column_name': " . $wpdb->last_error);
             }
         }
@@ -352,7 +379,11 @@ class LogsManager
         }
 
         $indexes = [];
-        $results = $wpdb->get_results("SHOW INDEX FROM `$table_name`");
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name from trusted source ($wpdb->prefix)
+        $results = $wpdb->get_results(
+            "SHOW INDEX FROM `{$table_name}`"
+        );
 
         if ($results) {
             foreach ($results as $row) {
@@ -436,7 +467,7 @@ class LogsManager
             return current_time('mysql');
         }
 
-        return date('Y-m-d H:i:s', $timestamp);
+        return gmdate('Y-m-d H:i:s', $timestamp);
     }
 
     /**
@@ -526,9 +557,11 @@ class LogsManager
         $args = wp_parse_args($args, $defaults);
         $table_name = $wpdb->prefix . 'polytrans_logs';
 
-        // Start building the query
-        $sql = "SELECT * FROM $table_name WHERE 1=1";
-        $count_sql = "SELECT COUNT(id) FROM $table_name WHERE 1=1";
+        // Start building the query -- table name comes directly from $wpdb->prefix (safe)
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name from trusted source ($wpdb->prefix)
+        $sql = "SELECT * FROM {$wpdb->prefix}polytrans_logs WHERE 1=1";
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name from trusted source ($wpdb->prefix)
+        $count_sql = "SELECT COUNT(id) FROM {$wpdb->prefix}polytrans_logs WHERE 1=1";
 
         // Apply filters
         if (!empty($args['level'])) {
@@ -586,11 +619,16 @@ class LogsManager
         $sql .= $wpdb->prepare(" LIMIT %d OFFSET %d", $per_page, $offset);
 
         // Get the total count
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- Query built with $wpdb->prepare() for all user inputs
         $total_items = $wpdb->get_var($count_sql);
 
         // Get the logs
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- Query built with $wpdb->prepare() for all user inputs
         $logs = $wpdb->get_results($sql);
         if ($logs === null) {
+            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
             error_log("[polytrans] Error fetching logs: " . $wpdb->last_error);
             return [];
         }
@@ -627,7 +665,7 @@ class LogsManager
         }
 
         $table_name = $wpdb->prefix . 'polytrans_logs';
-        $date = date('Y-m-d H:i:s', strtotime('-' . intval($days) . ' days'));
+        $date = gmdate('Y-m-d H:i:s', strtotime('-' . intval($days) . ' days'));
 
         // Get the date column name (timestamp or created_at)
         $columns = self::get_table_columns($table_name);
@@ -635,18 +673,22 @@ class LogsManager
 
         // If we can't find a date column, we can't delete by date
         if (!$date_column) {
+            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
             error_log("[polytrans] Cannot clear logs: No date column found in logs table");
             return 0;
         }
 
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name from trusted source ($wpdb->prefix)
         $result = $wpdb->query(
             $wpdb->prepare(
-                "DELETE FROM $table_name WHERE $date_column < %s",
+                "DELETE FROM {$wpdb->prefix}polytrans_logs WHERE created_at < %s",
                 $date
             )
         );
 
         if ($result === false) {
+            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
             error_log("[polytrans] Error clearing logs: " . $wpdb->last_error);
             return 0;
         }
@@ -686,6 +728,7 @@ class LogsManager
             $deleted = self::clear_old_logs($days);
 
             $success_message = sprintf(
+                /* translators: %d: number of log entries deleted */
                 _n(
                     '%d log entry cleared.',
                     '%d log entries cleared.',
@@ -698,9 +741,9 @@ class LogsManager
 
         // Process filters and pagination
         $current_page = isset($_GET['paged']) ? max(1, intval($_GET['paged'])) : 1;
-        $search = isset($_GET['s']) ? sanitize_text_field($_GET['s']) : '';
-        $level = isset($_GET['level']) ? sanitize_text_field($_GET['level']) : '';
-        $source = isset($_GET['source']) ? sanitize_text_field($_GET['source']) : '';
+        $search = isset($_GET['s']) ? sanitize_text_field(wp_unslash($_GET['s'])) : '';
+        $level = isset($_GET['level']) ? sanitize_text_field(wp_unslash($_GET['level'])) : '';
+        $source = isset($_GET['source']) ? sanitize_text_field(wp_unslash($_GET['source'])) : '';
         $post_id = isset($_GET['post_id']) ? intval($_GET['post_id']) : 0;
 
         // Get logs
@@ -744,6 +787,7 @@ class LogsManager
         }
 
         // Render template
+        // phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped -- Twig templates handle escaping
         echo TemplateRenderer::render('admin/logs/page.twig', [
             'warning_message' => $warning_message,
             'success_message' => $success_message,
@@ -756,6 +800,7 @@ class LogsManager
             'top_pagination' => $top_pagination,
             'bottom_pagination' => $bottom_pagination,
         ]);
+        // phpcs:enable WordPress.Security.EscapeOutput.OutputNotEscaped
     }
 
     /**
@@ -781,7 +826,8 @@ class LogsManager
         $table_name = $wpdb->prefix . 'polytrans_logs';
 
         // Check if the table exists
-        return ($wpdb->get_var("SHOW TABLES LIKE '$table_name'") === $table_name);
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+        return ($wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $table_name)) === $table_name);
     }
 
     /**
@@ -797,7 +843,8 @@ class LogsManager
     public static function log($message, $level = 'info', $context = [])
     {
         // Always log to WordPress error log
-        $context_string = !empty($context) ? ' | Context: ' . json_encode($context) : '';
+        $context_string = !empty($context) ? ' | Context: ' . wp_json_encode($context) : '';
+        // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
         error_log("[polytrans] [$level] $message $context_string");
 
         // If database logging is disabled, we're done
@@ -821,13 +868,14 @@ class LogsManager
             $user_id = get_current_user_id();
 
             // Format context as JSON
-            $context_json = !empty($context) ? json_encode($context) : null;
+            $context_json = !empty($context) ? wp_json_encode($context) : null;
 
             // Get the actual columns that exist in the table
             $existing_columns = self::get_table_columns($table_name);
 
             // If no columns were retrieved, don't try to insert
             if (empty($existing_columns) || is_null($existing_columns)) {
+                // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
                 error_log("[polytrans] Could not determine columns for $table_name, skipping database logging");
                 return false;
             }
@@ -891,17 +939,21 @@ class LogsManager
 
             // Insert the log entry if we have data and required columns
             if (!empty($data) && isset($data[$message_column])) {
+                // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
                 $result = $wpdb->insert($table_name, $data);
                 if ($result === false) {
+                    // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
                     error_log("[polytrans] Database error when inserting log: " . $wpdb->last_error);
                     return false;
                 }
                 return true;
             } else {
+                // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
                 error_log("[polytrans] Missing required columns for logging to database");
                 return false;
             }
         } catch (\Exception $e) {
+            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
             error_log("[polytrans] Error logging to database: " . $e->getMessage());
             return false;
         }
@@ -925,7 +977,11 @@ class LogsManager
 
         // Get all columns for this table
         $columns = [];
-        $cols = $wpdb->get_results("SHOW COLUMNS FROM `$table`");
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name from trusted source ($wpdb->prefix)
+        $cols = $wpdb->get_results(
+            "SHOW COLUMNS FROM `{$table}`"
+        );
 
         if ($cols) {
             foreach ($cols as $col) {
@@ -942,7 +998,7 @@ class LogsManager
 
     /**
      * Get detailed column information for a table
-     * 
+     *
      * @param string $table Table name
      * @return array Array with column details including types
      */
@@ -958,7 +1014,11 @@ class LogsManager
 
         // Get detailed column information
         $column_details = [];
-        $cols = $wpdb->get_results("SHOW COLUMNS FROM `$table`");
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name from trusted source ($wpdb->prefix)
+        $cols = $wpdb->get_results(
+            "SHOW COLUMNS FROM `{$table}`"
+        );
 
         if ($cols) {
             foreach ($cols as $col) {
@@ -1013,7 +1073,11 @@ class LogsManager
 
         if (!isset($columns_cache[$cache_key])) {
             // Get all columns for this table
-            $cols = $wpdb->get_results("SHOW COLUMNS FROM `$table`");
+            // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name from trusted source ($wpdb->prefix)
+            $cols = $wpdb->get_results(
+                "SHOW COLUMNS FROM `{$table}`"
+            );
             $columns_cache[$cache_key] = [];
 
             if ($cols) {
@@ -1042,7 +1106,7 @@ class LogsManager
         }
 
         // Parse the filters from the form data
-        $filters = isset($_POST['filters']) ? $_POST['filters'] : '';
+        $filters = isset($_POST['filters']) ? sanitize_text_field(wp_unslash($_POST['filters'])) : '';
         parse_str($filters, $filter_params);
 
         // Process filters

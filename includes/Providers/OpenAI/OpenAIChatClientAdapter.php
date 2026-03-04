@@ -83,9 +83,10 @@ class OpenAIChatClientAdapter implements ChatClientInterface
                 $error_message = $response->get_error_message();
                 
                 // If timeout and we have attempts left, retry
-                if ($attempt < $max_attempts && 
-                    (strpos(strtolower($error_message), 'timeout') !== false || 
+                if ($attempt < $max_attempts &&
+                    (strpos(strtolower($error_message), 'timeout') !== false ||
                      strpos(strtolower($error_message), 'timed out') !== false)) {
+                    // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Intentional error logging for debugging
                     error_log(sprintf(
                         '[PolyTrans OpenAI Chat] Request timeout on attempt %d/%d, retrying...',
                         $attempt,

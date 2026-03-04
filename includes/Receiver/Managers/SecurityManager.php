@@ -83,6 +83,7 @@ class SecurityManager
             }
         }
 
+        // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
         error_log("[polytrans] Translation receiver IP restriction failed for IP: $client_ip");
         return false;
     }
@@ -97,15 +98,15 @@ class SecurityManager
     {
         // Check for shared internet/proxy
         if (!empty($_SERVER['HTTP_CLIENT_IP'])) {
-            return $_SERVER['HTTP_CLIENT_IP'];
+            return sanitize_text_field(wp_unslash($_SERVER['HTTP_CLIENT_IP']));
         }
         // Check for IP passed from proxy
         elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-            return $_SERVER['HTTP_X_FORWARDED_FOR'];
+            return sanitize_text_field(wp_unslash($_SERVER['HTTP_X_FORWARDED_FOR']));
         }
         // Check for IP from remote address
         elseif (!empty($_SERVER['REMOTE_ADDR'])) {
-            return $_SERVER['REMOTE_ADDR'];
+            return sanitize_text_field(wp_unslash($_SERVER['REMOTE_ADDR']));
         }
 
         return '0.0.0.0';

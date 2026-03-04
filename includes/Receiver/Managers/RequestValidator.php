@@ -26,6 +26,7 @@ class RequestValidator
         $original_post_id = isset($params['original_post_id']) ? $params['original_post_id'] : 0;
 
         if (!$translated || !$target_language || !$original_post_id) {
+            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Intentional error logging for debugging
             error_log('[polytrans] Missing data in translation request: ' . json_encode($params));
             return new \WP_Error('missing_data', 'Missing required translation data');
         }

@@ -234,8 +234,10 @@ class PostprocessingMenu
         $storage_manager = $workflow_manager->get_storage_manager();
 
         // Get current action
-        $action = $_GET['action'] ?? 'list';
-        $workflow_id = $_GET['workflow_id'] ?? '';
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Page rendering parameter, no state change
+        $action = isset($_GET['action']) ? sanitize_text_field(wp_unslash($_GET['action'])) : 'list';
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Page rendering parameter, no state change
+        $workflow_id = isset($_GET['workflow_id']) ? sanitize_text_field(wp_unslash($_GET['workflow_id'])) : '';
 
         switch ($action) {
             case 'edit':
@@ -267,12 +269,14 @@ class PostprocessingMenu
         $langs = function_exists('pll_languages_list') ? pll_languages_list(['fields' => 'slug']) : ['pl', 'en', 'it'];
         $lang_names = function_exists('pll_languages_list') ? pll_languages_list(['fields' => 'name']) : ['Polish', 'English', 'Italian'];
 
+        // phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped -- Twig templates handle escaping
         echo TemplateRenderer::render('admin/workflows/list.twig', [
             'workflows' => $workflows,
             'statistics' => $statistics,
             'langs' => $langs,
             'lang_names' => $lang_names,
         ]);
+        // phpcs:enable WordPress.Security.EscapeOutput.OutputNotEscaped
     }
 
     /**
@@ -301,7 +305,7 @@ class PostprocessingMenu
         } else {
             $workflow = $storage_manager->get_workflow($workflow_id);
             if (!$workflow) {
-                wp_die(__('Workflow not found.', 'polytrans'));
+                wp_die(esc_html__('Workflow not found.', 'polytrans'));
             }
 
             // Ensure workflow has proper default values for any missing fields
@@ -323,11 +327,13 @@ class PostprocessingMenu
             }
         }
 
+        // phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped -- Twig templates handle escaping
         echo TemplateRenderer::render('admin/workflows/editor.twig', [
             'is_new' => $is_new,
             'workflow' => $workflow,
             'languages' => array_combine($langs, $lang_names),
         ]);
+        // phpcs:enable WordPress.Security.EscapeOutput.OutputNotEscaped
     }
 
     /**
@@ -340,12 +346,14 @@ class PostprocessingMenu
 
         $workflow = $storage_manager->get_workflow($workflow_id);
         if (!$workflow) {
-            wp_die(__('Workflow not found.', 'polytrans'));
+            wp_die(esc_html__('Workflow not found.', 'polytrans'));
         }
 
+        // phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped -- Twig templates handle escaping
         echo TemplateRenderer::render('admin/workflows/tester.twig', [
             'workflow' => $workflow,
         ]);
+        // phpcs:enable WordPress.Security.EscapeOutput.OutputNotEscaped
     }
 
     /**
@@ -357,10 +365,14 @@ class PostprocessingMenu
         $storage_manager = $workflow_manager->get_storage_manager();
 
         // Get URL parameters
-        $workflow_id = isset($_GET['workflow_id']) ? sanitize_text_field($_GET['workflow_id']) : '';
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Page rendering parameter, no state change
+        $workflow_id = isset($_GET['workflow_id']) ? sanitize_text_field(wp_unslash($_GET['workflow_id'])) : '';
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Page rendering parameter, no state change
         $post_id = isset($_GET['post_id']) ? absint($_GET['post_id']) : 0;
-        $language_filter = isset($_GET['language']) ? sanitize_text_field($_GET['language']) : '';
-        $locked = isset($_GET['lock']) && $_GET['lock'] === '1';
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Page rendering parameter, no state change
+        $language_filter = isset($_GET['language']) ? sanitize_text_field(wp_unslash($_GET['language'])) : '';
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Page rendering parameter, no state change
+        $locked = isset($_GET['lock']) && sanitize_text_field(wp_unslash($_GET['lock'])) === '1';
 
         // Get all workflows (only enabled ones)
         $all_workflows_raw = $storage_manager->get_all_workflows();
@@ -399,6 +411,7 @@ class PostprocessingMenu
         $langs = function_exists('pll_languages_list') ? pll_languages_list(['fields' => 'slug']) : ['pl', 'en', 'it'];
         $lang_names = function_exists('pll_languages_list') ? pll_languages_list(['fields' => 'name']) : ['Polish', 'English', 'Italian'];
 
+        // phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped -- Twig templates handle escaping
         echo TemplateRenderer::render('admin/workflows/execute.twig', [
             'all_workflows' => $all_workflows,
             'workflow_id' => $workflow_id,
@@ -410,10 +423,12 @@ class PostprocessingMenu
             'langs' => $langs,
             'lang_names' => $lang_names,
         ]);
+        // phpcs:enable WordPress.Security.EscapeOutput.OutputNotEscaped
 
         // Output JavaScript data
+        // phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped -- Static script tags and JSON-encoded data for JavaScript consumption
         echo '<script type="text/javascript">';
-        echo 'window.polytransExecuteWorkflowData = ' . json_encode([
+        echo 'window.polytransExecuteWorkflowData = ' . wp_json_encode([
             'workflows' => $all_workflows,
             'selectedWorkflow' => $selected_workflow,
             'selectedPost' => $selected_post_data,
@@ -423,6 +438,7 @@ class PostprocessingMenu
             'languageFilter' => $language_filter,
         ]) . ';';
         echo '</script>';
+        // phpcs:enable WordPress.Security.EscapeOutput.OutputNotEscaped
     }
 
     /**
@@ -440,15 +456,13 @@ class PostprocessingMenu
             return;
         }
 
-        $workflow_data = $_POST['workflow'] ?? [];
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitized in sanitize_workflow_data() below
+        $workflow_data = isset($_POST['workflow']) ? wp_unslash($_POST['workflow']) : [];
 
         if (empty($workflow_data)) {
             wp_send_json_error('No workflow data provided');
             return;
         }
-
-        // Remove WordPress magic quotes if they exist
-        $workflow_data = wp_unslash($workflow_data);
 
         $workflow_manager = \PolyTrans_Workflow_Manager::get_instance();
         $storage_manager = $workflow_manager->get_storage_manager();
@@ -485,7 +499,7 @@ class PostprocessingMenu
             return;
         }
 
-        $workflow_id = sanitize_text_field($_POST['workflow_id'] ?? '');
+        $workflow_id = isset($_POST['workflow_id']) ? sanitize_text_field(wp_unslash($_POST['workflow_id'])) : '';
 
         if (empty($workflow_id)) {
             wp_send_json_error('Workflow ID required');
@@ -517,7 +531,7 @@ class PostprocessingMenu
             return;
         }
 
-        $workflow_id = sanitize_text_field($_POST['workflow_id'] ?? '');
+        $workflow_id = isset($_POST['workflow_id']) ? sanitize_text_field(wp_unslash($_POST['workflow_id'])) : '';
 
         if (empty($workflow_id)) {
             wp_send_json_error('Workflow ID required');
@@ -564,8 +578,8 @@ class PostprocessingMenu
             return;
         }
 
-        $workflow_id = sanitize_text_field($_POST['workflow_id'] ?? '');
-        $new_name = sanitize_text_field($_POST['new_name'] ?? '');
+        $workflow_id = isset($_POST['workflow_id']) ? sanitize_text_field(wp_unslash($_POST['workflow_id'])) : '';
+        $new_name = isset($_POST['new_name']) ? sanitize_text_field(wp_unslash($_POST['new_name'])) : '';
 
         if (empty($workflow_id)) {
             wp_send_json_error('Workflow ID required');
@@ -602,7 +616,7 @@ class PostprocessingMenu
             return;
         }
 
-        $workflow_id = sanitize_text_field($_POST['workflow_id'] ?? '');
+        $workflow_id = isset($_POST['workflow_id']) ? sanitize_text_field(wp_unslash($_POST['workflow_id'])) : '';
 
         if (empty($workflow_id)) {
             wp_send_json_error('Workflow ID required');
@@ -655,8 +669,8 @@ class PostprocessingMenu
             return;
         }
 
-        $post_id = intval($_POST['post_id'] ?? 0);
-        $target_language = sanitize_text_field($_POST['target_language'] ?? '');
+        $post_id = isset($_POST['post_id']) ? intval($_POST['post_id']) : 0;
+        $target_language = isset($_POST['target_language']) ? sanitize_text_field(wp_unslash($_POST['target_language'])) : '';
 
         if (empty($post_id)) {
             wp_send_json_error('Post ID required');
@@ -684,7 +698,8 @@ class PostprocessingMenu
         if (!empty($target_language) && $post_language !== $target_language) {
             wp_send_json_error([
                 'message' => sprintf(
-                    __('Selected post is in %s but workflow requires %s', 'polytrans'),
+                    /* translators: %1$s: post language code, %2$s: workflow target language code */
+                    __('Selected post is in %1$s but workflow requires %2$s', 'polytrans'),
                     $post_language,
                     $target_language
                 )

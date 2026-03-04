@@ -31,6 +31,7 @@ class StatusManager
         // Check if post exists locally
         $post = get_post($post_id);
         if (!$post) {
+            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
             error_log("[polytrans] Cannot update original post $post_id: post does not exist locally (separate database?)");
             return false;
         }
@@ -42,6 +43,7 @@ class StatusManager
         // Allow update if status is pending/processing or if no status yet (first translation)
         $updatable_statuses = ['', 'started', 'translating', 'processing', 'post_processing'];
         if (!in_array($current_status, $updatable_statuses, true)) {
+            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
             error_log("[polytrans] Cannot update original post $post_id for $target_language: status is '$current_status'");
             return false;
         }
@@ -62,6 +64,7 @@ class StatusManager
     {
         // Verify we can update this post
         if (!$this->can_update_original_post($original_post_id, $target_language)) {
+            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
             error_log("[polytrans] Skipping intermediate status update for original post $original_post_id - not available locally");
             return;
         }
@@ -84,11 +87,13 @@ class StatusManager
 
         $log[] = [
             'timestamp' => time(),
+            /* translators: %d: translated post ID */
             'msg' => sprintf(__('Translation created (Post ID: %d). Running post-processing workflows...', 'polytrans'), $new_post_id)
         ];
 
         update_post_meta($original_post_id, $log_key, $log);
 
+        // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
         error_log("[polytrans] Set intermediate status '$status' for post $original_post_id -> $new_post_id (language: $target_language)");
     }
 
@@ -103,6 +108,7 @@ class StatusManager
     {
         // Verify we can update this post
         if (!$this->can_update_original_post($original_post_id, $target_language)) {
+            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
             error_log("[polytrans] Skipping status update for original post $original_post_id - not available locally");
             return;
         }
@@ -117,6 +123,7 @@ class StatusManager
         if (!in_array($target_language, $scheduled_langs, true)) {
             $scheduled_langs[] = $target_language;
             update_post_meta($original_post_id, $langs_key, $scheduled_langs);
+            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
             error_log("[polytrans] Added $target_language to scheduled languages for post $original_post_id");
         }
 
@@ -134,6 +141,7 @@ class StatusManager
 
         $log[] = [
             'timestamp' => time(),
+            /* translators: %d: translated post ID */
             'msg' => sprintf(__('Translation completed. Post ID: %d', 'polytrans'), $new_post_id)
         ];
 
@@ -143,6 +151,7 @@ class StatusManager
         update_post_meta($original_post_id, '_polytrans_translation_target_' . $target_language, $new_post_id);
         update_post_meta($original_post_id, '_polytrans_translation_post_id_' . $target_language, $new_post_id);
 
+        // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
         error_log("[polytrans] Updated translation status for post $original_post_id -> $new_post_id (language: $target_language)");
     }
 
@@ -157,6 +166,7 @@ class StatusManager
     {
         // Verify we can update this post
         if (!$this->can_update_original_post($original_post_id, $target_language)) {
+            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
             error_log("[polytrans] Skipping failure status for original post $original_post_id - not available locally: $error_message");
             return;
         }
@@ -175,11 +185,13 @@ class StatusManager
 
         $log[] = [
             'timestamp' => time(),
+            /* translators: %s: error message */
             'msg' => sprintf(__('Translation failed: %s', 'polytrans'), $error_message)
         ];
 
         update_post_meta($original_post_id, $log_key, $log);
 
+        // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
         error_log("[polytrans] Marked translation as failed for post $original_post_id (language: $target_language): $error_message");
     }
 
@@ -230,6 +242,7 @@ class StatusManager
         delete_post_meta($post_id, $post_id_key);
         delete_post_meta($post_id, $review_key);
 
+        // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
         error_log("[polytrans] Cleared translation status for post $post_id (language: $language)");
     }
 
@@ -253,14 +266,16 @@ class StatusManager
         $non_terminal_states = ['started', 'translating', 'processing', 'post_processing'];
 
         // Get all post meta entries with these statuses
-        $status_query = $wpdb->prepare(
-            "SELECT post_id, meta_key, meta_value FROM {$wpdb->postmeta}
-            WHERE meta_key LIKE %s
-            AND meta_value IN ('started', 'translating', 'processing', 'post_processing')",
-            '_polytrans_translation_status_%'
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- $wpdb->postmeta is a trusted WordPress core property
+        $stuck_translations = $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT post_id, meta_key, meta_value FROM `{$wpdb->postmeta}`
+                WHERE meta_key LIKE %s
+                AND meta_value IN ('started', 'translating', 'processing', 'post_processing')",
+                '_polytrans_translation_status_%'
+            )
         );
-
-        $stuck_translations = $wpdb->get_results($status_query);
         $results['checked'] = count($stuck_translations);
 
         $timeout_seconds = $timeout_hours * 3600; // Convert hours to seconds
@@ -322,7 +337,8 @@ class StatusManager
                 $log[] = [
                     'timestamp' => $now,
                     'msg' => sprintf(
-                        __('Translation marked as failed after being stuck in "%s" status for %s hours.', 'polytrans'),
+                        /* translators: %1$s: translation status, %2$s: number of hours */
+                        __('Translation marked as failed after being stuck in "%1$s" status for %2$s hours.', 'polytrans'),
                         $item->meta_value,
                         round($elapsed_seconds / 3600, 1)
                     )
@@ -331,8 +347,9 @@ class StatusManager
 
                 $results['fixed']++;
 
+                // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
                 error_log(sprintf(
-                    '[polytrans] Fixed stuck translation: Post %d, language %s was in "%s" status for %s hours',
+                    '[polytrans] Fixed stuck translation: Post %1$d, language %2$s was in "%3$s" status for %4$s hours',
                     $post_id,
                     $language,
                     $item->meta_value,
@@ -353,15 +370,17 @@ class StatusManager
     {
         global $wpdb;
 
-        $status_query = $wpdb->prepare(
-            "SELECT meta_value as status, COUNT(*) as count 
-            FROM {$wpdb->postmeta} 
-            WHERE meta_key LIKE %s
-            GROUP BY meta_value",
-            '_polytrans_translation_status_%'
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- $wpdb->postmeta is a trusted WordPress core property
+        $results = $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT meta_value as status, COUNT(*) as count
+                FROM `{$wpdb->postmeta}`
+                WHERE meta_key LIKE %s
+                GROUP BY meta_value",
+                '_polytrans_translation_status_%'
+            )
         );
-
-        $results = $wpdb->get_results($status_query);
 
         $summary = [
             'total' => 0,

@@ -46,7 +46,7 @@ class UserAutocomplete
             wp_die('Unauthorized', 403);
         }
 
-        $search = sanitize_text_field($_POST['search'] ?? '');
+        $search = sanitize_text_field(wp_unslash($_POST['search'] ?? ''));
 
         if (strlen($search) < 2) {
             wp_send_json_success(['users' => []]);

@@ -46,9 +46,9 @@ class PostAutocomplete
             wp_die('Unauthorized', 403);
         }
 
-        $search = sanitize_text_field($_POST['search'] ?? '');
-        $post_type = sanitize_text_field($_POST['post_type'] ?? 'any');
-        $target_language = sanitize_text_field($_POST['target_language'] ?? '');
+        $search = sanitize_text_field(wp_unslash($_POST['search'] ?? ''));
+        $post_type = sanitize_text_field(wp_unslash($_POST['post_type'] ?? 'any'));
+        $target_language = sanitize_text_field(wp_unslash($_POST['target_language'] ?? ''));
 
         if (strlen($search) < 2) {
             wp_send_json_success(['posts' => []]);
@@ -158,7 +158,7 @@ class PostAutocomplete
             wp_die('Unauthorized', 403);
         }
 
-        $language = sanitize_text_field($_POST['language'] ?? '');
+        $language = sanitize_text_field(wp_unslash($_POST['language'] ?? ''));
         $limit = intval($_POST['limit'] ?? 20);
 
         // Limit the max number of posts to prevent performance issues

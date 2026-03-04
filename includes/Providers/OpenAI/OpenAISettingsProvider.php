@@ -91,14 +91,16 @@ class OpenAISettingsProvider implements SettingsProviderInterface
         $openai_model = $settings['openai_model'] ?? '';
 ?>
         <script>
-            window.POLYTRANS_LANGS = <?php echo json_encode(array_values($languages)); ?>;
+            <?php // phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped -- wp_json_encode output is safe for inline JavaScript ?>
+            window.POLYTRANS_LANGS = <?php echo wp_json_encode(array_values($languages)); ?>;
             window.POLYTRANS_LANG_NAMES = <?php
                                             $lang_name_map = [];
                                             foreach ($languages as $i => $lang) {
                                                 $lang_name_map[$lang] = $language_names[$i] ?? strtoupper($lang);
                                             }
-                                            echo json_encode($lang_name_map);
+                                            echo wp_json_encode($lang_name_map);
                                             ?>;
+            <?php // phpcs:enable WordPress.Security.EscapeOutput.OutputNotEscaped ?>
         </script>
         <div class="openai-config-section universal-provider-config-section" data-provider-id="openai">
             <h2><?php echo esc_html($this->get_tab_label()); ?></h2>
@@ -136,7 +138,7 @@ class OpenAISettingsProvider implements SettingsProviderInterface
                 <p style="margin: 0;">
                     <strong><?php esc_html_e('Note:', 'polytrans'); ?></strong>
                     <?php esc_html_e('Assistant Mapping and Translation Path Rules have been moved to the', 'polytrans'); ?>
-                    <a href="<?php echo admin_url('admin.php?page=polytrans-settings#language-paths-settings'); ?>">
+                    <a href="<?php echo esc_url(admin_url('admin.php?page=polytrans-settings#language-paths-settings')); ?>">
                         <?php esc_html_e('Language Paths', 'polytrans'); ?>
                     </a>
                     <?php esc_html_e('tab for better organization.', 'polytrans'); ?>
@@ -731,12 +733,13 @@ class OpenAISettingsProvider implements SettingsProviderInterface
         
         // Always add "None selected" option first
         $none_selected = empty($selected_model) ? 'selected' : '';
-        echo '<option value="" ' . $none_selected . '>' . esc_html__('None selected', 'polytrans') . '</option>';
+        echo '<option value="" ' . esc_attr($none_selected) . '>' . esc_html__('None selected', 'polytrans') . '</option>';
 
         foreach ($grouped_models as $group_name => $models) {
             echo '<optgroup label="' . esc_attr($group_name) . '">';
             foreach ($models as $model_value => $model_label) {
                 $selected = selected($selected_model, $model_value, false);
+                // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- selected() returns safe HTML attribute
                 echo '<option value="' . esc_attr($model_value) . '" ' . $selected . '>' . esc_html($model_label) . '</option>';
             }
             echo '</optgroup>';
@@ -765,7 +768,7 @@ class OpenAISettingsProvider implements SettingsProviderInterface
         // Check nonce
         $nonce_check = false;
         if (isset($_POST['nonce'])) {
-            $nonce_check = wp_verify_nonce($_POST['nonce'], 'polytrans_openai_nonce');
+            $nonce_check = wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['nonce'])), 'polytrans_openai_nonce');
         }
 
         if (!$nonce_check) {
@@ -773,10 +776,10 @@ class OpenAISettingsProvider implements SettingsProviderInterface
         }
 
         if (!current_user_can('manage_options')) {
-            wp_die(__('You do not have sufficient permissions to access this page.', 'polytrans'));
+            wp_die(esc_html__('You do not have sufficient permissions to access this page.', 'polytrans'));
         }
 
-        $api_key = sanitize_text_field($_POST['api_key'] ?? '');
+        $api_key = sanitize_text_field(wp_unslash($_POST['api_key'] ?? ''));
 
         if (empty($api_key)) {
             wp_send_json_error(__('API key is required.', 'polytrans'));
@@ -800,7 +803,7 @@ class OpenAISettingsProvider implements SettingsProviderInterface
         // Check nonce - accept both polytrans_openai_nonce and polytrans_workflows_nonce
         $nonce_check = false;
         if (isset($_POST['nonce'])) {
-            $nonce = sanitize_text_field($_POST['nonce']);
+            $nonce = sanitize_text_field(wp_unslash($_POST['nonce']));
             // Try OpenAI nonce first (for settings page)
             $nonce_check = wp_verify_nonce($nonce, 'polytrans_openai_nonce');
             // If that fails, try workflows nonce (for workflow editor)
@@ -814,20 +817,20 @@ class OpenAISettingsProvider implements SettingsProviderInterface
         }
 
         if (!current_user_can('manage_options')) {
-            wp_die(__('You do not have sufficient permissions to access this page.', 'polytrans'));
+            wp_die(esc_html__('You do not have sufficient permissions to access this page.', 'polytrans'));
         }
 
         // Get API key from POST or fallback to settings
-        $api_key = sanitize_text_field($_POST['api_key'] ?? '');
+        $api_key = sanitize_text_field(wp_unslash($_POST['api_key'] ?? ''));
         $settings = get_option('polytrans_settings', []);
         if (empty($api_key)) {
             $api_key = $settings['openai_api_key'] ?? '';
         }
 
         // Check if managed assistants should be excluded (for workflow predefined assistant step)
-        $exclude_managed = isset($_POST['exclude_managed']) && $_POST['exclude_managed'] === 'true';
+        $exclude_managed = isset($_POST['exclude_managed']) && sanitize_text_field(wp_unslash($_POST['exclude_managed'])) === 'true';
         // Check if translation providers should be excluded (for workflow predefined assistant step)
-        $exclude_providers = isset($_POST['exclude_providers']) && $_POST['exclude_providers'] === 'true';
+        $exclude_providers = isset($_POST['exclude_providers']) && sanitize_text_field(wp_unslash($_POST['exclude_providers'])) === 'true';
 
         // Get enabled providers (needed for filtering managed assistants and OpenAI assistants)
         $enabled_providers = $settings['enabled_translation_providers'] ?? ['google'];
@@ -938,6 +941,7 @@ class OpenAISettingsProvider implements SettingsProviderInterface
                 }
             } catch (\Exception $e) {
                 // Log error but don't fail the entire request
+                // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
                 error_log('PolyTrans: Failed to load OpenAI assistants: ' . $e->getMessage());
             }
         }
@@ -960,7 +964,7 @@ class OpenAISettingsProvider implements SettingsProviderInterface
         // Check nonce
         $nonce_check = false;
         if (isset($_POST['nonce'])) {
-            $nonce_check = wp_verify_nonce($_POST['nonce'], 'polytrans_openai_nonce');
+            $nonce_check = wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['nonce'])), 'polytrans_openai_nonce');
         }
 
         if (!$nonce_check) {
@@ -968,11 +972,11 @@ class OpenAISettingsProvider implements SettingsProviderInterface
         }
 
         if (!current_user_can('manage_options')) {
-            wp_die(__('You do not have sufficient permissions to access this page.', 'polytrans'));
+            wp_die(esc_html__('You do not have sufficient permissions to access this page.', 'polytrans'));
         }
 
-        $api_key = sanitize_text_field($_POST['api_key'] ?? '');
-        $selected_model = sanitize_text_field($_POST['selected_model'] ?? '');
+        $api_key = sanitize_text_field(wp_unslash($_POST['api_key'] ?? ''));
+        $selected_model = sanitize_text_field(wp_unslash($_POST['selected_model'] ?? ''));
 
         // Get models (will use API if key provided, otherwise fallback)
         $grouped_models = $this->get_grouped_models($selected_model);
@@ -1096,7 +1100,7 @@ class OpenAISettingsProvider implements SettingsProviderInterface
         // Check nonce
         $nonce_check = false;
         if (isset($_POST['nonce'])) {
-            $nonce_check = wp_verify_nonce($_POST['nonce'], 'polytrans_openai_nonce');
+            $nonce_check = wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['nonce'])), 'polytrans_openai_nonce');
         }
 
         if (!$nonce_check) {
@@ -1104,7 +1108,7 @@ class OpenAISettingsProvider implements SettingsProviderInterface
         }
 
         if (!current_user_can('manage_options')) {
-            wp_die(__('You do not have sufficient permissions to access this page.', 'polytrans'));
+            wp_die(esc_html__('You do not have sufficient permissions to access this page.', 'polytrans'));
         }
 
         $settings = get_option('polytrans_settings', []);

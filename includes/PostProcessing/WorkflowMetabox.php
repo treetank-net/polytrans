@@ -135,6 +135,7 @@ class WorkflowMetabox
                     <?php 
                     $lang_name = $this->get_language_name($post_language);
                     printf(
+                        /* translators: %s: language name wrapped in <strong> tags */
                         esc_html__('No workflows available for %s posts.', 'polytrans'),
                         '<strong>' . esc_html($lang_name) . '</strong>'
                     ); 
@@ -160,7 +161,8 @@ class WorkflowMetabox
                 <div class="workflows-list">
                     <p class="description" style="margin-bottom: 10px;">
                         <?php 
-                        printf(
+                    printf(
+                            /* translators: %d: number of available workflows */
                             esc_html__('%d workflow(s) available:', 'polytrans'),
                             count($available_workflows)
                         ); 
@@ -329,7 +331,7 @@ class WorkflowMetabox
             return;
         }
 
-        $workflow_id = sanitize_text_field($_POST['workflow_id'] ?? '');
+        $workflow_id = sanitize_text_field(wp_unslash($_POST['workflow_id'] ?? ''));
         $post_id = intval($_POST['post_id'] ?? 0);
 
         if (empty($workflow_id) || empty($post_id)) {

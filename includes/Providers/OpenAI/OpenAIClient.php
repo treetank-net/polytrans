@@ -390,6 +390,7 @@ class OpenAIClient
                 
                 // If this was a timeout and we have attempts left, retry
                 if ($attempt < $max_attempts && strpos($error_message, 'timeout') !== false) {
+                    // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Intentional error logging for debugging
                     error_log("PolyTrans OpenAI: Request timeout on attempt {$attempt}, retrying...");
                     continue;
                 }
