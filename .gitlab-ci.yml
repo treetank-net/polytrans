@@ -66,11 +66,14 @@ build:
       rsync -av --exclude='.git' \
                 --exclude='.github' \
                 --exclude='.gitlab' \
+                --exclude='.gitlab-ci.yml' \
                 --exclude='node_modules' \
                 --exclude='tests' \
                 --exclude='docs/planning' \
                 --exclude='docs/development' \
                 --exclude='docs/testing' \
+                --exclude='docs/examples' \
+                --exclude='examples' \
                 --exclude='.gitignore' \
                 --exclude='.gitattributes' \
                 --exclude='composer.json' \
@@ -82,6 +85,18 @@ build:
                 --exclude='Dockerfile' \
                 --exclude='.env.example' \
                 --exclude='release' \
+                --exclude='*.sh' \
+                --exclude='CLAUDE.md' \
+                --exclude='QUICK_START.md' \
+                --exclude='TODO-CRITICAL.md' \
+                --exclude='test-migration.php' \
+                --exclude='test-migration-status.php' \
+                --exclude='debug-workflows.php' \
+                --exclude='check-logging-config.php' \
+                --exclude='install-translation-assistant.php' \
+                --exclude='includes/Menu/TagTranslation_temp.php' \
+                --exclude='includes/process-task.php' \
+                --exclude='includes/Debug' \
                 . release/polytrans/
 
     # Create ZIP archives
