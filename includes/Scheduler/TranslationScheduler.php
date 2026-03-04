@@ -110,13 +110,26 @@ class TranslationScheduler
         $is_translation_target = get_post_meta($post->ID, 'polytrans_is_translation_target', true);
         if ($is_translation_target) {
             $original_id = get_post_meta($post->ID, 'polytrans_translation_source', true);
+            $source_lang = get_post_meta($post->ID, 'polytrans_translation_lang', true);
             $original_url = $original_id ? get_edit_post_link($original_id, 'edit') : '';
-            echo '<div><p>';
-            echo esc_html__('This post is already a translation. Original post', 'polytrans');
+            echo '<div style="margin-bottom:1em;">';
+            echo '<p>';
+            echo esc_html__('This post is already a translation', 'polytrans');
+            if ($source_lang) {
+                echo ' (' . esc_html($source_lang) . ')';
+            }
+            echo '. ';
+            echo esc_html__('Original post', 'polytrans');
             if ($original_url) {
                 echo ' <a href="' . esc_url($original_url) . '" target="_blank">' . esc_html__('here', 'polytrans') . '</a>';
             }
-            echo '</p></div>';
+            echo '</p>';
+            echo '<button type="button" class="button" id="polytrans-detach-translation" data-post-id="' . esc_attr($post->ID) . '" style="margin-top:0.5em;width:100%;color:#d63638;border-color:#d63638;">';
+            echo '<span class="dashicons dashicons-editor-unlink" style="vertical-align:middle;"></span> ';
+            echo esc_html__('Detach from source (allow translating from this post)', 'polytrans');
+            echo '</button>';
+            echo '<p><small style="color:#666;">' . esc_html__('This will remove the translation link, allowing this post to be used as a source for new translations.', 'polytrans') . '</small></p>';
+            echo '</div>';
             return;
         }
 ?>

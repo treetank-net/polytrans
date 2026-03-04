@@ -1,0 +1,39 @@
+# Development files - exclude from WordPress sync
+.git
+.github
+.gitlab-ci.yml
+.gitattributes
+.gitignore
+.env.example
+.rsync-exclude
+
+# Tests and dev tools
+/tests
+pest.php
+phpunit.xml
+phpunit.xml.dist
+docker-compose.yml
+Dockerfile
+composer.json
+composer.lock
+
+# Shell scripts
+*.sh
+
+# Dev/debug PHP files in root
+test-migration.php
+test-migration-status.php
+debug-workflows.php
+check-logging-config.php
+install-translation-assistant.php
+
+# Temp files
+includes/Menu/TagTranslation_temp.php
+
+# Extra markdown files
+CLAUDE.md
+QUICK_START.md
+TODO-CRITICAL.md
+
+# Examples (SQL files etc.)
+/examples

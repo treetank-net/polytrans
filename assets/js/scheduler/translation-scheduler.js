@@ -594,4 +594,28 @@ jQuery(function ($) {
         originalRenderStatusUI(status);
         updateAddMoreLanguages(status);
     };
+
+    // Handle detach translation button
+    $(document).on('click', '#polytrans-detach-translation', function () {
+        var $btn = $(this);
+        var detachPostId = $btn.data('post-id');
+        if (!detachPostId) return;
+        if (!confirm('Are you sure you want to detach this post from its translation source?\n\nThis will allow you to use this post as a source for new translations to other languages.')) return;
+        $btn.prop('disabled', true).text('Detaching...');
+        $.post(PolyTransScheduler.ajax_url, {
+            action: 'polytrans_detach_translation',
+            post_id: detachPostId,
+            _ajax_nonce: PolyTransScheduler.nonce
+        }, function (resp) {
+            if (resp && resp.success) {
+                location.reload();
+            } else {
+                $btn.prop('disabled', false).html('<span class="dashicons dashicons-editor-unlink" style="vertical-align:middle;"></span> Detach from source (allow translating from this post)');
+                alert('Failed to detach: ' + (resp.data && resp.data.message ? resp.data.message : 'Unknown error'));
+            }
+        }).fail(function () {
+            $btn.prop('disabled', false).html('<span class="dashicons dashicons-editor-unlink" style="vertical-align:middle;"></span> Detach from source (allow translating from this post)');
+            alert('Connection error. Please try again.');
+        });
+    });
 });

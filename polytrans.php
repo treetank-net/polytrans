@@ -4,14 +4,15 @@
  * Plugin Name: PolyTrans
  * Plugin URI: https://github.com/your-username/polytrans
  * Description: Advanced multilingual translation management system with AI-powered translation, scheduling, and review workflow
- * Version: 1.8.8
+ * Version: 1.8.9
  * Author: PolyTrans Team
  * Author URI: https://github.com/your-username/polytrans
  * Text Domain: polytrans
  * Domain Path: /languages
  * Requires at least: 5.0
  * Requires PHP: 8.1
- * Network: false
+ * License: GPLv2 or later
+ * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  */
 
 // Prevent direct access
@@ -20,7 +21,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('POLYTRANS_VERSION', '1.8.8');
+define('POLYTRANS_VERSION', '1.8.9');
 define('POLYTRANS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('POLYTRANS_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('POLYTRANS_PLUGIN_FILE', __FILE__);

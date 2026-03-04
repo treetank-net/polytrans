@@ -6,8 +6,10 @@
 /docs/planning export-ignore
 /docs/development export-ignore
 /docs/testing export-ignore
+/examples export-ignore
 .gitignore export-ignore
 .gitattributes export-ignore
+.gitlab-ci.yml export-ignore
 composer.json export-ignore
 composer.lock export-ignore
 phpunit.xml export-ignore
@@ -16,4 +18,13 @@ pest.php export-ignore
 docker-compose.yml export-ignore
 Dockerfile export-ignore
 .env.example export-ignore
-
+*.sh export-ignore
+CLAUDE.md export-ignore
+QUICK_START.md export-ignore
+TODO-CRITICAL.md export-ignore
+test-migration.php export-ignore
+test-migration-status.php export-ignore
+debug-workflows.php export-ignore
+check-logging-config.php export-ignore
+install-translation-assistant.php export-ignore
+includes/Menu/TagTranslation_temp.php export-ignore

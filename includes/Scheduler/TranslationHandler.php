@@ -108,6 +108,7 @@ class TranslationHandler
         add_action('wp_ajax_polytrans_get_translation_status', [$this, 'ajax_get_translation_status']);
         add_action('wp_ajax_polytrans_clear_translation_status', [$this, 'ajax_clear_translation_status']);
         add_action('wp_ajax_polytrans_retry_translation', [$this, 'ajax_retry_translation']);
+        add_action('wp_ajax_polytrans_detach_translation', [$this, 'ajax_detach_translation']);
     }
 
     /**
@@ -614,6 +615,53 @@ class TranslationHandler
         }
 
         wp_send_json_error(['message' => 'Nothing to clear']);
+    }
+
+    /**
+     * AJAX handler for detaching a post from its translation source.
+     * Removes translation markers so the post can be used as a source for new translations.
+     */
+    public function ajax_detach_translation()
+    {
+        check_ajax_referer('polytrans_schedule_translation');
+
+        $post_id = intval($_POST['post_id'] ?? 0);
+        if (!$post_id || !current_user_can('edit_post', $post_id)) {
+            wp_send_json_error(['message' => 'Invalid post or insufficient permissions.']);
+        }
+
+        $is_translation_target = get_post_meta($post_id, 'polytrans_is_translation_target', true);
+        if (!$is_translation_target) {
+            wp_send_json_error(['message' => 'This post is not a translation target.']);
+        }
+
+        $original_id = get_post_meta($post_id, 'polytrans_translation_source', true);
+        $source_lang = get_post_meta($post_id, 'polytrans_translation_lang', true);
+
+        // Remove PolyTrans translation markers
+        delete_post_meta($post_id, 'polytrans_is_translation_target');
+        delete_post_meta($post_id, 'polytrans_translation_source');
+        delete_post_meta($post_id, 'polytrans_translation_lang');
+
+        // Remove reverse mapping on the original post if it exists
+        if ($original_id) {
+            $current_lang = function_exists('pll_get_post_language') ? pll_get_post_language($post_id) : '';
+            if ($current_lang) {
+                delete_post_meta($original_id, '_polytrans_translation_target_' . $current_lang);
+            }
+        }
+
+        LogsManager::log("Detached translation markers from post $post_id (was translation of post $original_id, lang: $source_lang)", "info", [
+            'source' => 'translation_detach',
+            'post_id' => $post_id,
+            'original_id' => $original_id,
+            'source_lang' => $source_lang,
+        ]);
+
+        wp_send_json_success([
+            'message' => 'Translation detached successfully. This post can now be used as a translation source.',
+            'post_id' => $post_id,
+        ]);
     }
 
     /**

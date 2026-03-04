@@ -98,6 +98,21 @@ build:
 
     - echo "✅ Build complete! Archives created:"
     - ls -lh release/*.zip
+
+    # Upload to Package Registry (stable URLs, no job ID)
+    - |
+      for FILE in polytrans.zip polytrans.zip.sha256 polytrans-${VERSION}.zip polytrans-${VERSION}.zip.sha256; do
+        curl --fail --header "JOB-TOKEN: ${CI_JOB_TOKEN}" \
+             --upload-file "release/${FILE}" \
+             "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/polytrans/${VERSION}/${FILE}"
+      done
+    - |
+      for FILE in polytrans.zip polytrans.zip.sha256; do
+        curl --fail --header "JOB-TOKEN: ${CI_JOB_TOKEN}" \
+             --upload-file "release/${FILE}" \
+             "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/polytrans/latest/${FILE}"
+      done
+    - echo "✅ Uploaded to Package Registry"
   artifacts:
     paths:
       - release/*.zip
@@ -193,16 +208,10 @@ release:
     - echo "Release description created:"
     - cat /tmp/release_description.md
 
-    # Get build job ID from this pipeline
-    - |
-      BUILD_JOB_ID=$(curl --silent --header "JOB-TOKEN: ${CI_JOB_TOKEN}" \
-        "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/pipelines/${CI_PIPELINE_ID}/jobs" | \
-        jq -r '.[] | select(.name == "build") | .id')
-      echo "Build job ID: $BUILD_JOB_ID"
-
-    # Create GitLab Release via API
+    # Create GitLab Release via API (using Package Registry URLs - no job ID!)
     - |
       DESCRIPTION=$(cat /tmp/release_description.md)
+      PKG_BASE="${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/polytrans"
       curl --fail --request POST \
         --header "JOB-TOKEN: ${CI_JOB_TOKEN}" \
         --header "Content-Type: application/json" \
@@ -214,22 +223,22 @@ release:
             \"links\": [
               {
                 \"name\": \"polytrans.zip (WordPress Installation)\",
-                \"url\": \"${CI_PROJECT_URL}/-/jobs/${BUILD_JOB_ID}/artifacts/raw/release/polytrans.zip\",
+                \"url\": \"${PKG_BASE}/latest/polytrans.zip\",
                 \"link_type\": \"package\"
               },
               {
                 \"name\": \"polytrans.zip.sha256\",
-                \"url\": \"${CI_PROJECT_URL}/-/jobs/${BUILD_JOB_ID}/artifacts/raw/release/polytrans.zip.sha256\",
+                \"url\": \"${PKG_BASE}/latest/polytrans.zip.sha256\",
                 \"link_type\": \"other\"
               },
               {
                 \"name\": \"polytrans-${VERSION}.zip (Versioned Archive)\",
-                \"url\": \"${CI_PROJECT_URL}/-/jobs/${BUILD_JOB_ID}/artifacts/raw/release/polytrans-${VERSION}.zip\",
+                \"url\": \"${PKG_BASE}/${VERSION}/polytrans-${VERSION}.zip\",
                 \"link_type\": \"package\"
               },
               {
                 \"name\": \"polytrans-${VERSION}.zip.sha256\",
-                \"url\": \"${CI_PROJECT_URL}/-/jobs/${BUILD_JOB_ID}/artifacts/raw/release/polytrans-${VERSION}.zip.sha256\",
+                \"url\": \"${PKG_BASE}/${VERSION}/polytrans-${VERSION}.zip.sha256\",
                 \"link_type\": \"other\"
               }
             ]

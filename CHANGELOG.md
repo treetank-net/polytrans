@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.8.9] - 2026-03-04
+
+### Added
+- Detach translation feature — allows unlinking a post from its translation source so it can be used as a new translation source
+- ABSPATH guard to WorkflowBridge.php for direct access protection
+
+### Changed
+- Plugin headers: added GPLv2+ license declaration, removed invalid Network header
+- README.md: added WordPress Plugin Check compatible headers (Stable Tag, License, Tested up to, Contributors)
+- CI/CD: release artifacts now uploaded to GitLab Package Registry for stable download URLs (no more job-ID-dependent links)
+- Sync scripts now use `.rsync-exclude` to skip dev files when syncing to WordPress instances
+- Updated `.gitattributes` with comprehensive export-ignore rules for dev files
+
+### Fixed
+- WordPress Plugin Check compliance: hidden files, application files, missing headers, unexpected markdown files no longer synced to WordPress
+
 ## [1.8.8] - 2026-02-05
 
 ### Added

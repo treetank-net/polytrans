@@ -1,10 +1,23 @@
 # PolyTrans
 
-**WordPress translation plugin with bring-your-own AI.** Connect your own AI provider (Google Translate, OpenAI, Claude, Gemini) — pay only for tokens consumed, not $200–800+/year in plugin subscriptions. Translation orchestration with post-processing workflows, multi-server architecture, and review management.
+Contributors: jmarianski
+Tags: translation, multilingual, ai, openai, polylang
+Requires at least: 5.0
+Tested up to: 6.7
+Requires PHP: 8.1
+Stable tag: 1.8.9
+License: GPLv2 or later
+License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-> **The problem:** WordPress translation plugins like WPML ($299/yr), Weglot ($200–790/yr), and TranslatePress ($99–349/yr) charge flat subscription fees that scale with content volume, not actual usage. With Weglot, you lose all translations if you stop paying.
->
-> **PolyTrans takes a different approach:** bring your own AI account. The plugin connects to any AI provider you already use — you pay only for the tokens you actually consume. No vendor lock-in, no recurring license fees, and you always own your translations.
+WordPress translation plugin with bring-your-own AI. Pay only for tokens, not subscriptions.
+
+## Description
+
+Connect your own AI provider (Google Translate, OpenAI, Claude, Gemini) — pay only for tokens consumed, not $200–800+/year in plugin subscriptions. Translation orchestration with post-processing workflows, multi-server architecture, and review management.
+
+**The problem:** WordPress translation plugins like WPML ($299/yr), Weglot ($200–790/yr), and TranslatePress ($99–349/yr) charge flat subscription fees that scale with content volume, not actual usage. With Weglot, you lose all translations if you stop paying.
+
+**PolyTrans takes a different approach:** bring your own AI account. The plugin connects to any AI provider you already use — you pay only for the tokens you actually consume. No vendor lock-in, no recurring license fees, and you always own your translations.
 
 ### Why PolyTrans?
 
@@ -612,7 +625,7 @@ polytrans/
 
 ## License
 
-MIT License — see [LICENSE](LICENSE) for details.
+GPLv2 or later — see [LICENSE](LICENSE) for details.
 
 ## Links
 
