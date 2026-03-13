@@ -126,7 +126,7 @@ class TranslationScheduler
             echo '</p>';
             echo '<button type="button" class="button" id="polytrans-detach-translation" data-post-id="' . esc_attr($post->ID) . '" style="margin-top:0.5em;width:100%;color:#d63638;border-color:#d63638;">';
             echo '<span class="dashicons dashicons-editor-unlink" style="vertical-align:middle;"></span> ';
-            echo esc_html__('Detach from source (allow translating from this post)', 'polytrans');
+            echo esc_html__('Detach from source', 'polytrans');
             echo '</button>';
             echo '<p><small style="color:#666;">' . esc_html__('This will remove the translation link, allowing this post to be used as a source for new translations.', 'polytrans') . '</small></p>';
             echo '</div>';

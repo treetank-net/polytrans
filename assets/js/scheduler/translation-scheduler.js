@@ -610,11 +610,11 @@ jQuery(function ($) {
             if (resp && resp.success) {
                 location.reload();
             } else {
-                $btn.prop('disabled', false).html('<span class="dashicons dashicons-editor-unlink" style="vertical-align:middle;"></span> Detach from source (allow translating from this post)');
+                $btn.prop('disabled', false).html('<span class="dashicons dashicons-editor-unlink" style="vertical-align:middle;"></span> Detach from source');
                 alert('Failed to detach: ' + (resp.data && resp.data.message ? resp.data.message : 'Unknown error'));
             }
         }).fail(function () {
-            $btn.prop('disabled', false).html('<span class="dashicons dashicons-editor-unlink" style="vertical-align:middle;"></span> Detach from source (allow translating from this post)');
+            $btn.prop('disabled', false).html('<span class="dashicons dashicons-editor-unlink" style="vertical-align:middle;"></span> Detach from source');
             alert('Connection error. Please try again.');
         });
     });
