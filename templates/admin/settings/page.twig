@@ -59,6 +59,7 @@
             {{ include('admin/settings/tabs/tag-settings.twig', {
                 'source_language': source_language,
                 'base_tags': base_tags,
+                'enable_tag_grouping': settings.enable_tag_grouping|default('0') == '1',
                 'langs': langs,
                 'lang_names': lang_names
             }) }}
