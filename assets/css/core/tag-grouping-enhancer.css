@@ -1,0 +1,43 @@
+/**
+ * PolyTrans Tag Grouping Enhancer Styles
+ */
+
+/* Group headers in autocomplete dropdown */
+.polytrans-tag-grouped .polytrans-tag-group-header {
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #646970;
+    background: #f0f0f1;
+    border-bottom: 1px solid #dcdcde;
+    cursor: default;
+    pointer-events: none;
+    user-select: none;
+}
+
+.polytrans-tag-grouped .polytrans-tag-group-header.polytrans-tag-group-approved {
+    color: #2271b1;
+    background: #f0f6fc;
+    border-bottom-color: #c3d4e5;
+}
+
+.polytrans-tag-grouped .polytrans-tag-group-header.polytrans-tag-group-other {
+    margin-top: 2px;
+}
+
+/* Approved tag indicator */
+.polytrans-tag-grouped .polytrans-tag-approved {
+    position: relative;
+    padding-left: 18px !important;
+}
+
+.polytrans-tag-grouped .polytrans-tag-approved::before {
+    content: "\2713";
+    position: absolute;
+    left: 6px;
+    color: #2271b1;
+    font-size: 11px;
+    font-weight: 700;
+}

@@ -60,30 +60,124 @@ class TagTranslation
      */
     public function enqueue_admin_scripts($hook)
     {
-        if ($hook !== 'polytrans_page_polytrans-tag-translation') return;
+        // Tag translation admin page
+        if ($hook === 'polytrans_page_polytrans-tag-translation') {
+            $plugin_url = POLYTRANS_PLUGIN_URL;
+            wp_enqueue_script('polytrans-tag-translation', $plugin_url . 'assets/js/core/tag-translation-admin.js', ['jquery'], POLYTRANS_VERSION, true);
+            wp_enqueue_style('polytrans-tag-translation', $plugin_url . 'assets/css/core/tag-translation-admin.css', [], POLYTRANS_VERSION);
+
+            wp_localize_script('polytrans-tag-translation', 'PolyTransTagTranslation', [
+                'ajaxurl' => admin_url('admin-ajax.php'),
+                'nonce' => wp_create_nonce('polytrans_tag_translation'),
+                'i18n' => [
+                    'translation_saved' => esc_html__('Translation saved!', 'polytrans'),
+                    'please_select_file' => esc_html__('Please select a CSV file.', 'polytrans'),
+                    'importing' => esc_html__('Importing...', 'polytrans'),
+                    'import_complete' => esc_html__('Import complete!', 'polytrans'),
+                    'import_error' => esc_html__('Import failed. Please check the CSV format.', 'polytrans'),
+                    'confirm_delete' => esc_html__('Are you sure you want to delete this translation?', 'polytrans'),
+                    'deleting' => esc_html__('Deleting...', 'polytrans'),
+                    'delete_error' => esc_html__('Failed to delete translation.', 'polytrans'),
+                    'search_placeholder' => esc_html__('Search tags...', 'polytrans'),
+                    'no_results' => esc_html__('No tags found.', 'polytrans'),
+                    'loading' => esc_html__('Loading...', 'polytrans'),
+                    'error_occurred' => esc_html__('An error occurred. Please try again.', 'polytrans'),
+                ]
+            ]);
+        }
+
+        // Tag grouping enhancer on post editor screens
+        if (in_array($hook, ['post.php', 'post-new.php'], true)) {
+            $this->maybe_enqueue_tag_grouping();
+        }
+    }
+
+    /**
+     * Enqueue tag grouping enhancer if enabled and base tags exist
+     */
+    private function maybe_enqueue_tag_grouping()
+    {
+        $settings = get_option('polytrans_settings', []);
+
+        if (($settings['enable_tag_grouping'] ?? '0') !== '1') {
+            return;
+        }
+
+        $base_tags_raw = $settings['base_tags'] ?? '';
+        if (empty(trim($base_tags_raw))) {
+            return;
+        }
+
+        // Determine current post language
+        $post_lang = '';
+        $source_language = $settings['source_language'] ?? 'pl';
+        if (function_exists('pll_get_post_language') && isset($_GET['post'])) {
+            $post_lang = pll_get_post_language(intval($_GET['post']), 'slug');
+        }
+        if (empty($post_lang) && function_exists('pll_current_language')) {
+            $post_lang = pll_current_language('slug');
+        }
+        if (empty($post_lang)) {
+            $post_lang = $source_language;
+        }
+
+        // Get approved tag names for the current language
+        $approved_tags = $this->get_approved_tags_for_language($base_tags_raw, $source_language, $post_lang);
+        if (empty($approved_tags)) {
+            return;
+        }
 
         $plugin_url = POLYTRANS_PLUGIN_URL;
-        wp_enqueue_script('polytrans-tag-translation', $plugin_url . 'assets/js/core/tag-translation-admin.js', ['jquery'], POLYTRANS_VERSION, true);
-        wp_enqueue_style('polytrans-tag-translation', $plugin_url . 'assets/css/core/tag-translation-admin.css', [], POLYTRANS_VERSION);
+        wp_enqueue_script('polytrans-tag-grouping', $plugin_url . 'assets/js/core/tag-grouping-enhancer.js', ['jquery', 'tags-suggest'], POLYTRANS_VERSION, true);
+        wp_enqueue_style('polytrans-tag-grouping', $plugin_url . 'assets/css/core/tag-grouping-enhancer.css', [], POLYTRANS_VERSION);
 
-        wp_localize_script('polytrans-tag-translation', 'PolyTransTagTranslation', [
-            'ajaxurl' => admin_url('admin-ajax.php'),
-            'nonce' => wp_create_nonce('polytrans_tag_translation'),
+        wp_localize_script('polytrans-tag-grouping', 'polyTransTagGrouping', [
+            'approvedTags' => $approved_tags,
             'i18n' => [
-                'translation_saved' => esc_html__('Translation saved!', 'polytrans'),
-                'please_select_file' => esc_html__('Please select a CSV file.', 'polytrans'),
-                'importing' => esc_html__('Importing...', 'polytrans'),
-                'import_complete' => esc_html__('Import complete!', 'polytrans'),
-                'import_error' => esc_html__('Import failed. Please check the CSV format.', 'polytrans'),
-                'confirm_delete' => esc_html__('Are you sure you want to delete this translation?', 'polytrans'),
-                'deleting' => esc_html__('Deleting...', 'polytrans'),
-                'delete_error' => esc_html__('Failed to delete translation.', 'polytrans'),
-                'search_placeholder' => esc_html__('Search tags...', 'polytrans'),
-                'no_results' => esc_html__('No tags found.', 'polytrans'),
-                'loading' => esc_html__('Loading...', 'polytrans'),
-                'error_occurred' => esc_html__('An error occurred. Please try again.', 'polytrans'),
-            ]
+                'approved' => esc_html__('PolyTrans', 'polytrans'),
+                'other' => esc_html__('Other', 'polytrans'),
+            ],
         ]);
+    }
+
+    /**
+     * Get approved tag names for a specific language
+     */
+    private function get_approved_tags_for_language($base_tags_raw, $source_language, $target_lang)
+    {
+        $tag_names = array_filter(array_map('trim', preg_split('/[\r\n,]+/', $base_tags_raw)));
+        if (empty($tag_names)) {
+            return [];
+        }
+
+        // If target language is the source language, return base tags directly
+        if ($target_lang === $source_language) {
+            return array_values($tag_names);
+        }
+
+        // Get translated tag names for target language
+        $approved = [];
+        foreach ($tag_names as $tag_name) {
+            $tag = $this->get_term_by_name_and_lang($tag_name, $source_language);
+            if (!$tag) {
+                continue;
+            }
+
+            if (function_exists('pll_get_term')) {
+                $translated_id = pll_get_term($tag->term_id, $target_lang);
+                if ($translated_id) {
+                    $translated_term = get_term($translated_id, 'post_tag');
+                    if ($translated_term && !is_wp_error($translated_term)) {
+                        $approved[] = $translated_term->name;
+                    }
+                }
+            } else {
+                // Fallback — just use source tag names
+                $approved[] = $tag_name;
+            }
+        }
+
+        return $approved;
     }
 
     /**

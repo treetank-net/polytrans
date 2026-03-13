@@ -15,3 +15,12 @@
 <textarea id="base-tags-textarea" name="base_tags" style="width:100%;min-height:150px;font-family:monospace;" placeholder="{{ __('Enter tags separated by new lines or commas...', 'polytrans')|esc_attr }}">{{ base_tags|esc_textarea }}</textarea>
 <br><small>{{ __('These tags will be used for automatic translation and tag mapping between languages. You can add tags that you want to translate now or that you want to use in future automatic translations.', 'polytrans') }}</small>
 
+<br><br>
+<h2>{{ __('Tag Grouping in Post Editor', 'polytrans') }}</h2>
+<p>{{ __('When enabled, the tag autocomplete dropdown in the post editor will group suggestions into PolyTrans-approved tags and other tags.', 'polytrans') }}</p>
+<label>
+    <input type="checkbox" name="enable_tag_grouping" value="1" {{ enable_tag_grouping ? 'checked' : '' }} />
+    {{ __('Enable tag grouping in post editor', 'polytrans') }}
+</label>
+<br><small>{{ __('Requires base tags to be defined above. If no base tags are set, grouping will not be applied.', 'polytrans') }}</small>
+

@@ -218,6 +218,7 @@ class TranslationSettings
         $settings['allowed_targets'] = isset($_POST['allowed_targets']) ? array_map('sanitize_text_field', wp_unslash($_POST['allowed_targets'])) : [];
         $settings['source_language'] = sanitize_text_field(wp_unslash($_POST['source_language'] ?? 'pl'));
         $settings['base_tags'] = sanitize_textarea_field(wp_unslash($_POST['base_tags'] ?? ''));
+        $settings['enable_tag_grouping'] = isset($_POST['enable_tag_grouping']) ? '1' : '0';
 
         // Field whitelist for dirty check (one pattern per line)
         $settings['dirty_check_field_whitelist'] = sanitize_textarea_field(wp_unslash($_POST['dirty_check_field_whitelist'] ?? ''));
@@ -475,9 +476,11 @@ class TranslationSettings
     private function render_tag_settings($source_language, $base_tags)
     {
         // phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped -- Twig templates handle escaping
+        $settings = get_option('polytrans_settings', []);
         echo TemplateRenderer::render('admin/settings/tabs/tag-settings.twig', [
             'source_language' => $source_language,
             'base_tags' => $base_tags,
+            'enable_tag_grouping' => ($settings['enable_tag_grouping'] ?? '0') === '1',
             'langs' => $this->langs,
             'lang_names' => $this->lang_names,
         ], false);
