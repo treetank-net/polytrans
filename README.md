@@ -5,7 +5,7 @@ Tags: translation, multilingual, ai, openai, polylang
 Requires at least: 5.0
 Tested up to: 6.9
 Requires PHP: 8.1
-Stable tag: 1.9.0
+Stable tag: 1.9.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -13,7 +13,7 @@ WordPress translation plugin with bring-your-own AI. Pay only for tokens, not su
 
 ## Description
 
-Connect your own AI provider (Google Translate, OpenAI, Claude, Gemini) — pay only for tokens consumed, not $200–800+/year in plugin subscriptions. Translation orchestration with post-processing workflows, multi-server architecture, and review management.
+Connect your own AI provider (OpenAI, Claude, Gemini) — pay only for tokens consumed, not $200–800+/year in plugin subscriptions. Translation orchestration with post-processing workflows, multi-server architecture, and review management.
 
 **The problem:** WordPress translation plugins like WPML ($299/yr), Weglot ($200–790/yr), and TranslatePress ($99–349/yr) charge flat subscription fees that scale with content volume, not actual usage. With Weglot, you lose all translations if you stop paying.
 
@@ -25,7 +25,7 @@ Connect your own AI provider (Google Translate, OpenAI, Claude, Gemini) — pay 
 |---|---|---|---|---|
 | **Annual cost** | $299+ | $200–790+ | $99–349+ | Free (pay only AI tokens) |
 | **Own your translations** | Yes | No (SaaS-hosted) | Yes | Yes |
-| **AI provider choice** | None | Built-in only | Built-in only | Google, OpenAI, Claude, Gemini |
+| **AI provider choice** | None | Built-in only | Built-in only | OpenAI, Claude, Gemini |
 | **Post-processing workflows** | No | No | No | Yes (multi-step AI chains) |
 | **Multi-server support** | No | No | No | Yes (sender/translator/receiver) |
 | **Open source** | No | No | Freemium | Yes |
@@ -33,7 +33,7 @@ Connect your own AI provider (Google Translate, OpenAI, Claude, Gemini) — pay 
 ### Features
 
 * **Translation Scheduler** — schedule automatic translations to multiple languages from the post editor
-* **Multiple AI Providers** — Google Translate, OpenAI, Anthropic Claude, Google Gemini
+* **Multiple AI Providers** — OpenAI, Anthropic Claude, Google Gemini
 * **Post-Processing Workflows** — multi-step AI chains for content enhancement after translation
 * **Multi-Server Architecture** — distribute translation work across sender/translator/receiver servers
 * **Review Workflow** — assign reviewers, email notifications, translation status tracking
@@ -69,14 +69,6 @@ Post content is sent for translation.
 * Terms of Service: [https://ai.google.dev/gemini-api/terms](https://ai.google.dev/gemini-api/terms)
 * Privacy Policy: [https://policies.google.com/privacy](https://policies.google.com/privacy)
 
-**Google Translate API**
-Used when the user selects Google Translate as their translation provider.
-Post content is sent for translation via the Google Cloud Translation API.
-
-* Service: [https://cloud.google.com/translate](https://cloud.google.com/translate)
-* Terms of Service: [https://cloud.google.com/terms](https://cloud.google.com/terms)
-* Privacy Policy: [https://policies.google.com/privacy](https://policies.google.com/privacy)
-
 ## Installation
 
 1. Upload the `polytrans` folder to `/wp-content/plugins/`
@@ -89,13 +81,13 @@ Post content is sent for translation via the Google Cloud Translation API.
 * WordPress 5.0 or higher
 * PHP 8.1 or higher
 * Polylang plugin (recommended, for language management)
-* An API key for your chosen AI provider (OpenAI, Claude, or Gemini) — or use Google Translate which works without a key
+* An API key for your chosen AI provider (OpenAI, Claude, or Gemini)
 
 ## Frequently Asked Questions
 
 ### Do I need an API key?
 
-Google Translate works without an API key. For OpenAI, Claude, or Gemini you need to provide your own API key from the respective provider.
+Yes. You need to provide your own API key from your chosen AI provider (OpenAI, Claude, or Gemini).
 
 ### Does this plugin require Polylang?
 
@@ -107,7 +99,7 @@ The plugin itself is free. You only pay for the tokens consumed by your AI provi
 
 ### Can I use multiple AI providers?
 
-Yes. You can configure different providers for different tasks — for example, Google Translate for quick drafts and OpenAI for final quality translations via post-processing workflows.
+Yes. You can configure different providers for different tasks — for example, OpenAI for translation and Claude for post-processing workflows.
 
 ### What is the multi-server architecture?
 

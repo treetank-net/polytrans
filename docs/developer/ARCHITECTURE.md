@@ -100,7 +100,6 @@ Providers must implement:
 - `get_settings_provider()` - Returns settings UI class
 
 **Current Providers:**
-- **Google Translate** (`PolyTrans\Providers\Google\GoogleProvider`) - Free, basic
 - **OpenAI** (`PolyTrans\Providers\OpenAI\OpenAIProvider`) - Paid, high quality, context-aware, supports Managed Assistants
 
 ### Workflow System

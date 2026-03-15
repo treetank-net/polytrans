@@ -95,6 +95,23 @@ class WorkflowMetabox
                 'confirmExecute' => __('Execute this workflow on the current post?', 'polytrans'),
             ]
         ]);
+
+        // Register a style handle for metabox inline CSS
+        wp_register_style('polytrans-workflow-metabox', false, [], POLYTRANS_VERSION);
+        wp_enqueue_style('polytrans-workflow-metabox');
+        wp_add_inline_style('polytrans-workflow-metabox', implode(' ', [
+            '.polytrans-workflows-metabox .workflow-item { display: flex; align-items: center; justify-content: space-between; padding: 12px; background: #f9f9f9; border: 1px solid #ddd; border-radius: 3px; margin-bottom: 8px; transition: background-color 0.2s ease; }',
+            '.polytrans-workflows-metabox .workflow-item:hover { background: #f0f0f0; }',
+            '.polytrans-workflows-metabox .workflow-name { font-weight: 500; font-size: 13px; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }',
+            '.polytrans-workflows-metabox .workflow-steps-count { color: #666; font-size: 12px; font-weight: normal; margin-left: 6px; }',
+            '.polytrans-workflows-metabox .workflow-actions { flex-shrink: 0; margin-left: 12px; }',
+            '.polytrans-workflows-metabox .execution-running { padding: 12px; background: #e7f3ff; border-left: 3px solid #2271b1; border-radius: 3px; }',
+            '.polytrans-workflows-metabox .execution-running .dashicons { color: #2271b1; vertical-align: middle; }',
+            '.polytrans-workflows-metabox .execution-running strong { color: #2271b1; }',
+            '.polytrans-workflows-metabox .execution-running .description { margin: 5px 0 0 24px; }',
+            '@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }',
+            '.polytrans-workflows-metabox .spinning { animation: spin 1s linear infinite; }',
+        ]));
     }
 
     /**
@@ -134,10 +151,13 @@ class WorkflowMetabox
                 <p class="description">
                     <?php 
                     $lang_name = $this->get_language_name($post_language);
-                    printf(
-                        /* translators: %s: language name wrapped in <strong> tags */
-                        esc_html__('No workflows available for %s posts.', 'polytrans'),
-                        '<strong>' . esc_html($lang_name) . '</strong>'
+                    echo wp_kses(
+                        sprintf(
+                            /* translators: %s: language name wrapped in <strong> tags */
+                            __('No workflows available for %s posts.', 'polytrans'),
+                            '<strong>' . esc_html($lang_name) . '</strong>'
+                        ),
+                        ['strong' => []]
                     ); 
                     ?>
                 </p>
@@ -202,64 +222,6 @@ class WorkflowMetabox
                 </p>
             <?php endif; ?>
         </div>
-
-        <style>
-            .polytrans-workflows-metabox .workflow-item {
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-                padding: 12px;
-                background: #f9f9f9;
-                border: 1px solid #ddd;
-                border-radius: 3px;
-                margin-bottom: 8px;
-                transition: background-color 0.2s ease;
-            }
-            .polytrans-workflows-metabox .workflow-item:hover {
-                background: #f0f0f0;
-            }
-            .polytrans-workflows-metabox .workflow-name {
-                font-weight: 500;
-                font-size: 13px;
-                flex: 1;
-                white-space: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis;
-            }
-            .polytrans-workflows-metabox .workflow-steps-count {
-                color: #666;
-                font-size: 12px;
-                font-weight: normal;
-                margin-left: 6px;
-            }
-            .polytrans-workflows-metabox .workflow-actions {
-                flex-shrink: 0;
-                margin-left: 12px;
-            }
-            .polytrans-workflows-metabox .execution-running {
-                padding: 12px;
-                background: #e7f3ff;
-                border-left: 3px solid #2271b1;
-                border-radius: 3px;
-            }
-            .polytrans-workflows-metabox .execution-running .dashicons {
-                color: #2271b1;
-                vertical-align: middle;
-            }
-            .polytrans-workflows-metabox .execution-running strong {
-                color: #2271b1;
-            }
-            .polytrans-workflows-metabox .execution-running .description {
-                margin: 5px 0 0 24px;
-            }
-            @keyframes spin {
-                from { transform: rotate(0deg); }
-                to { transform: rotate(360deg); }
-            }
-            .polytrans-workflows-metabox .spinning {
-                animation: spin 1s linear infinite;
-            }
-        </style>
         <?php
     }
 

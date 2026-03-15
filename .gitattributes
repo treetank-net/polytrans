@@ -6,11 +6,11 @@
 /docs/planning export-ignore
 /docs/development export-ignore
 /docs/testing export-ignore
+/docs/roadmap export-ignore
 /examples export-ignore
 .gitignore export-ignore
 .gitattributes export-ignore
 .gitlab-ci.yml export-ignore
-composer.json export-ignore
 composer.lock export-ignore
 phpunit.xml export-ignore
 phpunit.xml.dist export-ignore

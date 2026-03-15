@@ -11,19 +11,13 @@ Get PolyTrans up and running in 5 minutes!
 ### Step 2: Configure Provider
 Go to **Settings → Translation Settings** and choose your provider:
 
-**Option A: Google Translate (Simplest)**
-- Select "Google Translate"
-- No API key needed
-- Click "Save Changes"
-- ✅ Done!
-
-**Option B: OpenAI (Better Quality)**
+**Option A: OpenAI (Recommended)**
 - Select "OpenAI"
 - Enter your API key from [platform.openai.com](https://platform.openai.com/)
 - Click "Validate" to test
 - Save Changes
 
-**Option C: Claude or Gemini**
+**Option B: Claude or Gemini**
 - Select "Claude" or "Gemini"
 - Enter your API key
 - Click "Validate" to test

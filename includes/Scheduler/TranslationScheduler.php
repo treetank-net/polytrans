@@ -174,11 +174,11 @@ class TranslationScheduler
                         $edit_post_id = get_post_meta($post->ID, $target_post_id_key, true);
                         $edit_url = $is_finished && $edit_post_id ? esc_url(str_replace('__ID__', $edit_post_id, admin_url('post.php?post=__ID__&action=edit'))) : '#';
                     ?>
-                        <li id="polytrans-merged-<?php echo esc_attr($lang); ?>" style="display:<?php echo ($is_scheduled && ($is_started || $is_finished)) ? 'flex' : 'none'; ?>;margin-bottom:0.5em;align-items:center;">
-                            <span class="polytrans-loader" style="<?php echo $is_started ? '' : 'display:none;'; ?>">
+                        <li id="polytrans-merged-<?php echo esc_attr($lang); ?>" style="display:<?php echo esc_attr(($is_scheduled && ($is_started || $is_finished)) ? 'flex' : 'none'); ?>;margin-bottom:0.5em;align-items:center;">
+                            <span class="polytrans-loader" style="<?php echo esc_attr($is_started ? '' : 'display:none;'); ?>">
                                 <span class="dashicons dashicons-update-alt" style="animation: spin 1s linear infinite;"></span>
                             </span>
-                            <span class="polytrans-check" style="<?php echo $is_finished ? '' : 'display:none;'; ?>">
+                            <span class="polytrans-check" style="<?php echo esc_attr($is_finished ? '' : 'display:none;'); ?>">
                                 <span class="dashicons dashicons-yes-alt" style="color: green;"></span>
                             </span>
                             <span class="polytrans-failed" style="display:none;">
@@ -188,7 +188,7 @@ class TranslationScheduler
                                 <strong><?php echo esc_html($lang_name); ?></strong>
                                 <small></small>
                             </span>
-                            <a href="<?php echo esc_url($edit_url); ?>" class="polytrans-edit-btn" target="_blank" style="<?php echo $is_finished ? '' : 'display:none;'; ?>" title="<?php esc_attr_e('Edit translation', 'polytrans'); ?>">
+                            <a href="<?php echo esc_url($edit_url); ?>" class="polytrans-edit-btn" target="_blank" style="<?php echo esc_attr($is_finished ? '' : 'display:none;'); ?>" title="<?php esc_attr_e('Edit translation', 'polytrans'); ?>">
                                 <span class="dashicons dashicons-visibility"></span>
                             </a>
                             <button type="button" class="polytrans-retry-translation" data-lang="<?php echo esc_attr($lang); ?>" data-post-id="<?php echo esc_attr($post->ID); ?>" title="<?php esc_attr_e('Retry translation', 'polytrans'); ?>">

@@ -2,13 +2,7 @@
 
 ## Translation Providers
 
-### Google Translate (Simple)
-**Settings → Translation Settings** → Select "Google Translate"
-
-- No API key needed
-- Free, fast, basic quality
-
-### OpenAI (Advanced)
+### OpenAI
 **Settings → Translation Settings** → Select "OpenAI"
 
 1. Get API key from [platform.openai.com](https://platform.openai.com/)
@@ -107,7 +101,7 @@ Variables available:
 
 ### Rate Limiting
 - OpenAI: Respects API rate limits automatically
-- Google: No limits
+- Claude/Gemini: Respects API rate limits automatically
 
 ## Workflows
 

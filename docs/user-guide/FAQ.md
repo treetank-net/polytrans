@@ -3,13 +3,13 @@
 ## General
 
 **Q: What is PolyTrans?**  
-A: WordPress plugin for automated multilingual translation with Google Translate or OpenAI.
+A: WordPress plugin for automated multilingual translation with AI providers (OpenAI, Claude, Gemini).
 
 **Q: Do I need Polylang?**  
 A: Recommended but not required. Core features work without it.
 
 **Q: Is it free?**  
-A: Plugin is proprietary. Google Translate is free; OpenAI requires API credits.
+A: Plugin is free. You pay only for the AI tokens consumed by your chosen provider.
 
 ## Installation
 

@@ -49,7 +49,6 @@ class PostprocessingMenu
         // Deprecated - use polytrans_load_assistants instead
         add_action('wp_ajax_polytrans_load_openai_assistants_for_workflow', [$this, 'ajax_load_openai_assistants_for_workflow']);
         add_action('wp_ajax_polytrans_load_managed_assistants', [$this, 'ajax_load_managed_assistants']);
-        add_action('wp_ajax_polytrans_get_chat_providers', [$this, 'ajax_get_chat_providers']);
     }
 
     /**
@@ -327,6 +326,14 @@ class PostprocessingMenu
             }
         }
 
+        // Pass workflow data to JavaScript via enqueued script
+        wp_add_inline_script(
+            'polytrans-workflows',
+            'window.polytransWorkflowData = ' . wp_json_encode($workflow) . ';' .
+            'window.polytransLanguages = ' . wp_json_encode(array_combine($langs, $lang_names)) . ';',
+            'before'
+        );
+
         // phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped -- Twig templates handle escaping
         echo TemplateRenderer::render('admin/workflows/editor.twig', [
             'is_new' => $is_new,
@@ -348,6 +355,13 @@ class PostprocessingMenu
         if (!$workflow) {
             wp_die(esc_html__('Workflow not found.', 'polytrans'));
         }
+
+        // Pass workflow test data to JavaScript via enqueued script
+        wp_add_inline_script(
+            'polytrans-workflows',
+            'window.polytransWorkflowTestData = ' . wp_json_encode($workflow) . ';',
+            'before'
+        );
 
         // phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped -- Twig templates handle escaping
         echo TemplateRenderer::render('admin/workflows/tester.twig', [
@@ -425,20 +439,20 @@ class PostprocessingMenu
         ]);
         // phpcs:enable WordPress.Security.EscapeOutput.OutputNotEscaped
 
-        // Output JavaScript data
-        // phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped -- Static script tags and JSON-encoded data for JavaScript consumption
-        echo '<script type="text/javascript">';
-        echo 'window.polytransExecuteWorkflowData = ' . wp_json_encode([
-            'workflows' => $all_workflows,
-            'selectedWorkflow' => $selected_workflow,
-            'selectedPost' => $selected_post_data,
-            'locked' => $locked,
-            'workflowId' => $workflow_id,
-            'postId' => $post_id,
-            'languageFilter' => $language_filter,
-        ]) . ';';
-        echo '</script>';
-        // phpcs:enable WordPress.Security.EscapeOutput.OutputNotEscaped
+        // Output JavaScript data via enqueued script
+        wp_add_inline_script(
+            'polytrans-execute-workflow',
+            'window.polytransExecuteWorkflowData = ' . wp_json_encode([
+                'workflows' => $all_workflows,
+                'selectedWorkflow' => $selected_workflow,
+                'selectedPost' => $selected_post_data,
+                'locked' => $locked,
+                'workflowId' => $workflow_id,
+                'postId' => $post_id,
+                'languageFilter' => $language_filter,
+            ]) . ';',
+            'before'
+        );
     }
 
     /**
@@ -755,9 +769,9 @@ class PostprocessingMenu
         
         // Load Enabled Translation Providers
         $registry = \PolyTrans_Provider_Registry::get_instance();
-        $enabled_providers = $settings['enabled_translation_providers'] ?? ['google'];
+        $enabled_providers = $settings['enabled_translation_providers'] ?? [];
         $all_providers = $registry->get_providers();
-        
+
         foreach ($all_providers as $provider_id => $provider) {
             if ($provider_id === 'openai') {
                 continue; // OpenAI doesn't have translation endpoints
@@ -884,12 +898,12 @@ class PostprocessingMenu
     private function get_chat_providers_for_js()
     {
         $settings = get_option('polytrans_settings', []);
-        $enabled_providers = $settings['enabled_translation_providers'] ?? ['google'];
+        $enabled_providers = $settings['enabled_translation_providers'] ?? [];
         $registry = \PolyTrans_Provider_Registry::get_instance();
         $all_providers = $registry->get_providers();
-        
+
         $chat_providers = [];
-        
+
         foreach ($all_providers as $provider_id => $provider) {
             // Check if provider is enabled
             if (!in_array($provider_id, $enabled_providers)) {

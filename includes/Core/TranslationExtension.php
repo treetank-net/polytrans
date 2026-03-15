@@ -121,7 +121,7 @@ class TranslationExtension
 
         // Get settings and check for translation paths
         $settings = get_option('polytrans_settings', []);
-        $translation_provider = $settings['translation_provider'] ?? 'google';
+        $translation_provider = $settings['translation_provider'] ?? '';
         // Use universal names with backward compatibility
         $path_rules = $settings['translation_path_rules'] ?? $settings['openai_path_rules'] ?? [];
         $assistants_mapping = $settings['assistants_mapping'] ?? $settings['openai_assistants'] ?? [];

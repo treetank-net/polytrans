@@ -4,7 +4,7 @@
 
 PolyTrans distinguishes between three types of provider capabilities:
 
-1. **`translation`** - Direct translation API (e.g., Google Translate)
+1. **`translation`** - Direct translation API (e.g., dedicated translation services)
 2. **`chat`** - Chat/completion API (all AI models, can be used for managed assistants)
 3. **`assistants`** - Dedicated Assistants API (e.g., OpenAI Assistants, Claude Projects, Gemini Tuned Models)
 
@@ -13,9 +13,6 @@ PolyTrans distinguishes between three types of provider capabilities:
 ### `translation`
 
 Providers with `translation` capability offer direct translation APIs that translate content without requiring AI models.
-
-**Examples:**
-- Google Translate - Public translation API
 
 **Characteristics:**
 - Fast, direct translation
@@ -78,13 +75,6 @@ Providers with `assistants` capability offer dedicated Assistants APIs that allo
 
 ## Provider Examples
 
-### Google Translate
-```php
-'capabilities' => ['translation']
-```
-- Direct translation only
-- Cannot be used for assistants
-
 ### DeepSeek
 ```php
 'capabilities' => ['chat']
@@ -112,25 +102,6 @@ Providers with `assistants` capability offer dedicated Assistants APIs that allo
 - Can be used for managed assistants
 
 ## Implementation Guidelines
-
-### For Providers with `translation` Only
-
-```php
-public function get_provider_manifest(array $settings)
-{
-    return [
-        'provider_id' => 'google',
-        'capabilities' => ['translation'],
-        'auth_type' => 'none',
-        // No chat_endpoint or assistants_endpoint needed
-    ];
-}
-
-public function load_assistants(array $settings): array
-{
-    return []; // No assistants available
-}
-```
 
 ### For Providers with `chat` Only
 

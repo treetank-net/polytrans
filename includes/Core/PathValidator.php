@@ -64,8 +64,8 @@ class PathValidator
     private static function validate_provider($assistant_id, $settings)
     {
         $provider_id = str_replace('provider_', '', $assistant_id);
-        $enabled_providers = $settings['enabled_translation_providers'] ?? ['google'];
-        
+        $enabled_providers = $settings['enabled_translation_providers'] ?? [];
+
         if (!in_array($provider_id, $enabled_providers)) {
             return [
                 'valid' => false,
@@ -138,7 +138,7 @@ class PathValidator
         
         // Check if assistant's provider is enabled and configured
         $assistant_provider = $assistant['provider'] ?? 'openai';
-        $enabled_providers = $settings['enabled_translation_providers'] ?? ['google'];
+        $enabled_providers = $settings['enabled_translation_providers'] ?? [];
         
         // Check if provider is enabled
         if (!in_array($assistant_provider, $enabled_providers)) {
@@ -201,8 +201,8 @@ class PathValidator
             ];
         }
         
-        $enabled_providers = $settings['enabled_translation_providers'] ?? ['google'];
-        
+        $enabled_providers = $settings['enabled_translation_providers'] ?? [];
+
         // Check if provider is enabled
         if (!in_array($provider_id, $enabled_providers)) {
             $registry = \PolyTrans_Provider_Registry::get_instance();

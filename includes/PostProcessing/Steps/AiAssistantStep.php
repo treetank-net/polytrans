@@ -385,7 +385,7 @@ class AiAssistantStep implements WorkflowStepInterface
      */
     private function get_available_chat_providers($settings)
     {
-        $enabled_providers = $settings['enabled_translation_providers'] ?? ['google'];
+        $enabled_providers = $settings['enabled_translation_providers'] ?? [];
         $registry = \PolyTrans_Provider_Registry::get_instance();
         $all_providers = $registry->get_providers();
         

@@ -277,11 +277,10 @@ class YourSettingsProvider implements SettingsProviderInterface
         return [
             'provider_id' => 'your_provider',
             'capabilities' => ['chat'], // Choose appropriate capabilities:
-            // - 'translation': Direct translation API (e.g., Google Translate)
+            // - 'translation': Direct translation API
             // - 'chat': Chat/completion API (all AI models, can be used for managed assistants)
             // - 'assistants': Dedicated Assistants API (e.g., OpenAI Assistants, Claude Projects)
             // Examples:
-            //   - Google: ['translation']
             //   - OpenAI: ['assistants', 'chat']
             //   - DeepSeek: ['chat'] (no Assistants API, but can be used for managed assistants)
             //   - Claude: ['assistants', 'chat']
@@ -661,7 +660,7 @@ Po zaimplementowaniu providera, sprawdź:
 
 **WAŻNE:** PolyTrans rozróżnia trzy typy capabilities:
 
-1. **`translation`** - Bezpośrednia translacja (np. Google Translate)
+1. **`translation`** - Bezpośrednia translacja
 2. **`chat`** - Chat/completion API (wszystkie modele AI, mogą być używane dla managed assistants)
 3. **`assistants`** - Dedykowane Assistants API (np. OpenAI Assistants, Claude Projects, Gemini Tuned Models)
 
@@ -669,7 +668,6 @@ Zobacz szczegółowy przewodnik: [`PROVIDER_CAPABILITIES.md`](PROVIDER_CAPABILIT
 
 ### Przykłady:
 
-- **Google**: `['translation']` - tylko bezpośrednia translacja
 - **OpenAI**: `['assistants', 'chat']` - ma Assistants API + może być używany dla managed assistants
 - **DeepSeek**: `['chat']` - tylko chat API, może być używany dla managed assistants (z system prompt)
 - **Claude**: `['assistants', 'chat']` - ma Projects API + może być używany dla managed assistants

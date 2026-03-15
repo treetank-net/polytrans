@@ -347,6 +347,10 @@ class TagTranslation
     {
         check_ajax_referer('polytrans_tag_translation', 'nonce');
 
+        if (!current_user_can('manage_options')) {
+            wp_die('Unauthorized', 403);
+        }
+
         $search = sanitize_text_field(wp_unslash($_POST['search'] ?? ''));
         // Use target_lang if available, fallback to lang for backward compatibility
         $lang = sanitize_text_field(wp_unslash($_POST['target_lang'] ?? $_POST['lang'] ?? ''));

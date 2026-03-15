@@ -4,7 +4,7 @@ This file contains instructions for Claude AI when working on the PolyTrans plug
 
 ## Project Overview
 
-PolyTrans is a WordPress plugin for AI-powered multilingual translation management. It supports multiple AI providers (OpenAI, Claude, Gemini, Google Translate) and features translation scheduling, workflow automation, and review processes.
+PolyTrans is a WordPress plugin for AI-powered multilingual translation management. It supports multiple AI providers (OpenAI, Claude, Gemini) and features translation scheduling, workflow automation, and review processes. Google Translate support is available behind the `POLYTRANS_ENABLE_GOOGLE` feature flag (default: false).
 
 ## Key Directories
 

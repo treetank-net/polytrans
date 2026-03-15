@@ -48,7 +48,7 @@ class AssistantManager
 		try {
 			$registry = ProviderRegistry::get_instance();
 			$settings = get_option('polytrans_settings', []);
-			$enabled_providers = $settings['enabled_translation_providers'] ?? ['google'];
+			$enabled_providers = $settings['enabled_translation_providers'] ?? [];
 			$all_providers = $registry->get_providers();
 			
 			foreach ($all_providers as $provider_id => $provider) {

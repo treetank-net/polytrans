@@ -89,19 +89,19 @@ class OpenAISettingsProvider implements SettingsProviderInterface
             ]
         ];
         $openai_model = $settings['openai_model'] ?? '';
+
+        // Add language data for JS via enqueued script
+        $lang_name_map = [];
+        foreach ($languages as $i => $lang) {
+            $lang_name_map[$lang] = $language_names[$i] ?? strtoupper($lang);
+        }
+        wp_add_inline_script(
+            'polytrans-settings',
+            'window.POLYTRANS_LANGS = ' . wp_json_encode(array_values($languages)) . ';' .
+            'window.POLYTRANS_LANG_NAMES = ' . wp_json_encode($lang_name_map) . ';',
+            'before'
+        );
 ?>
-        <script>
-            <?php // phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped -- wp_json_encode output is safe for inline JavaScript ?>
-            window.POLYTRANS_LANGS = <?php echo wp_json_encode(array_values($languages)); ?>;
-            window.POLYTRANS_LANG_NAMES = <?php
-                                            $lang_name_map = [];
-                                            foreach ($languages as $i => $lang) {
-                                                $lang_name_map[$lang] = $language_names[$i] ?? strtoupper($lang);
-                                            }
-                                            echo wp_json_encode($lang_name_map);
-                                            ?>;
-            <?php // phpcs:enable WordPress.Security.EscapeOutput.OutputNotEscaped ?>
-        </script>
         <div class="openai-config-section universal-provider-config-section" data-provider-id="openai">
             <h2><?php echo esc_html($this->get_tab_label()); ?></h2>
             <p><?php echo esc_html($this->get_tab_description()); ?></p>
@@ -146,19 +146,13 @@ class OpenAISettingsProvider implements SettingsProviderInterface
             </div>
         </div>
 
-        <style>
-            .language-pair-group h4 {
-                margin-top: 0;
-                margin-bottom: 0.5em;
-                color: #333;
-            }
-
-            .openai-assistant-input {
-                font-family: monospace;
-                font-size: 12px;
-            }
-        </style>
     <?php
+        // Add inline CSS via enqueued style
+        wp_add_inline_style(
+            'polytrans-settings',
+            '.language-pair-group h4 { margin-top: 0; margin-bottom: 0.5em; color: #333; } ' .
+            '.openai-assistant-input { font-family: monospace; font-size: 12px; }'
+        );
     }
 
     /**
@@ -833,14 +827,14 @@ class OpenAISettingsProvider implements SettingsProviderInterface
         $exclude_providers = isset($_POST['exclude_providers']) && sanitize_text_field(wp_unslash($_POST['exclude_providers'])) === 'true';
 
         // Get enabled providers (needed for filtering managed assistants and OpenAI assistants)
-        $enabled_providers = $settings['enabled_translation_providers'] ?? ['google'];
+        $enabled_providers = $settings['enabled_translation_providers'] ?? [];
         if (!is_array($enabled_providers)) {
-            $enabled_providers = ['google']; // Fallback to default
+            $enabled_providers = []; // Fallback to default
         }
 
         // Prepare grouped assistants/providers structure
         $grouped_assistants = [
-            'providers' => [],  // Translation providers (Google Translate, etc.) - only if not excluded
+            'providers' => [],  // Translation providers - only if not excluded
             'managed' => [],    // Managed Assistants (only if not excluded)
             'openai' => [],     // OpenAI API Assistants
             'claude' => [],     // Future: Claude Projects

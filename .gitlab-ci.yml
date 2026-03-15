@@ -72,11 +72,11 @@ build:
                 --exclude='docs/planning' \
                 --exclude='docs/development' \
                 --exclude='docs/testing' \
+                --exclude='docs/roadmap' \
                 --exclude='docs/examples' \
                 --exclude='examples' \
                 --exclude='.gitignore' \
                 --exclude='.gitattributes' \
-                --exclude='composer.json' \
                 --exclude='composer.lock' \
                 --exclude='phpunit.xml' \
                 --exclude='phpunit.xml.dist' \

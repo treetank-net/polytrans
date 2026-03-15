@@ -424,7 +424,7 @@ class BackgroundProcessor
 
         // Get plugin settings
         $settings = get_option('polytrans_settings', []);
-        $translation_provider = $settings['translation_provider'] ?? 'google';
+        $translation_provider = $settings['translation_provider'] ?? '';
         $transport_mode = $settings['translation_transport_mode'] ?? 'external';
 
         // Status and log keys

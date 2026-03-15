@@ -119,6 +119,11 @@ class TranslationHandler
         check_ajax_referer('polytrans_schedule_translation');
 
         $post_id = intval($_POST['post_id'] ?? 0);
+        if (!current_user_can('edit_post', $post_id)) {
+            wp_send_json_error('Insufficient permissions.');
+            return;
+        }
+
         $scope = sanitize_text_field(wp_unslash($_POST['scope'] ?? 'local'));
         $targets = array_map('sanitize_text_field', wp_unslash($_POST['targets'] ?? []));
         $source_lang = function_exists('pll_get_post_language') ? pll_get_post_language($post_id) : 'pl';
@@ -578,6 +583,11 @@ class TranslationHandler
         check_ajax_referer('polytrans_schedule_translation');
 
         $post_id = intval($_POST['post_id'] ?? 0);
+        if (!current_user_can('edit_post', $post_id)) {
+            wp_send_json_error('Insufficient permissions.');
+            return;
+        }
+
         $langs_key = '_polytrans_translation_langs';
         $scheduled_langs = get_post_meta($post_id, $langs_key, true);
         if (!is_array($scheduled_langs)) $scheduled_langs = [];
@@ -605,6 +615,11 @@ class TranslationHandler
         check_ajax_referer('polytrans_schedule_translation');
 
         $post_id = intval($_POST['post_id'] ?? 0);
+        if (!current_user_can('edit_post', $post_id)) {
+            wp_send_json_error('Insufficient permissions.');
+            return;
+        }
+
         // Use target_lang if available, fallback to lang for backward compatibility
         $lang = sanitize_text_field(wp_unslash($_POST['target_lang'] ?? $_POST['lang'] ?? ''));
         $langs_key = '_polytrans_translation_langs';
@@ -679,6 +694,11 @@ class TranslationHandler
         check_ajax_referer('polytrans_schedule_translation');
 
         $post_id = intval($_POST['post_id'] ?? 0);
+        if (!current_user_can('edit_post', $post_id)) {
+            wp_send_json_error('Insufficient permissions.');
+            return;
+        }
+
         // Use target_lang if available, fallback to lang for backward compatibility
         $lang = sanitize_text_field(wp_unslash($_POST['target_lang'] ?? $_POST['lang'] ?? ''));
 

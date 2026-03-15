@@ -113,7 +113,7 @@ interface SettingsProviderInterface
      * @param array $settings Current settings (for API keys, etc.)
      * @return array Manifest array with:
      *   - capabilities: array of strings - what this provider can do:
-     *     * 'translation' - direct translation API (e.g., Google Translate)
+     *     * 'translation' - direct translation API
      *     * 'chat' - chat/completion API (all AI models, can be used for managed assistants)
      *     * 'assistants' - dedicated Assistants API (e.g., OpenAI Assistants, Gemini Agents)
      *       * Note: Not all providers have Assistants API - Claude and DeepSeek only support managed assistants via chat API

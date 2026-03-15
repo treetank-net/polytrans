@@ -197,12 +197,12 @@ class TranslationSettings
         // Handle enabled translation providers (checkboxes)
         $settings['enabled_translation_providers'] = isset($_POST['enabled_translation_providers']) 
             ? array_map('sanitize_text_field', wp_unslash($_POST['enabled_translation_providers'])) 
-            : ['google']; // Default to Google if none selected
+            : []; // Default to empty if none selected
         
         // Keep backward compatibility: set translation_provider to first enabled provider
         $settings['translation_provider'] = !empty($settings['enabled_translation_providers']) 
-            ? $settings['enabled_translation_providers'][0] 
-            : 'google';
+            ? $settings['enabled_translation_providers'][0]
+            : '';
         $settings['translation_transport_mode'] = sanitize_text_field(wp_unslash($_POST['translation_transport_mode'] ?? 'external'));
         $settings['translation_endpoint'] = esc_url_raw(wp_unslash($_POST['translation_endpoint'] ?? ''));
         $settings['translation_receiver_endpoint'] = esc_url_raw(wp_unslash($_POST['translation_receiver_endpoint'] ?? ''));
@@ -328,8 +328,8 @@ class TranslationSettings
     private function output_page($settings)
     {
         $registry = \PolyTrans_Provider_Registry::get_instance();
-        $translation_provider = $settings['translation_provider'] ?? 'google';
-        $enabled_providers = $settings['enabled_translation_providers'] ?? ['google'];
+        $translation_provider = $settings['translation_provider'] ?? '';
+        $enabled_providers = $settings['enabled_translation_providers'] ?? [];
         $translation_endpoint = $settings['translation_endpoint'] ?? '';
         $translation_receiver_endpoint = $settings['translation_receiver_endpoint'] ?? '';
         $allowed_sources = $settings['allowed_sources'] ?? [];
@@ -412,13 +412,11 @@ class TranslationSettings
         ];
         
         // Add languages data for JS (used in path rules management)
-        add_action('admin_footer', function() use ($template_context) {
-            // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- JSON encoded data for JS
-            echo '<script type="text/javascript">';
-            // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-            echo 'window.polytransLanguages = ' . wp_json_encode(array_combine($template_context['langs'], $template_context['lang_names'])) . ';';
-            echo '</script>';
-        }, 999);
+        wp_add_inline_script(
+            'polytrans-settings',
+            'window.polytransLanguages = ' . wp_json_encode(array_combine($template_context['langs'], $template_context['lang_names'])) . ';',
+            'before'
+        );
         
         // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Twig templates handle escaping
         echo TemplateRenderer::render('admin/settings/page.twig', $template_context);

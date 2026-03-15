@@ -266,7 +266,7 @@ class AssistantsMenu
 
         // Get enabled providers to check if provider is disabled
         $settings = get_option('polytrans_settings', []);
-        $enabled_providers = $settings['enabled_translation_providers'] ?? ['google'];
+        $enabled_providers = $settings['enabled_translation_providers'] ?? [];
 
         // Map assistant data for display
         foreach ($assistants as &$assistant) {
@@ -342,7 +342,7 @@ class AssistantsMenu
         // Get available providers that support assistants
         $registry = \PolyTrans_Provider_Registry::get_instance();
         $settings = get_option('polytrans_settings', []);
-        $enabled_providers = $settings['enabled_translation_providers'] ?? ['google'];
+        $enabled_providers = $settings['enabled_translation_providers'] ?? [];
         $all_providers = $registry->get_providers();
 
         $available_assistant_providers = [];

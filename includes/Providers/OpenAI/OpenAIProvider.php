@@ -416,7 +416,7 @@ class OpenAIProvider implements TranslationProviderInterface
     }
 
     /**
-     * Translate using a translation provider (e.g., Google Translate)
+     * Translate using a translation provider
      *
      * @param array $content Content to translate
      * @param string $source_lang Source language code

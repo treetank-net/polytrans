@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.9.1] - 2026-03-15
+
+### Changed
+- Disabled Google Translate provider (unsupported public API, not suitable for production use)
+- Default translation provider changed to OpenAI
+- All inline `<script>` and `<style>` tags converted to `wp_add_inline_script()`/`wp_add_inline_style()`
+- Removed `load_plugin_textdomain()` calls (handled automatically by WordPress 4.6+)
+- `composer.json` now included in distribution ZIP
+
+### Fixed
+- Added `current_user_can()` permission checks to 5 AJAX handlers in TranslationHandler and TagTranslation
+- Escaped all output variables in WorkflowDebug.php and TranslationScheduler.php
+- Fixed `printf()` with HTML in WorkflowMetabox — now uses `wp_kses()` + `sprintf()`
+- Removed dead code registration for `ajax_get_chat_providers`
+
+### Removed
+- Google Translate provider from active providers and documentation
+- Roadmap docs from distribution ZIP
+
 ## [1.9.0] - 2026-03-04
 
 ### Changed

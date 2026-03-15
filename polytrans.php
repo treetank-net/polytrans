@@ -4,7 +4,7 @@
  * Plugin Name: PolyTrans
  * Plugin URI: https://gitlab.com/treetank/polytrans
  * Description: Advanced multilingual translation management system with AI-powered translation, scheduling, and review workflow
- * Version: 1.9.0
+ * Version: 1.9.1
  * Author: jmarianski
  * Text Domain: polytrans
  * Domain Path: /languages
@@ -20,7 +20,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('POLYTRANS_VERSION', '1.9.0');
+define('POLYTRANS_VERSION', '1.9.1');
 define('POLYTRANS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('POLYTRANS_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('POLYTRANS_PLUGIN_FILE', __FILE__);
@@ -124,7 +124,9 @@ add_action('init', 'polytrans_handle_background_request', 5);
  * These are registered via hook for consistency with external plugins
  */
 add_action('polytrans_register_providers', function($registry) {
-    $registry->register_provider(new \PolyTrans\Providers\Google\GoogleProvider());
+    if (defined('POLYTRANS_ENABLE_GOOGLE') && POLYTRANS_ENABLE_GOOGLE) {
+        $registry->register_provider(new \PolyTrans\Providers\Google\GoogleProvider());
+    }
     $registry->register_provider(new \PolyTrans\Providers\OpenAI\OpenAIProvider());
     $registry->register_provider(new \PolyTrans\Providers\Claude\ClaudeProvider());
     $registry->register_provider(new \PolyTrans\Providers\Gemini\GeminiProvider());
@@ -216,7 +218,7 @@ function polytrans_activate()
 {
     // Set default options
     $default_settings = [
-        'translation_provider' => 'google',
+        'translation_provider' => 'openai',
         'translation_transport_mode' => 'external',
         'translation_endpoint' => '',
         'translation_receiver_endpoint' => '',
@@ -312,16 +314,6 @@ function polytrans_create_tables()
 
     // Any additional tables can be created here
 }
-
-/**
- * Load plugin textdomain
- */
-function polytrans_load_textdomain()
-{
-    // phpcs:ignore PluginCheck.CodeAnalysis.DiscouragedFunctions.load_plugin_textdomainFound -- Required for i18n
-    load_plugin_textdomain('polytrans', false, dirname(plugin_basename(__FILE__)) . '/languages');
-}
-add_action('init', 'polytrans_load_textdomain');
 
 /**
  * Schedule cleanup tasks

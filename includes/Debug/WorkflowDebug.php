@@ -14,7 +14,6 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-// phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped -- Debug-only class, all output is admin-restricted static HTML
 class WorkflowDebug
 {
     /**
@@ -28,11 +27,11 @@ class WorkflowDebug
     {
         echo "<h2>PolyTrans Workflow Debug Report</h2>\n";
 
-        echo "<p><strong>Original Post ID:</strong> {$original_post_id}</p>\n";
+        echo "<p><strong>Original Post ID:</strong> " . esc_html($original_post_id) . "</p>\n";
 
-        echo "<p><strong>Translated Post ID:</strong> {$translated_post_id}</p>\n";
+        echo "<p><strong>Translated Post ID:</strong> " . esc_html($translated_post_id) . "</p>\n";
 
-        echo "<p><strong>Target Language:</strong> {$target_language}</p>\n";
+        echo "<p><strong>Target Language:</strong> " . esc_html($target_language) . "</p>\n";
 
         // Check if workflow manager exists
         if (!class_exists('\PolyTrans_Workflow_Manager')) {
@@ -85,7 +84,7 @@ class WorkflowDebug
     {
         $workflow_name = $workflow['name'] ?? 'Unknown';
 
-        echo "<h4>Workflow: {$workflow_name} (ID: {$workflow_id})</h4>\n";
+        echo "<h4>Workflow: " . esc_html($workflow_name) . " (ID: " . esc_html($workflow_id) . ")</h4>\n";
 
         // Check if enabled
         $enabled = isset($workflow['enabled']) && $workflow['enabled'];
@@ -100,7 +99,7 @@ class WorkflowDebug
         // Check target languages
         $target_languages = $workflow['target_languages'] ?? [];
 
-        echo "<p><strong>Target Languages:</strong> " . implode(', ', $target_languages) . "</p>\n";
+        echo "<p><strong>Target Languages:</strong> " . esc_html(implode(', ', $target_languages)) . "</p>\n";
 
         $language_match = empty($target_languages) || in_array($context['target_language'], $target_languages);
 
@@ -108,7 +107,7 @@ class WorkflowDebug
 
         if (!$language_match) {
     
-            echo "<div style='color: orange;'>Target language '{$context['target_language']}' is not in the workflow's target languages.</div>\n";
+            echo "<div style='color: orange;'>Target language '" . esc_html($context['target_language']) . "' is not in the workflow's target languages.</div>\n";
         }
 
         // Check triggers
@@ -137,7 +136,7 @@ class WorkflowDebug
         if (isset($triggers['conditions']) && !empty($triggers['conditions'])) {
             echo "<p><strong>Additional Conditions:</strong></p>\n";
             // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_print_r -- Debug output
-            echo "<pre>" . print_r($triggers['conditions'], true) . "</pre>\n";
+            echo "<pre>" . esc_html(print_r($triggers['conditions'], true)) . "</pre>\n";
 
             global $polytrans_workflow_manager;
             $reflection = new \ReflectionClass($polytrans_workflow_manager);
@@ -190,11 +189,11 @@ class WorkflowDebug
         $translated_post_id = get_post_meta($post_id, $post_id_key, true);
 
 
-        echo "<p><strong>Translation Status:</strong> " . ($status ?: 'Not set') . "</p>\n";
+        echo "<p><strong>Translation Status:</strong> " . esc_html($status ?: 'Not set') . "</p>\n";
 
-        echo "<p><strong>Completion Time:</strong> " . ($completion_time ? gmdate('Y-m-d H:i:s', $completion_time) : 'Not set') . "</p>\n";
+        echo "<p><strong>Completion Time:</strong> " . esc_html($completion_time ? gmdate('Y-m-d H:i:s', $completion_time) : 'Not set') . "</p>\n";
 
-        echo "<p><strong>Translated Post ID:</strong> " . ($translated_post_id ?: 'Not set') . "</p>\n";
+        echo "<p><strong>Translated Post ID:</strong> " . esc_html($translated_post_id ?: 'Not set') . "</p>\n";
 
         if ($status !== 'completed') {
             echo "<div style='color: orange;'><strong>WARNING:</strong> Translation status is not 'completed'. This may indicate the translation process hasn't finished properly.</div>\n";
@@ -215,7 +214,7 @@ class WorkflowDebug
             $callbacks = $wp_filter['polytrans_translation_completed']->callbacks;
             echo "<p><strong>polytrans_translation_completed hook:</strong> ✅ Registered</p>\n";
     
-            echo "<p><strong>Callbacks:</strong> " . count($callbacks) . "</p>\n";
+            echo "<p><strong>Callbacks:</strong> " . esc_html(count($callbacks)) . "</p>\n";
 
             foreach ($callbacks as $priority => $functions) {
                 echo "<ul>";
@@ -227,7 +226,7 @@ class WorkflowDebug
                         $callback_name = $callback;
                     }
             
-                    echo "<li>Priority {$priority}: {$callback_name}</li>\n";
+                    echo "<li>Priority " . esc_html($priority) . ": " . esc_html($callback_name) . "</li>\n";
                 }
                 echo "</ul>";
             }

@@ -15,13 +15,7 @@
 
 ## Quick Setup
 
-### With Google Translate (Simple)
-1. **Settings → Translation Settings**
-2. Provider: Select "Google Translate"
-3. Save Changes
-4. Done!
-
-### With OpenAI (Better Quality)
+### With OpenAI (Recommended)
 1. Get API key from [platform.openai.com](https://platform.openai.com/)
 2. **Settings → Translation Settings**
 3. Provider: Select "OpenAI"
