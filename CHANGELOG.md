@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [1.9.2] - 2026-03-15
+## [1.9.4] - 2026-03-15
 
 ### Changed
 - Disabled Google Translate provider (unsupported public API, not suitable for production use)
