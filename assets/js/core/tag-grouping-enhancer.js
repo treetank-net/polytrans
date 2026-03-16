@@ -4,8 +4,8 @@
  * Enhances the WordPress tag autocomplete dropdown in the post editor
  * to group suggestions into PolyTrans-approved tags and other tags.
  *
- * Does NOT replace the autocomplete widget — only overrides the rendering
- * (_renderMenu / _renderItem) on the existing jQuery UI Autocomplete instance.
+ * Replaces the autocomplete source with a custom AJAX endpoint that
+ * returns pre-grouped results (approved first, then others).
  */
 (function ($) {
     'use strict';
@@ -14,7 +14,8 @@
         return;
     }
 
-    var approvedTags = (window.polyTransTagGrouping.approvedTags || []).map(function (t) {
+    var config = window.polyTransTagGrouping;
+    var approvedTags = (config.approvedTags || []).map(function (t) {
         return t.toLowerCase();
     });
 
@@ -22,7 +23,7 @@
         return;
     }
 
-    var i18n = window.polyTransTagGrouping.i18n || {};
+    var i18n = config.i18n || {};
     var labelApproved = i18n.approved || 'PolyTrans';
     var labelOther = i18n.other || 'Other';
 
@@ -31,8 +32,53 @@
     }
 
     /**
+     * Custom AJAX source that queries our endpoint with double-query logic.
+     */
+    function customSource(request, response) {
+        var term = request.term;
+        if (!term || term.length < 1) {
+            response([]);
+            return;
+        }
+
+        $.ajax({
+            url: config.ajaxUrl,
+            type: 'POST',
+            dataType: 'json',
+            data: {
+                action: 'polytrans_suggest_tags',
+                nonce: config.nonce,
+                q: term,
+                lang: config.lang
+            },
+            success: function (res) {
+                if (!res.success) {
+                    response([]);
+                    return;
+                }
+                var items = [];
+                var data = res.data;
+
+                // Approved tags first
+                $.each(data.approved || [], function (i, name) {
+                    items.push({ label: name, value: name, _group: 'approved' });
+                });
+                // Then others
+                $.each(data.other || [], function (i, name) {
+                    items.push({ label: name, value: name, _group: 'other' });
+                });
+
+                response(items);
+            },
+            error: function () {
+                response([]);
+            }
+        });
+    }
+
+    /**
      * Wait for the autocomplete instance to be initialized on tag inputs,
-     * then override its rendering methods.
+     * then override its source and rendering methods.
      */
     function enhanceTagInput(input) {
         var $input = $(input);
@@ -43,6 +89,10 @@
             return false;
         }
 
+        // Replace source with our custom AJAX endpoint
+        instance.option('source', customSource);
+        instance.option('minLength', 1);
+
         // Override _renderMenu to inject group headers
         instance._renderMenu = function (ul, items) {
             var self = this;
@@ -50,7 +100,7 @@
             var other = [];
 
             $.each(items, function (i, item) {
-                if (isApproved(item.name || item.label || item.value)) {
+                if (item._group === 'approved') {
                     approved.push(item);
                 } else {
                     other.push(item);
@@ -58,7 +108,6 @@
             });
 
             if (approved.length && other.length) {
-                // Both groups — render with headers
                 ul.append('<li class="polytrans-tag-group-header polytrans-tag-group-approved">' + $('<span>').text(labelApproved).html() + '</li>');
                 $.each(approved, function (i, item) {
                     self._renderItemData(ul, item);
@@ -79,11 +128,11 @@
 
         // Override _renderItem to add visual indicator for approved tags
         instance._renderItem = function (ul, item) {
-            var tagName = item.name || item.label || item.value;
+            var tagName = item.label || item.value;
             var $li = $('<li role="option">')
                 .text(tagName);
 
-            if (isApproved(tagName)) {
+            if (item._group === 'approved') {
                 $li.addClass('polytrans-tag-approved');
             }
 

@@ -35,6 +35,7 @@ class TagTranslation
     {
         add_action('wp_ajax_polytrans_save_tag_translation', [$this, 'ajax_save_tag_translation']);
         add_action('wp_ajax_polytrans_search_tags', [$this, 'ajax_search_tags']);
+        add_action('wp_ajax_polytrans_suggest_tags', [$this, 'ajax_suggest_tags']);
         add_action('wp_ajax_polytrans_export_tag_csv', [$this, 'ajax_export_tag_csv']);
         add_action('wp_ajax_polytrans_import_tag_csv', [$this, 'ajax_import_tag_csv']);
     }
@@ -133,6 +134,9 @@ class TagTranslation
 
         wp_localize_script('polytrans-tag-grouping', 'polyTransTagGrouping', [
             'approvedTags' => $approved_tags,
+            'ajaxUrl' => admin_url('admin-ajax.php'),
+            'nonce' => wp_create_nonce('polytrans_suggest_tags'),
+            'lang' => $post_lang,
             'i18n' => [
                 'approved' => esc_html__('PolyTrans', 'polytrans'),
                 'other' => esc_html__('Other', 'polytrans'),
@@ -337,6 +341,7 @@ class TagTranslation
             }
         }
 
+        self::invalidate_approved_tags_cache();
         wp_send_json_success(['message' => __('Translation saved successfully.', 'polytrans')]);
     }
 
@@ -550,6 +555,116 @@ class TagTranslation
 
         /* translators: %d: number of imported translations */
         wp_send_json_success(['message' => sprintf(__('%d tag translations imported successfully.', 'polytrans'), $imported_count)]);
+    }
+
+    /**
+     * AJAX handler for tag suggestions in the post editor.
+     * Double query: approved (cached) tags first, then other tags to fill limit.
+     */
+    public function ajax_suggest_tags()
+    {
+        check_ajax_referer('polytrans_suggest_tags', 'nonce');
+
+        if (!current_user_can('edit_posts')) {
+            wp_send_json_error('Unauthorized');
+        }
+
+        $search = sanitize_text_field(wp_unslash($_POST['q'] ?? ''));
+        $lang = sanitize_text_field(wp_unslash($_POST['lang'] ?? ''));
+        $limit = 20;
+
+        if (strlen($search) < 1) {
+            wp_send_json_success([]);
+        }
+
+        $search_lower = mb_strtolower($search);
+
+        // 1. Get approved tags from cache
+        $approved_names = $this->get_cached_approved_tags($lang);
+        $approved_matches = [];
+        foreach ($approved_names as $name) {
+            if (mb_strpos(mb_strtolower($name), $search_lower) !== false) {
+                $approved_matches[] = $name;
+            }
+        }
+
+        // Sort: prefix matches first, then substring matches
+        usort($approved_matches, function ($a, $b) use ($search_lower) {
+            $a_prefix = mb_strpos(mb_strtolower($a), $search_lower) === 0;
+            $b_prefix = mb_strpos(mb_strtolower($b), $search_lower) === 0;
+            if ($a_prefix !== $b_prefix) {
+                return $b_prefix ? 1 : -1;
+            }
+            return strcasecmp($a, $b);
+        });
+
+        $remaining = $limit - count($approved_matches);
+        $other_matches = [];
+
+        if ($remaining > 0) {
+            // 2. Query WP for other tags
+            $terms = get_terms([
+                'taxonomy'   => 'post_tag',
+                'hide_empty' => false,
+                'search'     => $search,
+                'number'     => $limit + count($approved_matches), // fetch extra to compensate for dedup
+            ]);
+
+            $approved_lower = array_map('mb_strtolower', $approved_names);
+            foreach ($terms as $term) {
+                if (count($other_matches) >= $remaining) {
+                    break;
+                }
+                // Skip if already in approved list
+                if (in_array(mb_strtolower($term->name), $approved_lower, true)) {
+                    continue;
+                }
+                $other_matches[] = $term->name;
+            }
+        }
+
+        wp_send_json_success([
+            'approved' => array_values($approved_matches),
+            'other'    => array_values($other_matches),
+        ]);
+    }
+
+    /**
+     * Get approved tag names for a language, cached in transient.
+     */
+    private function get_cached_approved_tags($lang)
+    {
+        $cache_key = 'polytrans_approved_tags_' . $lang;
+        $cached = get_transient($cache_key);
+        if ($cached !== false) {
+            return $cached;
+        }
+
+        $settings = get_option('polytrans_settings', []);
+        $base_tags_raw = $settings['base_tags'] ?? '';
+        $source_language = $settings['source_language'] ?? 'pl';
+
+        $approved = $this->get_approved_tags_for_language($base_tags_raw, $source_language, $lang);
+
+        // Cache for 1 hour — invalidated on tag translation save
+        set_transient($cache_key, $approved, HOUR_IN_SECONDS);
+
+        return $approved;
+    }
+
+    /**
+     * Invalidate approved tags cache for all languages.
+     */
+    public static function invalidate_approved_tags_cache()
+    {
+        if (function_exists('pll_languages_list')) {
+            $langs = pll_languages_list(['fields' => 'slug']);
+        } else {
+            $langs = ['pl', 'en', 'it'];
+        }
+        foreach ($langs as $lang) {
+            delete_transient('polytrans_approved_tags_' . $lang);
+        }
     }
 
     private function get_term_by_name_and_lang(string $tag_name, $lang = 'pl')
