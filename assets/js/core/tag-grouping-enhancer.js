@@ -31,11 +31,23 @@
         return approvedTags.indexOf(tagName.toLowerCase().trim()) !== -1;
     }
 
+    var tempID = 1000;
+
+    function split(val) {
+        var sep = (wp && wp.i18n && wp.i18n._x) ? wp.i18n._x(',', 'tag delimiter') : ',';
+        return val.split(new RegExp(sep + '\\s*'));
+    }
+
+    function getLast(term) {
+        return split(term).pop();
+    }
+
     /**
      * Custom AJAX source that queries our endpoint with double-query logic.
+     * Mirrors WP tags-suggest.js source pattern (getLast for comma-separated input).
      */
     function customSource(request, response) {
-        var term = request.term;
+        var term = getLast(request.term);
         if (!term || term.length < 1) {
             response([]);
             return;
@@ -59,13 +71,13 @@
                 var items = [];
                 var data = res.data;
 
-                // Approved tags first
+                // Approved tags first — use 'name' field for WP tags-suggest compat
                 $.each(data.approved || [], function (i, name) {
-                    items.push({ label: name, value: name, _group: 'approved' });
+                    items.push({ id: ++tempID, name: name, _group: 'approved' });
                 });
                 // Then others
                 $.each(data.other || [], function (i, name) {
-                    items.push({ label: name, value: name, _group: 'other' });
+                    items.push({ id: ++tempID, name: name, _group: 'other' });
                 });
 
                 response(items);
@@ -128,9 +140,8 @@
 
         // Override _renderItem to add visual indicator for approved tags
         instance._renderItem = function (ul, item) {
-            var tagName = item.label || item.value;
-            var $li = $('<li role="option">')
-                .text(tagName);
+            var $li = $('<li role="option" id="wp-tags-autocomplete-' + item.id + '">')
+                .text(item.name);
 
             if (item._group === 'approved') {
                 $li.addClass('polytrans-tag-approved');
