@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.9.5] - 2026-03-16
+
+### Added
+- Prioritized tag autocomplete: PolyTrans tags appear first with cached double-query
+- Custom AJAX endpoint `polytrans_suggest_tags` with transient cache (1h TTL)
+- Prefix matches ranked above substring matches in tag suggestions
+
+### Fixed
+- Tag autocomplete inserting comma instead of tag name (WP tags-suggest.js compatibility)
+
 ## [1.9.4] - 2026-03-15
 
 ### Changed
