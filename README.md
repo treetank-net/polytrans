@@ -55,7 +55,7 @@ Post content (title, body, excerpt, SEO metadata) is sent for translation.
 
 **Anthropic Claude API**
 Used when the user selects Claude as their translation provider and provides an API key.
-Post content is sent for translation.
+Post content (title, body, excerpt, SEO metadata) is sent for translation.
 
 * Service: [https://www.anthropic.com](https://www.anthropic.com)
 * Terms of Use: [https://www.anthropic.com/legal/consumer-terms](https://www.anthropic.com/legal/consumer-terms)
@@ -63,11 +63,14 @@ Post content is sent for translation.
 
 **Google Gemini API**
 Used when the user selects Gemini as their translation provider and provides an API key.
-Post content is sent for translation.
+Post content (title, body, excerpt, SEO metadata) is sent for translation.
 
 * Service: [https://ai.google.dev](https://ai.google.dev)
 * Terms of Service: [https://ai.google.dev/gemini-api/terms](https://ai.google.dev/gemini-api/terms)
 * Privacy Policy: [https://policies.google.com/privacy](https://policies.google.com/privacy)
+
+**User-Configured Translation Endpoints (Multi-Server Mode)**
+When multi-server mode is enabled by the administrator, post content (title, body, excerpt, metadata, featured image) is sent to user-specified WordPress REST API endpoints for distributed translation processing. The destination URLs are entirely controlled by the site administrator. No data is sent to any third-party service — communication occurs only between WordPress installations configured by the user.
 
 ## Installation
 

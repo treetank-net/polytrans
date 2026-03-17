@@ -21,6 +21,7 @@ Dockerfile export-ignore
 *.sh export-ignore
 CLAUDE.md export-ignore
 QUICK_START.md export-ignore
+REVIEW-ISSUES.md export-ignore
 TODO-CRITICAL.md export-ignore
 test-migration.php export-ignore
 test-migration-status.php export-ignore
@@ -31,3 +32,4 @@ includes/Menu/TagTranslation_temp.php export-ignore
 includes/process-task.php export-ignore
 /docs/examples export-ignore
 /includes/Debug export-ignore
+/includes/Providers/Google export-ignore

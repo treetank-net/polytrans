@@ -88,6 +88,7 @@ build:
                 --exclude='*.sh' \
                 --exclude='CLAUDE.md' \
                 --exclude='QUICK_START.md' \
+                --exclude='REVIEW-ISSUES.md' \
                 --exclude='TODO-CRITICAL.md' \
                 --exclude='test-migration.php' \
                 --exclude='test-migration-status.php' \
@@ -97,6 +98,7 @@ build:
                 --exclude='includes/Menu/TagTranslation_temp.php' \
                 --exclude='includes/process-task.php' \
                 --exclude='includes/Debug' \
+                --exclude='includes/Providers/Google' \
                 . release/polytrans/
 
     # Create ZIP archives
