@@ -220,6 +220,8 @@ class WorkflowOutputProcessor
 
             case 'update_post_date':
                 return $this->update_post_date($value, $context);
+            case 'update_post_slug':
+                return $this->update_post_slug($value, $context);
 
             default:
                 return [
@@ -578,6 +580,46 @@ class WorkflowOutputProcessor
     }
 
     /**
+     * Update post slug (post_name)
+     */
+    private function update_post_slug($value, $context)
+    {
+        $post_id = $context['translated_post_id'] ?? $context['original_post_id'] ?? null;
+        if (!$post_id) {
+            return [
+                'success' => false,
+                'error' => 'No post ID found in context'
+            ];
+        }
+
+        $slug = sanitize_title($value);
+
+        $result = wp_update_post([
+            'ID' => $post_id,
+            'post_name' => $slug
+        ]);
+
+        if (is_wp_error($result)) {
+            return [
+                'success' => false,
+                'error' => 'Failed to update post slug: ' . $result->get_error_message()
+            ];
+        }
+
+        \PolyTrans\Core\LogsManager::log("Updated post slug to '{$slug}' for post ID {$post_id}", 'info', [
+            'source' => 'workflow_output_processor',
+            'post_id' => $post_id,
+            'new_slug' => $slug,
+            'raw_ai_value' => $value
+        ]);
+
+        return [
+            'success' => true,
+            'message' => sprintf('Updated post slug to "%s" for post ID %d', $slug, $post_id)
+        ];
+    }
+
+    /**
      * Update post date (for scheduling)
      */
     private function update_post_date($value, $context)
@@ -804,6 +846,13 @@ class WorkflowOutputProcessor
                 $new_value = $this->parse_post_date($new_value) ?? $new_value;
                 break;
 
+            case 'update_post_slug':
+                $post_id = $context['translated_post_id'] ?? $context['original_post_id'] ?? null;
+                $current_value = $post_id ? get_post_field('post_name', $post_id) : '';
+                $target_description = 'Post Slug';
+                $new_value = sanitize_title($new_value);
+                break;
+
             case 'update_post_meta':
                 $meta_key = $change['original_action']['target'] ?? 'unknown';
                 $current_value = $context['meta'][$meta_key] ?? '';
@@ -910,6 +959,17 @@ class WorkflowOutputProcessor
                 if (isset($updated_context['translated'])) {
                     $updated_context['translated']['date'] = $change['value'];
                     $updated_context['translated']['date_gmt'] = get_gmt_from_date($change['value']);
+                }
+                break;
+
+            case 'update_post_slug':
+                $slug = sanitize_title($change['value']);
+                $updated_context['post_name'] = $slug;
+                if (isset($updated_context['translated_post'])) {
+                    $updated_context['translated_post']['slug'] = $slug;
+                }
+                if (isset($updated_context['translated'])) {
+                    $updated_context['translated']['slug'] = $slug;
                 }
                 break;
 

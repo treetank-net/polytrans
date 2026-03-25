@@ -49,6 +49,11 @@ class PostCreator
             'post_author'  => $post_author,
         ];
 
+        // Use slug from translated data if provided (e.g. transliterated slug from AI)
+        if (!empty($translated['slug'])) {
+            $postarr['post_name'] = sanitize_title($translated['slug']);
+        }
+
         $new_post_id = wp_insert_post($postarr);
 
         if (is_wp_error($new_post_id)) {

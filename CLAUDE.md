@@ -132,6 +132,49 @@ grep -E "Version:|POLYTRANS_VERSION" polytrans.php
 - **Workflows**: Post-processing workflows in `includes/PostProcessing/`
 - **Settings**: Stored in `polytrans_settings` WordPress option
 
+## Translation Flow
+
+The translation execution flow has several key stages:
+
+1. **Translation Request** → REST endpoint `/polytrans/v1/translation/translate`
+2. **Translation Execution** → `TranslationPathExecutor` dispatches to provider or managed assistant
+   - Managed assistants (`managed_XXX`) → `AssistantExecutor` → AI returns JSON
+   - Provider assistants (`asst_XXX`, `project_XXX`) → provider-specific client
+   - Standard providers → `provider->translate()`
+3. **Post Creation** → `TranslationCoordinator` → `PostCreator::create_post()`
+   - Uses `$translated['title']`, `$translated['content']`, `$translated['excerpt']`
+   - Optionally uses `$translated['slug']` for transliterated slugs
+   - WordPress generates slug from title if none provided
+4. **Post Setup** → metadata, taxonomies (Polylang-based), language assignment, featured image
+5. **Post-Processing Workflows** → triggered via `polytrans_translation_completed` action
+   - `WorkflowManager` → `WorkflowExecutor` → step-by-step execution
+   - Each step can have `output_actions` (configured in UI) processed by `WorkflowOutputProcessor`
+   - `ManagedAssistantStep` generates `auto_actions` from schema mappings (informational)
+
+### Key Files in Translation Flow
+
+- `includes/Core/TranslationPathExecutor.php` - Routes to provider/assistant
+- `includes/Receiver/TranslationCoordinator.php` - Orchestrates post creation
+- `includes/Receiver/Managers/PostCreator.php` - Creates WP post
+- `includes/Receiver/Managers/TaxonomyManager.php` - Assigns categories/tags via Polylang term translations
+- `includes/PostProcessing/WorkflowExecutor.php` - Runs workflow steps
+- `includes/PostProcessing/WorkflowOutputProcessor.php` - Applies step outputs to posts
+- `includes/PostProcessing/Steps/ManagedAssistantStep.php` - AI assistant workflow step
+
+### Slug Handling
+
+- `PostCreator` accepts optional `slug` field from translated data for explicit slug control
+- If no slug provided, WordPress auto-generates from title (problematic for Cyrillic/non-Latin scripts)
+- `WorkflowOutputProcessor` supports `update_post_slug` action for workflow-based slug updates
+- Schema mapping target `"post.slug"` is supported
+
+### Taxonomy Assignment
+
+- Categories/tags are assigned via **Polylang term translation relationships**, NOT name matching
+- Uses `pll_get_term_translations($term_id)` to find translated terms
+- Falls back to original term ID if Polylang unavailable
+- Missing translations are logged but not assigned
+
 ## Important Files
 
 - `polytrans.php` - Main plugin file, version definition

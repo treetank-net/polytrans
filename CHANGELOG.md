@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.9.6] - 2026-03-25
+
+### Added
+- Post slug support in translation flow: `PostCreator` accepts optional `slug` field from translated data for explicit slug control (fixes Cyrillic/non-Latin URL encoding)
+- `update_post_slug` action in `WorkflowOutputProcessor` for workflow-based slug updates
+- Schema mapping target `post.slug` supported in managed assistant response schemas
+
+### Fixed
+- External services documentation completeness, excluded Google provider from ZIP
+
 ## [1.9.5] - 2026-03-16
 
 ### Added
