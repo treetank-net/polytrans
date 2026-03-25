@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.9.8] - 2026-03-25
+
+### Fixed
+- Post slug not being set for pending posts — WordPress clears post_name during wp_insert_post/wp_update_post for non-published statuses; now uses direct DB update with cache flush
+
 ## [1.9.7] - 2026-03-25
 
 ### Changed

@@ -49,16 +49,24 @@ class PostCreator
             'post_author'  => $post_author,
         ];
 
-        // Use slug from translated data if provided (e.g. transliterated slug from AI)
-        if (!empty($translated['slug'])) {
-            $postarr['post_name'] = sanitize_title($translated['slug']);
-        }
-
         $new_post_id = wp_insert_post($postarr);
 
         if (is_wp_error($new_post_id)) {
-            \PolyTrans_Logs_Manager::log('[polytrans] Failed to create translated post: ' . $new_post_id->get_error_message(), "error");
+            \PolyTrans\Core\LogsManager::log('[polytrans] Failed to create translated post: ' . $new_post_id->get_error_message(), "error");
             return $new_post_id;
+        }
+
+        // Set slug after insert — WP clears post_name for pending posts in wp_insert_post/wp_update_post
+        if (!empty($translated['slug'])) {
+            global $wpdb;
+            $sanitized_slug = sanitize_title($translated['slug']);
+            $wpdb->update($wpdb->posts, ['post_name' => $sanitized_slug], ['ID' => $new_post_id]);
+            clean_post_cache($new_post_id);
+            \PolyTrans\Core\LogsManager::log("PostCreator: Set slug to '{$sanitized_slug}' for post {$new_post_id}", "info", [
+                'source' => 'translation_post_creator',
+                'original_slug' => $translated['slug'],
+                'sanitized_slug' => $sanitized_slug
+            ]);
         }
 
         // Log the author attribution for audit purposes
