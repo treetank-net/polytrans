@@ -80,6 +80,17 @@ class TranslationCoordinator
             // For ephemeral posts, skip relationship setup (receiver will handle final relationships)
             $this->setup_translated_post($new_post_id, $original_post_id, $source_language, $target_language, $translated, $is_ephemeral);
 
+            // Set slug AFTER all setup — wp_update_post calls in setup_translated_post clear post_name
+            if (!empty($translated['slug'])) {
+                global $wpdb;
+                $sanitized_slug = sanitize_title($translated['slug']);
+                $wpdb->update($wpdb->posts, ['post_name' => $sanitized_slug], ['ID' => $new_post_id]);
+                clean_post_cache($new_post_id);
+                LogsManager::log("Set translated slug to '{$sanitized_slug}' for post {$new_post_id}", "info", [
+                    'source' => 'translation_coordinator',
+                ]);
+            }
+
             $final_status = 'completed';
 
             // Skip notifications and status updates for ephemeral posts

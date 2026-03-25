@@ -433,12 +433,7 @@ class TranslationHandler
             'target_language' => $target_lang,
             'original_post_id' => $post_id,
             'target_endpoint' => $translation_receiver_endpoint,
-            'toTranslate' => [
-                'title' => $post->post_title,
-                'content' => $post->post_content,
-                'excerpt' => $post->post_excerpt,
-                'meta' => json_decode(wp_json_encode($meta), true)
-            ],
+            'toTranslate' => \PolyTrans\Core\TranslationPayloadBuilder::build($post, json_decode(wp_json_encode($meta), true), $settings),
             'context_articles' => $context_articles,
             // Receiver credentials - translator will use these when sending to receiver
             'receiver_credentials' => [

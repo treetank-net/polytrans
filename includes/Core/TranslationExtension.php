@@ -2,6 +2,8 @@
 
 namespace PolyTrans\Core;
 
+use WP_REST_Response;
+
 /**
  * Translation Extension Class
  * Handles incoming translation requests from other servers and sends back translated content

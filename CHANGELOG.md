@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.9.9] - 2026-03-25
+
+### Added
+- `TranslationPayloadBuilder` — single source of truth for translation payload data (title, slug, content, excerpt, meta, featured_image)
+- `polytrans_translation_payload` filter to customize payload before sending to providers
+- Post slug included in external translation requests (was missing from TranslationHandler)
+- Featured image data included in external translation requests (was missing from TranslationHandler)
+- `use WP_REST_Response` import in TranslationExtension (fixes namespace error)
+
+### Fixed
+- Slug cleared by wp_update_post during post setup (Polylang language assignment, status changes) — slug now set at end of translation flow in TranslationCoordinator
+- TranslationHandler and BackgroundProcessor now use consistent payload structure
+
 ## [1.9.8] - 2026-03-25
 
 ### Fixed

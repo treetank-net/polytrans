@@ -504,31 +504,7 @@ class BackgroundProcessor
                 $meta = TranslationHandler::filter_meta_for_translation($all_meta);
             }
 
-            // Get featured image metadata for translation
-            $featured_image_data = null;
-            if (has_post_thumbnail($post_id)) {
-                $thumbnail_id = get_post_thumbnail_id($post_id);
-                $attachment = get_post($thumbnail_id);
-
-                if ($attachment) {
-                    $featured_image_data = [
-                        'id' => $thumbnail_id,
-                        'alt' => get_post_meta($thumbnail_id, '_wp_attachment_image_alt', true),
-                        'title' => $attachment->post_title,
-                        'caption' => $attachment->post_excerpt,
-                        'description' => $attachment->post_content,
-                        'filename' => basename(get_attached_file($thumbnail_id))
-                    ];
-                }
-            }
-
-            $content_to_translate = [
-                'title' => $post->post_title,
-                'content' => $post->post_content,
-                'excerpt' => $post->post_excerpt,
-                'meta' => $meta,
-                'featured_image' => $featured_image_data
-            ];
+            $content_to_translate = TranslationPayloadBuilder::build($post, $meta, $settings);
             
             if ($has_paths) {
                 // Use TranslationPathExecutor to respect path rules and provider/assistant mappings

@@ -56,19 +56,6 @@ class PostCreator
             return $new_post_id;
         }
 
-        // Set slug after insert — WP clears post_name for pending posts in wp_insert_post/wp_update_post
-        if (!empty($translated['slug'])) {
-            global $wpdb;
-            $sanitized_slug = sanitize_title($translated['slug']);
-            $wpdb->update($wpdb->posts, ['post_name' => $sanitized_slug], ['ID' => $new_post_id]);
-            clean_post_cache($new_post_id);
-            \PolyTrans\Core\LogsManager::log("PostCreator: Set slug to '{$sanitized_slug}' for post {$new_post_id}", "info", [
-                'source' => 'translation_post_creator',
-                'original_slug' => $translated['slug'],
-                'sanitized_slug' => $sanitized_slug
-            ]);
-        }
-
         // Log the author attribution for audit purposes
         $original_author = get_user_by('id', $post_author);
         $author_name = $original_author ? $original_author->display_name : 'Unknown';
