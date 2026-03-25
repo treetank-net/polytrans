@@ -4,8 +4,9 @@
  * Plugin Name: PolyTrans
  * Plugin URI: https://gitlab.com/treetank/polytrans
  * Description: Advanced multilingual translation management system with AI-powered translation, scheduling, and review workflow
- * Version: 1.9.6
- * Author: jmarianski
+ * Version: 1.9.7
+ * Author: treetank
+ * Author URI: https://gitlab.com/treetank
  * Text Domain: polytrans
  * Domain Path: /languages
  * Requires at least: 5.0
@@ -20,7 +21,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('POLYTRANS_VERSION', '1.9.6');
+define('POLYTRANS_VERSION', '1.9.7');
 define('POLYTRANS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('POLYTRANS_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('POLYTRANS_PLUGIN_FILE', __FILE__);
