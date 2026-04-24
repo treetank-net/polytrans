@@ -6,6 +6,10 @@
 // Composer autoloader
 require_once dirname(__DIR__, 2) . '/vendor/autoload.php';
 
+if (!defined('ABSPATH')) {
+    define('ABSPATH', dirname(__DIR__, 2) . '/');
+}
+
 // Mock WordPress functions for unit tests
 if (!function_exists('__')) {
     function __($text, $domain = 'default') {

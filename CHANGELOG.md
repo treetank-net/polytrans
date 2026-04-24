@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.10.1] - 2026-04-24
+
+### Fixed
+- Preserve uppercase post meta keys in post-processing workflow output actions so values saved as `TRANSLATION_REVIEW` remain available via `{{ translated.meta.TRANSLATION_REVIEW }}` in subsequent workflow steps.
+
 ## [1.10.0] - 2026-03-25
 
 ### Added

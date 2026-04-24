@@ -415,7 +415,14 @@ class WorkflowOutputProcessor
             ];
         }
 
-        $meta_key = sanitize_key($meta_key);
+        $meta_key = $this->sanitize_meta_key_preserving_case($meta_key);
+        if (empty($meta_key)) {
+            return [
+                'success' => false,
+                'error' => 'Meta key is invalid for update_post_meta action'
+            ];
+        }
+
         $result = update_post_meta($post_id, $meta_key, $value);
 
         return [
@@ -785,7 +792,7 @@ class WorkflowOutputProcessor
 
             // Add specific parameters for certain actions
             if ($action['type'] === 'update_post_meta' && isset($action['target'])) {
-                $change['meta_key'] = $action['target'];
+                $change['meta_key'] = $this->sanitize_meta_key_preserving_case($action['target']);
             }
 
             if ($action['type'] === 'save_to_option' && isset($action['target'])) {
@@ -1153,6 +1160,17 @@ class WorkflowOutputProcessor
         $context['post_id'] = $post_id;
 
         return $context;
+    }
+
+    /**
+     * Sanitize a post meta key without changing case.
+     *
+     * WordPress' sanitize_key() lowercases keys, which breaks workflow variables like
+     * translated.meta.TRANSLATION_REVIEW after a production database refresh.
+     */
+    private function sanitize_meta_key_preserving_case($meta_key)
+    {
+        return preg_replace('/[^A-Za-z0-9_\\-]/', '', (string) $meta_key);
     }
 
     /**
