@@ -823,6 +823,11 @@ class LogsManager
     public static function logs_table_exists()
     {
         global $wpdb;
+
+        if (!is_object($wpdb) || !method_exists($wpdb, 'get_var') || !method_exists($wpdb, 'prepare')) {
+            return false;
+        }
+
         $table_name = $wpdb->prefix . 'polytrans_logs';
 
         // Check if the table exists

@@ -6,14 +6,10 @@
  * Tests for variable interpolation with Twig integration
  */
 
-use PolyTrans_Variable_Manager;
+use PolyTrans\PostProcessing\VariableManager;
 
 beforeEach(function () {
-    // Load required classes
-    require_once __DIR__ . '/../../includes/templating/class-twig-template-engine.php';
-    require_once __DIR__ . '/../../includes/postprocessing/class-variable-manager.php';
-    
-    $this->manager = new PolyTrans_Variable_Manager();
+    $this->manager = new VariableManager();
 });
 
 describe('Template Interpolation', function () {
@@ -72,4 +68,3 @@ describe('Context Building', function () {
         expect($context)->toHaveKey('post_id');
     });
 });
-

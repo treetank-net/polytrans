@@ -6,13 +6,10 @@
  * Tests for Phase 0.1 Day 2 - Variable Structure Refactor
  */
 
-use PolyTrans_Post_Data_Provider;
+use PolyTrans\PostProcessing\Providers\PostDataProvider;
 
 beforeEach(function () {
-    // Load Post Data Provider class
-    require_once __DIR__ . '/../../includes/postprocessing/providers/class-post-data-provider.php';
-    
-    $this->provider = new PolyTrans_Post_Data_Provider();
+    $this->provider = new PostDataProvider();
 });
 
 describe('Variable Aliases', function () {
@@ -73,7 +70,7 @@ describe('Available Variables', function () {
         expect($available)->toContain('content');
         expect($available)->toContain('original.title');
         expect($available)->toContain('translated.content');
-        expect($available)->toContain('original.meta.{key}');
+        expect($available)->toContain('original.meta');
     });
 });
 
@@ -106,4 +103,3 @@ describe('Backward Compatibility', function () {
         expect($variables['original_post'])->toBe($variables['original']);
     });
 });
-

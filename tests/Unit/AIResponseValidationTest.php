@@ -60,7 +60,7 @@ test('rejects empty string response from OpenAI', function () {
 test('rejects whitespace-only response from OpenAI', function () {
     $response = [
         'choices' => [
-            ['message' => ['content' => '   \n\t  '], 'finish_reason' => 'stop']
+            ['message' => ['content' => "   \n\t  "], 'finish_reason' => 'stop']
         ],
         'usage' => ['total_tokens' => 10]
     ];

@@ -10,6 +10,12 @@ if (!defined('ABSPATH')) {
     define('ABSPATH', dirname(__DIR__, 2) . '/');
 }
 
+if (!defined('POLYTRANS_PLUGIN_DIR')) {
+    define('POLYTRANS_PLUGIN_DIR', dirname(__DIR__, 2) . '/');
+}
+
+$GLOBALS['polytrans_test_options'] = [];
+
 // Mock WordPress functions for unit tests
 if (!function_exists('__')) {
     function __($text, $domain = 'default') {
@@ -43,7 +49,61 @@ if (!function_exists('sanitize_text_field')) {
 
 if (!function_exists('get_option')) {
     function get_option($option, $default = false) {
-        return $default;
+        return $GLOBALS['polytrans_test_options'][$option] ?? $default;
+    }
+}
+
+if (!function_exists('update_option')) {
+    function update_option($option, $value) {
+        $GLOBALS['polytrans_test_options'][$option] = $value;
+        return true;
+    }
+}
+
+if (!function_exists('delete_option')) {
+    function delete_option($option) {
+        unset($GLOBALS['polytrans_test_options'][$option]);
+        return true;
+    }
+}
+
+if (!function_exists('absint')) {
+    function absint($maybeint) {
+        return abs((int) $maybeint);
+    }
+}
+
+if (!function_exists('apply_filters')) {
+    function apply_filters($hook_name, $value, ...$args) {
+        return $value;
+    }
+}
+
+if (!function_exists('wp_remote_retrieve_response_code')) {
+    function wp_remote_retrieve_response_code($response) {
+        return is_array($response) && isset($response['response']['code']) ? (int) $response['response']['code'] : 0;
+    }
+}
+
+if (!function_exists('wp_remote_retrieve_body')) {
+    function wp_remote_retrieve_body($response) {
+        return is_array($response) && isset($response['body']) ? (string) $response['body'] : '';
+    }
+}
+
+if (!function_exists('wp_remote_retrieve_headers')) {
+    function wp_remote_retrieve_headers($response) {
+        return is_array($response) && isset($response['headers']) ? $response['headers'] : [];
+    }
+}
+
+if (!function_exists('wp_remote_request')) {
+    function wp_remote_request($url, $args = []) {
+        return [
+            'response' => ['code' => 200, 'message' => 'OK'],
+            'body' => '',
+            'headers' => [],
+        ];
     }
 }
 
@@ -81,8 +141,31 @@ if (!class_exists('WP_Error')) {
     }
 }
 
+if (!class_exists('WP_User')) {
+    class WP_User {
+        public $ID;
+        public $user_email;
+        public $roles = [];
+
+        public function __construct($id = 0, $email = '', $roles = [])
+        {
+            $this->ID = $id;
+            $this->user_email = $email;
+            $this->roles = $roles;
+        }
+    }
+}
+
 if (!function_exists('is_wp_error')) {
     function is_wp_error($thing) {
         return $thing instanceof WP_Error;
     }
+}
+
+if (!class_exists('PolyTrans_Requests_CaseInsensitiveDictionary')) {
+    class PolyTrans_Requests_CaseInsensitiveDictionary extends \ArrayObject {}
+}
+
+if (!class_exists('\WpOrg\Requests\Utility\CaseInsensitiveDictionary')) {
+    class_alias('PolyTrans_Requests_CaseInsensitiveDictionary', 'WpOrg\Requests\Utility\CaseInsensitiveDictionary');
 }

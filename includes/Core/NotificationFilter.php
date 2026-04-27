@@ -44,7 +44,7 @@ class NotificationFilter
         }
 
         // Normalize domains to array
-        if (is_string($allowed_domains)) {
+        if (is_string($allowed_domains) || is_array($allowed_domains)) {
             $allowed_domains = self::sanitize_domains($allowed_domains);
         }
         
@@ -96,7 +96,7 @@ class NotificationFilter
     public static function sanitize_domains($domains)
     {
         if (is_string($domains)) {
-            $domains = explode(',', $domains);
+            $domains = preg_split('/[,\s]+/', $domains, -1, PREG_SPLIT_NO_EMPTY);
         }
         
         if (!is_array($domains)) {
@@ -105,16 +105,20 @@ class NotificationFilter
         
         $sanitized = [];
         foreach ($domains as $domain) {
-            $domain = strtolower(trim($domain));
+            if (!is_scalar($domain)) {
+                continue;
+            }
+
+            $domain = strtolower(trim((string) $domain));
             
             // Remove protocol if present
-            $domain = preg_replace('#^https?://#i', '', $domain);
+            $domain = preg_replace('#^https?://#i', '', $domain) ?? '';
             
             // Remove www. if present
-            $domain = preg_replace('#^www\.#i', '', $domain);
-            
-            // Remove trailing slash
-            $domain = rtrim($domain, '/');
+            $domain = preg_replace('#^www\.#i', '', $domain) ?? '';
+
+            // Remove path/query/hash fragments if present.
+            $domain = strtok($domain, '/?#') ?: '';
             
             // Basic validation: must contain at least one dot and no spaces
             if (!empty($domain) && strpos($domain, '.') !== false && strpos($domain, ' ') === false) {
@@ -122,7 +126,6 @@ class NotificationFilter
             }
         }
         
-        return array_unique($sanitized);
+        return array_values(array_unique($sanitized));
     }
 }
-

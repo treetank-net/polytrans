@@ -7,11 +7,10 @@
  * for robust translation response handling.
  */
 
-// Class is now autoloaded via PSR-4 (PolyTrans\PostProcessing\JsonResponseParser)
-// with backward-compatible alias (PolyTrans_JSON_Response_Parser)
+use PolyTrans\PostProcessing\JsonResponseParser;
 
 beforeEach(function () {
-    $this->parser = new PolyTrans_JSON_Response_Parser();
+    $this->parser = new JsonResponseParser();
 });
 
 test('parses clean translation response', function () {
@@ -217,4 +216,3 @@ JSON;
         ->and($result['data']['confidence_score'])->toBe(0.95)
         ->and($result['data']['detected_language'])->toBe('en');
 });
-
