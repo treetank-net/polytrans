@@ -12,6 +12,7 @@
     let cachedAssistants = null;
     let assistantLoadPromise = null;
     let lastFocusedTextarea = null;
+    let lastWorkflowRefinementSession = null;
 
     // Helper function to generate model options from localized data
     function generateModelOptions(selectedModel) {
@@ -1543,69 +1544,174 @@
     }
 
     /**
+     * Get managed assistant steps that can be refined inside a workflow.
+     */
+    function getWorkflowManagedAssistantSteps(workflow) {
+        const steps = Array.isArray(workflow?.steps) ? workflow.steps : [];
+        return steps
+            .map((step, index) => ({
+                id: step.id || `step_${index}`,
+                name: step.name || `Step ${index + 1}`,
+                type: step.type || '',
+                enabled: step.enabled !== false,
+                assistant_id: step.assistant_id || ''
+            }))
+            .filter((step) => step.type === 'managed_assistant' && step.enabled && step.assistant_id);
+    }
+
+    /**
      * Render workflow tester
      */
     function renderWorkflowTester(workflow) {
         const container = $('#workflow-tester-container');
+        const managedSteps = getWorkflowManagedAssistantSteps(workflow);
+        const refinementDefaults = window.polytransWorkflowRefinementDefaults || {};
+        const evaluatorTemplate = refinementDefaults.evaluatorPromptTemplate || '';
+        const adjusterTemplate = refinementDefaults.adjusterPromptTemplate || '';
+        const targetLanguage = workflow.language || workflow.target_language || '';
+        const managedStepOptions = managedSteps.length
+            ? managedSteps.map((step) => `<option value="${escapeHtml(step.id)}" data-assistant-id="${escapeHtml(String(step.assistant_id || ''))}">${escapeHtml(step.name)} (${escapeHtml(step.id)})</option>`).join('')
+            : '<option value="">No managed assistant steps found</option>';
 
         const html = `
             <div class="workflow-tester-container">
                 <h3>Test Workflow: ${escapeHtml(workflow.name)}</h3>
-                <p>Test this workflow with sample data to see how it performs.</p>
+                <div class="workflow-test-tabs">
+                    <button type="button" class="button workflow-test-tab active" data-mode="test">Test Workflow</button>
+                    <button type="button" class="button workflow-test-tab" data-mode="refine" ${managedSteps.length ? '' : 'disabled'}>Prompt Refinement</button>
+                </div>
                 
-                <div class="test-post-selector">
-                    <h4>Test Data</h4>
-                    <div class="test-data-options">
-                        <label>
-                            <input type="radio" name="test_data_type" value="sample" checked>
-                            Use sample post data
-                        </label>
-                        <label>
-                            <input type="radio" name="test_data_type" value="existing">
-                            Use existing post
-                        </label>
-                    </div>
-                    
-                    <div id="existing-post-selector" style="display:none; margin-top:10px;">
-                        <label for="recent-posts-dropdown">Select from Last 20 Posts (in workflow language):</label>
-                        <select id="recent-posts-dropdown" style="width:100%; margin-bottom:10px;">
-                            <option value="">Loading posts...</option>
-                        </select>
-                        <div id="selected-post-info" style="margin-top:10px; padding:10px; background:#f9f9f9; border-radius:4px; display:none;">
-                            <strong>Selected Post:</strong>
-                            <div id="selected-post-details"></div>
-                        </div>
-                    </div>
-                    
-                    <div id="sample-post-data" style="margin-top:10px;">
-                        <div style="background:#f0f8ff; border:1px solid #b0d4f1; padding:10px; margin-bottom:15px; border-radius:4px;">
-                            <strong>Testing with Realistic Data:</strong><br>
-                            The sample data below includes realistic content and metadata that will help you test your workflow effectively.
-                            Variables like <code>{{ title }}</code>, <code>{{ content }}</code>, and <code>{{ original.meta.article_category }}</code> will be populated with actual values.
+                <div id="workflow-mode-test" class="workflow-mode-panel">
+                    <p>Test this workflow with sample data to see how it performs.</p>
+                    <div class="test-post-selector">
+                        <h4>Test Data</h4>
+                        <div class="test-data-options">
+                            <label>
+                                <input type="radio" name="test_data_type" value="sample" checked>
+                                Use sample post data
+                            </label>
+                            <label>
+                                <input type="radio" name="test_data_type" value="existing">
+                                Use existing post
+                            </label>
                         </div>
                         
-                        <div style="margin-bottom:15px;">
-                            <label for="articles-count">Number of Recent Articles to Include:</label>
-                            <input type="number" id="articles-count" min="5" max="50" value="20" style="width:80px; margin-left:10px;">
-                            <p class="description">Number of recent published articles to include as context (5-50). Useful for SEO internal linking workflows.</p>
+                        <div id="existing-post-selector" style="display:none; margin-top:10px;">
+                            <label for="recent-posts-dropdown">Select from Last 20 Posts (in workflow language):</label>
+                            <select id="recent-posts-dropdown" style="width:100%; margin-bottom:10px;">
+                                <option value="">Loading posts...</option>
+                            </select>
+                            <div id="selected-post-info" style="margin-top:10px; padding:10px; background:#f9f9f9; border-radius:4px; display:none;">
+                                <strong>Selected Post:</strong>
+                                <div id="selected-post-details"></div>
+                            </div>
                         </div>
                         
-                        <label for="sample-title">Sample Title:</label>
-                        <input type="text" id="sample-title" value="The Future of Artificial Intelligence in Healthcare: Transforming Patient Care Through Innovation" style="width:100%;margin-bottom:10px;">
-                        
-                        <label for="sample-content">Sample Content:</label>
-                        <textarea id="sample-content" rows="6" style="width:100%;">Artificial intelligence is revolutionizing healthcare by enabling more accurate diagnoses, personalized treatment plans, and improved patient outcomes. Recent advances in machine learning algorithms have made it possible to analyze vast amounts of medical data, including imaging scans, genetic information, and patient histories, to identify patterns that human doctors might miss.
+                        <div id="sample-post-data" style="margin-top:10px;">
+                            <div style="background:#f0f8ff; border:1px solid #b0d4f1; padding:10px; margin-bottom:15px; border-radius:4px;">
+                                <strong>Testing with Realistic Data:</strong><br>
+                                The sample data below includes realistic content and metadata that will help you test your workflow effectively.
+                                Variables like <code>{{ title }}</code>, <code>{{ content }}</code>, and <code>{{ original.meta.article_category }}</code> will be populated with actual values.
+                            </div>
+                            
+                            <div style="margin-bottom:15px;">
+                                <label for="articles-count">Number of Recent Articles to Include:</label>
+                                <input type="number" id="articles-count" min="5" max="50" value="20" style="width:80px; margin-left:10px;">
+                                <p class="description">Number of recent published articles to include as context (5-50). Useful for SEO internal linking workflows.</p>
+                            </div>
+                            
+                            <label for="sample-title">Sample Title:</label>
+                            <input type="text" id="sample-title" value="The Future of Artificial Intelligence in Healthcare: Transforming Patient Care Through Innovation" style="width:100%;margin-bottom:10px;">
+                            
+                            <label for="sample-content">Sample Content:</label>
+                            <textarea id="sample-content" rows="6" style="width:100%;">Artificial intelligence is revolutionizing healthcare by enabling more accurate diagnoses, personalized treatment plans, and improved patient outcomes. Recent advances in machine learning algorithms have made it possible to analyze vast amounts of medical data, including imaging scans, genetic information, and patient histories, to identify patterns that human doctors might miss.
 
 One of the most promising applications is in radiology, where AI systems can detect early-stage cancers with remarkable precision. Studies have shown that AI-powered diagnostic tools can achieve accuracy rates of over 95% in detecting certain types of tumors, potentially saving thousands of lives through early intervention.
 
 However, the integration of AI in healthcare also raises important questions about data privacy, algorithmic bias, and the need for regulatory oversight. As we move forward, it will be crucial to balance innovation with patient safety and ensure that these powerful tools are used ethically and effectively.</textarea>
+                        </div>
+                        
+                        <button type="button" id="run-test-btn" class="button button-primary">Run Test</button>
                     </div>
                     
-                    <button type="button" id="run-test-btn" class="button button-primary">Run Test</button>
+                    <div id="test-results" style="display:none;">
+                        <!-- Test results will be populated here -->
+                    </div>
                 </div>
-                
-                <div id="test-results" style="display:none;">
-                    <!-- Test results will be populated here -->
+
+                <div id="workflow-mode-refine" class="workflow-mode-panel" style="display:none;">
+                    <p>Evaluate full workflow results while adjusting one selected managed assistant step.</p>
+                    <div class="test-post-selector">
+                        <h4>Workflow Prompt Refinement</h4>
+                        ${managedSteps.length ? '' : '<div class="notice notice-warning inline"><p>This workflow has no managed assistant steps to refine.</p></div>'}
+
+                        <table class="form-table">
+                            <tr>
+                                <th scope="row"><label for="workflow-refine-target-step">Target Step</label></th>
+                                <td>
+                                    <select id="workflow-refine-target-step" class="regular-text" ${managedSteps.length ? '' : 'disabled'}>
+                                        ${managedStepOptions}
+                                    </select>
+                                    <p class="description">Only this managed assistant prompt is adjusted. Each evaluation still runs the full workflow.</p>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th scope="row"><label for="workflow-refine-source-language">Source Language</label></th>
+                                <td><input type="text" id="workflow-refine-source-language" class="small-text" value="en"></td>
+                            </tr>
+                            <tr>
+                                <th scope="row"><label for="workflow-refine-target-language">Target Language</label></th>
+                                <td><input type="text" id="workflow-refine-target-language" class="small-text" value="${escapeHtml(targetLanguage || 'pl')}"></td>
+                            </tr>
+                            <tr>
+                                <th scope="row"><label for="workflow-refine-recent-posts">Posts for Full Workflow Eval</label></th>
+                                <td>
+                                    <select id="workflow-refine-recent-posts" class="large-text" size="10" multiple>
+                                        <option value="">Switch to this tab or refresh to load posts...</option>
+                                    </select>
+                                    <p>
+                                        <button type="button" id="workflow-refine-refresh-posts" class="button">Refresh List</button>
+                                        <button type="button" id="workflow-refine-select-all-posts" class="button">Select All</button>
+                                        <button type="button" id="workflow-refine-clear-posts" class="button">Clear</button>
+                                    </p>
+                                    <p class="description">Choose at least one real post. Each iteration runs the complete workflow in test mode for every selected post.</p>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th scope="row"><label for="workflow-refine-criteria">Criteria</label></th>
+                                <td>
+                                    <textarea id="workflow-refine-criteria" class="large-text code" rows="4" placeholder="As admin, I want the whole workflow output to do X, Y, Z..."></textarea>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th scope="row"><label for="workflow-refine-iterations">Full Re-eval Iterations</label></th>
+                                <td>
+                                    <input type="number" id="workflow-refine-iterations" class="small-text" min="1" max="10" step="1" value="2">
+                                    <p class="description">Each iteration runs full workflow + evaluator for selected posts, then runs prompt adjuster for the target step.</p>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th scope="row"><label for="workflow-refine-evaluator-template">Evaluator Prompt Template</label></th>
+                                <td>
+                                    <textarea id="workflow-refine-evaluator-template" class="large-text code" rows="14">${escapeHtml(evaluatorTemplate)}</textarea>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th scope="row"><label for="workflow-refine-adjuster-template">Prompt Adjuster Template</label></th>
+                                <td>
+                                    <textarea id="workflow-refine-adjuster-template" class="large-text code" rows="14">${escapeHtml(adjusterTemplate)}</textarea>
+                                </td>
+                            </tr>
+                        </table>
+
+                        <p>
+                            <button type="button" id="run-workflow-refinement-btn" class="button button-primary" ${managedSteps.length ? '' : 'disabled'}>Run Workflow Refinement</button>
+                            <span class="spinner"></span>
+                        </p>
+                    </div>
+
+                    <div id="workflow-refinement-progress" class="workflow-refinement-panel" style="display:none;"></div>
+                    <div id="workflow-refinement-results" style="display:none;"></div>
                 </div>
             </div>
         `;
@@ -1618,6 +1724,18 @@ However, the integration of AI in healthcare also raises important questions abo
      * Bind workflow tester events
      */
     function bindWorkflowTesterEvents() {
+        $('.workflow-test-tab').on('click', function () {
+            const mode = $(this).data('mode');
+            $('.workflow-test-tab').removeClass('active');
+            $(this).addClass('active');
+            $('.workflow-mode-panel').hide();
+            $(`#workflow-mode-${mode}`).show();
+
+            if (mode === 'refine') {
+                loadWorkflowRefinementPosts();
+            }
+        });
+
         // Test data type selection
         $('input[name="test_data_type"]').on('change', function () {
             if ($(this).val() === 'existing') {
@@ -1647,6 +1765,43 @@ However, the integration of AI in healthcare also raises important questions abo
             } else {
                 $('#selected-post-info').hide();
             }
+        });
+
+        $('#workflow-refine-target-language').on('change', function () {
+            loadWorkflowRefinementPosts();
+        });
+
+        $('#workflow-refine-refresh-posts').on('click', function (e) {
+            e.preventDefault();
+            loadWorkflowRefinementPosts();
+        });
+
+        $('#workflow-refine-select-all-posts').on('click', function (e) {
+            e.preventDefault();
+            const values = Array.isArray(window.workflowRefinementRecentPosts)
+                ? window.workflowRefinementRecentPosts.map((post) => String(post.id))
+                : [];
+            $('#workflow-refine-recent-posts').val(values);
+        });
+
+        $('#workflow-refine-clear-posts').on('click', function (e) {
+            e.preventDefault();
+            $('#workflow-refine-recent-posts').val([]);
+        });
+
+        $('#run-workflow-refinement-btn').on('click', function (e) {
+            e.preventDefault();
+            handleWorkflowRefinement();
+        });
+
+        $(document).on('click', '#workflow-refine-reeval-btn', function (e) {
+            e.preventDefault();
+            handleWorkflowReevaluateAgain();
+        });
+
+        $(document).on('click', '#workflow-refine-apply-btn', function (e) {
+            e.preventDefault();
+            handleWorkflowApplyPromptPack();
         });
     }
 
@@ -1691,6 +1846,66 @@ However, the integration of AI in healthcare also raises important questions abo
     }
 
     /**
+     * Load recent posts for workflow refinement mode.
+     */
+    function loadWorkflowRefinementPosts() {
+        const workflow = window.polytransWorkflowTestData;
+        const $select = $('#workflow-refine-recent-posts');
+        const language = ($('#workflow-refine-target-language').val() || workflow.language || '').trim();
+
+        if (!$select.length) {
+            return;
+        }
+
+        $select.html('<option value="">Loading posts...</option>');
+
+        $.ajax({
+            url: polytransWorkflows.ajaxUrl,
+            type: 'POST',
+            data: {
+                action: 'polytrans_get_recent_posts',
+                nonce: polytransWorkflows.nonce,
+                language: language,
+                limit: 20
+            }
+        }).done(function (response) {
+            if (response.success && response.data.posts) {
+                const posts = response.data.posts;
+                window.workflowRefinementRecentPosts = posts;
+
+                if (!posts.length) {
+                    $select.html('<option value="">No posts found</option>');
+                    return;
+                }
+
+                const options = posts.map((post) => {
+                    const dateStr = post.post_date ? new Date(post.post_date).toLocaleDateString() : '';
+                    return `<option value="${escapeHtml(String(post.id))}">${escapeHtml(post.title)}${dateStr ? ` (${escapeHtml(dateStr)})` : ''}</option>`;
+                }).join('');
+                $select.html(options);
+            } else {
+                window.workflowRefinementRecentPosts = [];
+                $select.html('<option value="">No posts found</option>');
+            }
+        }).fail(function () {
+            window.workflowRefinementRecentPosts = [];
+            $select.html('<option value="">Error loading posts</option>');
+        });
+    }
+
+    /**
+     * Resolve selected posts for workflow refinement.
+     */
+    function getSelectedWorkflowRefinementPosts() {
+        const selectedIds = $('#workflow-refine-recent-posts').val() || [];
+        const posts = Array.isArray(window.workflowRefinementRecentPosts)
+            ? window.workflowRefinementRecentPosts
+            : [];
+
+        return posts.filter((post) => selectedIds.includes(String(post.id)));
+    }
+
+    /**
      * Display selected post information
      */
     function displaySelectedPost(post) {
@@ -1718,6 +1933,866 @@ However, the integration of AI in healthcare also raises important questions abo
             return window.recentPostsData.find(p => p.id == selectedPostId);
         }
         return null;
+    }
+
+    /**
+     * Start workflow prompt refinement from UI controls.
+     */
+    async function handleWorkflowRefinement() {
+        const workflow = window.polytransWorkflowTestData;
+        const targetStepId = ($('#workflow-refine-target-step').val() || '').trim();
+        const $selectedOption = $('#workflow-refine-target-step option:selected');
+        const assistantId = parseInt($selectedOption.data('assistant-id') || 0, 10);
+        const sourceLanguage = ($('#workflow-refine-source-language').val() || '').trim();
+        const targetLanguage = ($('#workflow-refine-target-language').val() || '').trim();
+        const criteria = ($('#workflow-refine-criteria').val() || '').trim();
+        const evaluatorTemplate = ($('#workflow-refine-evaluator-template').val() || '').trim();
+        const adjusterTemplate = ($('#workflow-refine-adjuster-template').val() || '').trim();
+        const configuredIterations = parseInt($('#workflow-refine-iterations').val() || '1', 10);
+        const totalIterations = Number.isFinite(configuredIterations)
+            ? Math.max(1, Math.min(configuredIterations, 10))
+            : 1;
+        const selectedPosts = getSelectedWorkflowRefinementPosts();
+
+        await runWorkflowRefinementIterations({
+            workflow,
+            targetStepId,
+            assistantId,
+            sourceLanguage,
+            targetLanguage,
+            criteria,
+            evaluatorTemplate,
+            adjusterTemplate,
+            totalIterations,
+            selectedPosts,
+            initialPromptPack: null,
+            existingIterations: [],
+            initialBasePromptPack: null
+        }, {
+            $button: $('#run-workflow-refinement-btn'),
+            runningLabel: 'Running Full Workflow Re-eval...',
+            idleLabel: 'Run Workflow Refinement',
+            successMessage: 'Workflow prompt refinement completed.'
+        });
+    }
+
+    /**
+     * Continue workflow prompt refinement with extra full re-eval iterations.
+     */
+    async function handleWorkflowReevaluateAgain() {
+        const session = lastWorkflowRefinementSession;
+        if (!session || !session.finalPromptPack) {
+            showNotice('error', 'Run workflow refinement first to use re-evaluate again.');
+            return;
+        }
+
+        const configuredIterations = parseInt($('#workflow-refine-extra-iterations').val() || '1', 10);
+        const totalIterations = Number.isFinite(configuredIterations)
+            ? Math.max(1, Math.min(configuredIterations, 10))
+            : 1;
+
+        await runWorkflowRefinementIterations({
+            workflow: session.workflow,
+            targetStepId: session.targetStepId,
+            assistantId: session.assistantId,
+            sourceLanguage: session.sourceLanguage,
+            targetLanguage: session.targetLanguage,
+            criteria: session.criteria,
+            evaluatorTemplate: session.evaluatorTemplate,
+            adjusterTemplate: session.adjusterTemplate,
+            totalIterations,
+            selectedPosts: session.selectedPosts,
+            initialPromptPack: session.finalPromptPack,
+            existingIterations: session.iterations,
+            initialBasePromptPack: session.initialBasePromptPack
+        }, {
+            $button: $('#workflow-refine-reeval-btn'),
+            runningLabel: 'Re-evaluating...',
+            idleLabel: 'Re-evaluate Again',
+            successMessage: `Full workflow re-eval completed (${totalIterations} extra iteration${totalIterations === 1 ? '' : 's'}).`
+        });
+    }
+
+    /**
+     * Apply final prompt pack from workflow refinement to the target assistant.
+     */
+    async function handleWorkflowApplyPromptPack() {
+        const session = lastWorkflowRefinementSession;
+        if (!session || !session.finalPromptPack) {
+            showNotice('error', 'No final prompt pack to apply. Run workflow refinement first.');
+            return;
+        }
+
+        const $button = $('#workflow-refine-apply-btn');
+        const idleLabel = $button.text() || 'Apply Final Prompt Pack';
+        $button.prop('disabled', true).text('Applying...');
+
+        try {
+            const response = await $.ajax({
+                url: polytransWorkflows.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'polytrans_apply_workflow_prompt_pack',
+                    nonce: polytransWorkflows.nonce,
+                    assistant_id: session.assistantId,
+                    system_prompt: session.finalPromptPack.system_prompt || '',
+                    user_message_template: session.finalPromptPack.user_message_template || '',
+                    expected_output_schema: session.finalPromptPack.expected_output_schema || '{}'
+                }
+            });
+
+            if (!response || !response.success) {
+                throw new Error(response?.data?.message || 'Failed to apply prompt pack.');
+            }
+
+            showNotice('success', 'Final prompt pack applied to target assistant.');
+        } catch (error) {
+            showNotice('error', resolveWorkflowAjaxErrorMessage(error, 'Failed to apply prompt pack.'));
+        } finally {
+            $button.prop('disabled', false).text(idleLabel);
+        }
+    }
+
+    /**
+     * Execute full workflow refinement iterations.
+     */
+    async function runWorkflowRefinementIterations(config, ui) {
+        const workflow = config.workflow || {};
+        const targetStepId = String(config.targetStepId || '').trim();
+        const assistantId = parseInt(config.assistantId || 0, 10);
+        const sourceLanguage = String(config.sourceLanguage || '').trim();
+        const targetLanguage = String(config.targetLanguage || '').trim();
+        const criteria = String(config.criteria || '').trim();
+        const evaluatorTemplate = String(config.evaluatorTemplate || '').trim();
+        const adjusterTemplate = String(config.adjusterTemplate || '').trim();
+        const selectedPosts = Array.isArray(config.selectedPosts) ? config.selectedPosts : [];
+        const existingIterations = Array.isArray(config.existingIterations) ? config.existingIterations.slice() : [];
+        const baseIterationCount = existingIterations.length;
+        const totalIterations = Number.isFinite(config.totalIterations)
+            ? Math.max(1, Math.min(parseInt(config.totalIterations, 10), 10))
+            : 1;
+        let currentPromptPack = config.initialPromptPack ? normalizeWorkflowPromptPack(config.initialPromptPack) : null;
+        let initialBasePromptPack = config.initialBasePromptPack ? normalizeWorkflowPromptPack(config.initialBasePromptPack) : null;
+
+        if (!targetStepId || !assistantId) {
+            showNotice('error', 'Select a managed assistant step to refine.');
+            return;
+        }
+        if (!sourceLanguage || !targetLanguage) {
+            showNotice('error', 'Source and target language are required.');
+            return;
+        }
+        if (!criteria) {
+            showNotice('error', 'Refinement criteria is required.');
+            return;
+        }
+        if (!selectedPosts.length) {
+            showNotice('error', 'Select at least one post for workflow refinement.');
+            return;
+        }
+
+        const $button = ui?.$button || $('#run-workflow-refinement-btn');
+        const previousButtonText = $button.text();
+        const $primaryButton = $('#run-workflow-refinement-btn');
+        const $reevalButton = $('#workflow-refine-reeval-btn');
+        const $applyButton = $('#workflow-refine-apply-btn');
+        const spinner = $button.next('.spinner');
+        const stepsPerIteration = (selectedPosts.length * 2) + 1;
+        const progressState = {
+            totalPosts: selectedPosts.length,
+            completedPosts: 0,
+            totalIterations,
+            currentIteration: 1,
+            absoluteIteration: baseIterationCount + 1,
+            phase: 'execution',
+            totalSteps: totalIterations * stepsPerIteration,
+            completedSteps: 0,
+            currentPost: '',
+            errors: [],
+            logs: []
+        };
+        const iterationResults = existingIterations.slice();
+
+        pushWorkflowRefinementLog(progressState, `Starting full workflow re-eval: ${totalIterations} iteration(s), ${selectedPosts.length} post(s).`);
+        $button.prop('disabled', true).text(ui?.runningLabel || 'Running...');
+        $primaryButton.prop('disabled', true);
+        $reevalButton.prop('disabled', true);
+        $applyButton.prop('disabled', true);
+        if (spinner.length) {
+            spinner.addClass('is-active');
+        }
+        $('#workflow-refinement-progress').show();
+        $('#workflow-refinement-results').hide().empty();
+        renderWorkflowRefinementProgress(progressState);
+
+        try {
+            for (let iterationOffset = 1; iterationOffset <= totalIterations; iterationOffset++) {
+                const iterationNumber = baseIterationCount + iterationOffset;
+                progressState.currentIteration = iterationOffset;
+                progressState.absoluteIteration = iterationNumber;
+                progressState.completedPosts = 0;
+                progressState.phase = 'execution';
+                progressState.currentPost = '';
+                pushWorkflowRefinementLog(progressState, `Iteration ${iterationNumber}: running full workflow and evaluator.`);
+                renderWorkflowRefinementProgress(progressState);
+
+                const evaluatedRuns = [];
+                for (let index = 0; index < selectedPosts.length; index++) {
+                    const post = selectedPosts[index];
+                    progressState.currentPost = post.title || `Post #${post.id}`;
+                    pushWorkflowRefinementLog(progressState, `Iteration ${iterationNumber}, post ${index + 1}/${selectedPosts.length}: full workflow execution started.`);
+                    renderWorkflowRefinementProgress(progressState);
+
+                    const runRequest = {
+                        action: 'polytrans_run_workflow_refinement_post',
+                        nonce: polytransWorkflows.nonce,
+                        workflow,
+                        target_step_id: targetStepId,
+                        selected_post_id: post.id,
+                        source_language: sourceLanguage,
+                        target_language: targetLanguage
+                    };
+                    if (currentPromptPack) {
+                        runRequest.override_system_prompt = currentPromptPack.system_prompt || '';
+                        runRequest.override_user_message_template = currentPromptPack.user_message_template || '';
+                        runRequest.override_expected_output_schema = currentPromptPack.expected_output_schema || '';
+                    }
+
+                    const runResponse = await $.ajax({
+                        url: polytransWorkflows.ajaxUrl,
+                        type: 'POST',
+                        data: runRequest
+                    });
+                    if (!runResponse || !runResponse.success) {
+                        throw new Error(runResponse?.data?.message || `Workflow run failed for post #${post.id}.`);
+                    }
+
+                    const runData = runResponse.data || {};
+                    const runId = String(runData.run_id || '').trim();
+                    if (!runId) {
+                        throw new Error(`Workflow run for post #${post.id} did not return run_id.`);
+                    }
+                    progressState.completedSteps += 1;
+                    pushWorkflowRefinementLog(progressState, `Iteration ${iterationNumber}, post ${index + 1}/${selectedPosts.length}: workflow done (run_id: ${runId}).`);
+                    renderWorkflowRefinementProgress(progressState);
+
+                    const evaluateResponse = await $.ajax({
+                        url: polytransWorkflows.ajaxUrl,
+                        type: 'POST',
+                        data: {
+                            action: 'polytrans_evaluate_workflow_refinement_run',
+                            nonce: polytransWorkflows.nonce,
+                            run_id: runId,
+                            target_step_id: targetStepId,
+                            criteria,
+                            evaluator_prompt_template: evaluatorTemplate
+                        }
+                    });
+                    if (!evaluateResponse || !evaluateResponse.success) {
+                        throw new Error(evaluateResponse?.data?.message || `Evaluation failed for post #${post.id}.`);
+                    }
+
+                    const evaluatedRun = Object.assign({}, runData, {
+                        run_id: String(evaluateResponse?.data?.run_id || runId),
+                        evaluation: evaluateResponse?.data?.evaluation || null,
+                        final_output: evaluateResponse?.data?.final_output || runData?.final_output || null
+                    });
+                    evaluatedRuns.push(evaluatedRun);
+
+                    progressState.completedPosts = index + 1;
+                    progressState.completedSteps += 1;
+                    const score = evaluateResponse?.data?.evaluation?.score;
+                    pushWorkflowRefinementLog(progressState, `Iteration ${iterationNumber}, post ${index + 1}/${selectedPosts.length}: evaluator done${score !== null && score !== undefined ? ` (score ${score})` : ''}.`);
+                    renderWorkflowRefinementProgress(progressState);
+                }
+
+                progressState.phase = 'adjustment';
+                progressState.currentPost = '';
+                pushWorkflowRefinementLog(progressState, `Iteration ${iterationNumber}: running prompt adjuster.`);
+                renderWorkflowRefinementProgress(progressState);
+
+                const adjustRequest = {
+                    action: 'polytrans_adjust_workflow_prompt',
+                    nonce: polytransWorkflows.nonce,
+                    assistant_id: assistantId,
+                    criteria,
+                    adjuster_prompt_template: adjusterTemplate,
+                    evaluations: JSON.stringify(evaluatedRuns)
+                };
+                if (currentPromptPack) {
+                    adjustRequest.current_system_prompt = currentPromptPack.system_prompt || '';
+                    adjustRequest.current_user_message_template = currentPromptPack.user_message_template || '';
+                    adjustRequest.current_expected_output_schema = currentPromptPack.expected_output_schema || '';
+                }
+
+                const adjustResponse = await $.ajax({
+                    url: polytransWorkflows.ajaxUrl,
+                    type: 'POST',
+                    data: adjustRequest
+                });
+                if (!adjustResponse || !adjustResponse.success) {
+                    throw new Error(adjustResponse?.data?.message || 'Prompt adjuster failed.');
+                }
+
+                progressState.completedSteps += 1;
+                const adjustment = adjustResponse.data || {};
+                const parsed = adjustment.parsed || {};
+                const hasValidPack = !!parsed.is_valid_pack;
+                const nextPromptPack = hasValidPack ? normalizeWorkflowPromptPack(parsed) : null;
+                const scoredRuns = evaluatedRuns.filter((run) => run?.evaluation && run.evaluation.score !== null && run.evaluation.score !== undefined);
+                const averageScore = scoredRuns.length
+                    ? (scoredRuns.reduce((sum, run) => sum + Number(run.evaluation.score || 0), 0) / scoredRuns.length)
+                    : null;
+
+                if (!initialBasePromptPack) {
+                    initialBasePromptPack = normalizeWorkflowPromptPack(adjustment.input_prompt_pack || currentPromptPack || {});
+                }
+
+                iterationResults.push({
+                    iteration: iterationNumber,
+                    runs: evaluatedRuns,
+                    adjustment,
+                    average_score: averageScore,
+                    input_prompt_pack: normalizeWorkflowPromptPack(adjustment.input_prompt_pack || currentPromptPack || {}),
+                    output_prompt_pack: nextPromptPack
+                });
+
+                pushWorkflowRefinementLog(progressState, `Iteration ${iterationNumber}: adjuster finished${hasValidPack ? '' : ' (invalid prompt pack format)'}.`);
+                if (!hasValidPack && iterationOffset < totalIterations) {
+                    throw new Error(`Iteration ${iterationNumber}: adjuster response is not valid prompt-pack JSON.`);
+                }
+                if (nextPromptPack) {
+                    currentPromptPack = nextPromptPack;
+                }
+                renderWorkflowRefinementProgress(progressState);
+            }
+
+            progressState.phase = 'completed';
+            progressState.currentPost = '';
+            pushWorkflowRefinementLog(progressState, 'Full workflow re-eval completed.');
+            renderWorkflowRefinementProgress(progressState);
+
+            const finalIteration = iterationResults.length ? iterationResults[iterationResults.length - 1] : null;
+            const finalAdjustment = finalIteration?.adjustment || {};
+            const finalParsed = finalAdjustment.parsed || {};
+            const finalPromptPack = finalParsed.is_valid_pack
+                ? normalizeWorkflowPromptPack(finalParsed)
+                : (finalIteration?.output_prompt_pack || currentPromptPack || null);
+
+            lastWorkflowRefinementSession = {
+                workflow,
+                targetStepId,
+                assistantId,
+                sourceLanguage,
+                targetLanguage,
+                criteria,
+                evaluatorTemplate,
+                adjusterTemplate,
+                selectedPosts,
+                iterations: iterationResults,
+                finalPromptPack,
+                initialBasePromptPack
+            };
+
+            renderWorkflowRefinementResults({
+                criteria,
+                iterations: iterationResults,
+                selectedPosts,
+                initialBasePromptPack,
+                targetStepId
+            });
+            showNotice('success', ui?.successMessage || 'Workflow refinement completed.');
+        } catch (error) {
+            const message = resolveWorkflowAjaxErrorMessage(error, 'Workflow refinement failed.');
+            progressState.phase = 'failed';
+            progressState.errors.push(message);
+            pushWorkflowRefinementLog(progressState, `FAILED: ${message}`);
+            renderWorkflowRefinementProgress(progressState);
+            renderWorkflowRefinementError(message, iterationResults);
+            showNotice('error', message);
+        } finally {
+            $button.prop('disabled', false).text(previousButtonText || ui?.idleLabel || 'Run');
+            $primaryButton.prop('disabled', false);
+            $reevalButton.prop('disabled', false);
+            $applyButton.prop('disabled', false);
+            if (spinner.length) {
+                spinner.removeClass('is-active');
+            }
+        }
+    }
+
+    function pushWorkflowRefinementLog(state, message) {
+        if (!state || !Array.isArray(state.logs)) {
+            return;
+        }
+        const timeLabel = new Date().toLocaleTimeString();
+        state.logs.push(`[${timeLabel}] ${String(message || '')}`);
+        if (state.logs.length > 400) {
+            state.logs.splice(0, state.logs.length - 400);
+        }
+    }
+
+    function renderWorkflowRefinementProgress(state) {
+        const phaseLabel = {
+            execution: 'Running full workflow + evaluator',
+            adjustment: 'Running prompt adjuster',
+            completed: 'Completed',
+            failed: 'Failed'
+        }[state.phase] || 'Preparing';
+        const totalSteps = Number(state.totalSteps || 0);
+        const completedSteps = Math.min(Number(state.completedSteps || 0), totalSteps || Number(state.completedSteps || 0));
+        const progressPercent = totalSteps > 0
+            ? Math.max(0, Math.min((completedSteps / totalSteps) * 100, 100))
+            : 0;
+        const visibleIteration = state.absoluteIteration || state.currentIteration || 1;
+        const logs = Array.isArray(state.logs) ? state.logs : [];
+        const logsHtml = logs.length
+            ? logs.map((line) => `<li>${escapeHtml(line)}</li>`).join('')
+            : '<li>Waiting to start...</li>';
+        const errorLine = state.errors && state.errors.length
+            ? `<div style="color:#d63638;"><strong>Error:</strong> ${escapeHtml(state.errors[state.errors.length - 1])}</div>`
+            : '';
+
+        $('#workflow-refinement-progress').html(`
+            <div class="execution-details">
+                <div class="execution-detail">
+                    <span class="value">${escapeHtml(String(state.completedPosts || 0))}/${escapeHtml(String(state.totalPosts || 0))}</span>
+                    <span class="label">Posts Processed</span>
+                </div>
+                <div class="execution-detail">
+                    <span class="value">${escapeHtml(phaseLabel)}</span>
+                    <span class="label">Phase</span>
+                </div>
+                <div class="execution-detail">
+                    <span class="value">${escapeHtml(String(completedSteps))}/${escapeHtml(String(totalSteps || 0))}</span>
+                    <span class="label">Steps Completed</span>
+                </div>
+            </div>
+            <div><strong>Iteration:</strong> ${escapeHtml(String(visibleIteration))}</div>
+            ${state.currentPost ? `<div><strong>Current post:</strong> ${escapeHtml(state.currentPost)}</div>` : ''}
+            ${errorLine}
+            <div class="workflow-refine-progress-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${escapeHtml(String(Math.round(progressPercent)))}">
+                <div class="workflow-refine-progress-fill" style="width:${progressPercent}%;"></div>
+            </div>
+            <div class="workflow-refine-progress-label">${escapeHtml(progressPercent.toFixed(1))}%</div>
+            <div class="workflow-refine-log-wrap">
+                <h5>Execution Log</h5>
+                <ol class="workflow-refine-log">${logsHtml}</ol>
+            </div>
+        `).show();
+    }
+
+    function renderWorkflowRefinementResults(data) {
+        const iterations = Array.isArray(data.iterations) ? data.iterations : [];
+        const selectedPosts = Array.isArray(data.selectedPosts) ? data.selectedPosts : [];
+        const finalIteration = iterations.length ? iterations[iterations.length - 1] : null;
+        const finalAdjustment = finalIteration?.adjustment || {};
+        const finalParsed = finalAdjustment.parsed || {};
+        const finalIsValidPack = !!finalParsed.is_valid_pack;
+        const includeSchema = finalAdjustment.adjust_expected_output_schema !== false;
+        const finalPromptPack = finalIsValidPack ? normalizeWorkflowPromptPack(finalParsed) : normalizeWorkflowPromptPack(finalIteration?.output_prompt_pack || {});
+        const initialPromptPack = normalizeWorkflowPromptPack(data.initialBasePromptPack || iterations[0]?.input_prompt_pack || {});
+
+        const avgTableRows = iterations.map((round) => {
+            const avg = round.average_score === null || round.average_score === undefined
+                ? 'n/a'
+                : Number(round.average_score).toFixed(2);
+            return `
+                <tr>
+                    <td>${escapeHtml(String(round.iteration || 0))}</td>
+                    <td>${escapeHtml(avg)}</td>
+                    <td>${escapeHtml(String((round.runs || []).length))}</td>
+                </tr>
+            `;
+        }).join('');
+
+        const roundDetailsHtml = iterations.map((round) => {
+            const runs = Array.isArray(round.runs) ? round.runs : [];
+            const adjustment = round.adjustment || {};
+            const parsed = adjustment.parsed || {};
+            const isValidPack = !!parsed.is_valid_pack;
+            const roundIncludeSchema = adjustment.adjust_expected_output_schema !== false;
+            const inputPromptPack = normalizeWorkflowPromptPack(round.input_prompt_pack || {});
+            const outputPromptPack = round.output_prompt_pack ? normalizeWorkflowPromptPack(round.output_prompt_pack) : null;
+            const combinedPack = isValidPack
+                ? formatWorkflowPromptPackArtifact(parsed, roundIncludeSchema)
+                : (adjustment.adjuster_response || '');
+            const runsHtml = runs.map((run, idx) => {
+                const score = run?.evaluation?.score;
+                const feedback = run?.evaluation?.feedback || '';
+                const evaluatorPrompt = run?.evaluation?.rendered_prompt || '';
+                const runId = String(run?.run_id || '').trim();
+                const finalOutputText = run?.final_output ? JSON.stringify(run.final_output, null, 2) : '';
+                const workflowSummaryText = run?.workflow_result_summary ? JSON.stringify(run.workflow_result_summary, null, 2) : '';
+
+                return `
+                    <details class="workflow-test-details">
+                        <summary>Post #${idx + 1}: ${escapeHtml(run.post_title || `ID ${run.post_id || 0}`)}${score !== null && score !== undefined ? ` | Score: ${escapeHtml(String(score))}` : ''}${runId ? ` | Run ID: ${escapeHtml(runId)}` : ''}</summary>
+                        ${runId ? `<h5>Run ID</h5><pre><code>${escapeHtml(runId)}</code></pre>` : ''}
+                        <h5>Evaluator Feedback</h5>
+                        <pre><code>${escapeHtml(feedback)}</code></pre>
+                        <h5>Final Workflow Output</h5>
+                        <pre><code>${escapeHtml(finalOutputText)}</code></pre>
+                        <h5>Workflow Step Summary</h5>
+                        <pre><code>${escapeHtml(workflowSummaryText)}</code></pre>
+                        <h5>Rendered Evaluator Prompt</h5>
+                        <pre><code>${escapeHtml(evaluatorPrompt)}</code></pre>
+                    </details>
+                `;
+            }).join('');
+
+            const promptComparisonHtml = outputPromptPack
+                ? `
+                    <details class="workflow-test-details" open>
+                        <summary>Prompt Diff (Input vs Adjusted)</summary>
+                        ${renderWorkflowPromptComparisonBlock('System Prompt', inputPromptPack.system_prompt, outputPromptPack.system_prompt)}
+                        ${renderWorkflowPromptComparisonBlock('User Message Template', inputPromptPack.user_message_template, outputPromptPack.user_message_template)}
+                        ${roundIncludeSchema ? renderWorkflowPromptComparisonBlock('Expected Output Schema', inputPromptPack.expected_output_schema, outputPromptPack.expected_output_schema) : ''}
+                    </details>
+                `
+                : `
+                    <div class="single-content">
+                        <h6>Prompt Diff</h6>
+                        <div class="comparison-content">No side-by-side diff for this iteration because adjuster output is not a valid prompt pack.</div>
+                    </div>
+                `;
+
+            return `
+                <details class="workflow-test-details" ${round.iteration === iterations.length ? 'open' : ''}>
+                    <summary>Iteration ${escapeHtml(String(round.iteration || 0))} | Avg score: ${escapeHtml(round.average_score === null || round.average_score === undefined ? 'n/a' : Number(round.average_score).toFixed(2))}</summary>
+                    ${runsHtml}
+                    ${promptComparisonHtml}
+                    <details class="workflow-test-details">
+                        <summary>Adjuster Output</summary>
+                        ${isValidPack ? '' : '<p style="color:#d63638;"><strong>Adjuster response is not valid prompt-pack JSON. Raw output shown below.</strong></p>'}
+                        <h5>System Prompt</h5>
+                        <pre><code>${escapeHtml(parsed.system_prompt || '')}</code></pre>
+                        <h5>User Message Template</h5>
+                        <pre><code>${escapeHtml(parsed.user_message_template || '')}</code></pre>
+                        ${roundIncludeSchema ? `<h5>Expected Output Schema</h5><pre><code>${escapeHtml(parsed.expected_output_schema || '')}</code></pre>` : ''}
+                        <h5>Prompt Pack JSON</h5>
+                        <pre><code>${escapeHtml(combinedPack)}</code></pre>
+                    </details>
+                </details>
+            `;
+        }).join('');
+
+        const finalUsage = finalAdjustment.usage && Object.keys(finalAdjustment.usage).length
+            ? JSON.stringify(finalAdjustment.usage, null, 2)
+            : 'No usage data returned.';
+        const finalCombinedPack = finalIsValidPack
+            ? formatWorkflowPromptPackArtifact(finalParsed, includeSchema)
+            : (finalAdjustment.adjuster_response || '');
+
+        $('#workflow-refinement-results').html(`
+            <div class="test-results success">
+                <h4>Workflow Prompt Refinement Results</h4>
+                <div class="execution-details">
+                    <div class="execution-detail">
+                        <span class="value">${escapeHtml(String(iterations.length))}</span>
+                        <span class="label">Iterations</span>
+                    </div>
+                    <div class="execution-detail">
+                        <span class="value">${escapeHtml(String(selectedPosts.length))}</span>
+                        <span class="label">Posts / Iteration</span>
+                    </div>
+                    <div class="execution-detail">
+                        <span class="value">${escapeHtml(finalAdjustment.provider || 'unknown')}</span>
+                        <span class="label">Adjuster Provider</span>
+                    </div>
+                    <div class="execution-detail">
+                        <span class="value">${escapeHtml(finalAdjustment.model || 'default')}</span>
+                        <span class="label">Adjuster Model</span>
+                    </div>
+                </div>
+
+                <div class="workflow-refinement-actions-row">
+                    <label for="workflow-refine-extra-iterations"><strong>Re-evaluate Again</strong></label>
+                    <input type="number" id="workflow-refine-extra-iterations" class="small-text" min="1" max="10" step="1" value="1">
+                    <button type="button" id="workflow-refine-reeval-btn" class="button">Re-evaluate Again</button>
+                    <button type="button" id="workflow-refine-apply-btn" class="button button-primary" ${finalIsValidPack ? '' : 'disabled'}>Apply Final Prompt Pack</button>
+                </div>
+
+                <div class="workflow-refinement-panel">
+                    <h5>Criteria</h5>
+                    <pre><code>${escapeHtml(data.criteria || '')}</code></pre>
+                </div>
+
+                <div class="workflow-refinement-panel">
+                    <h5>Iteration Score Comparison</h5>
+                    <table class="widefat striped">
+                        <thead><tr><th>Iteration</th><th>Average Score</th><th>Posts</th></tr></thead>
+                        <tbody>${avgTableRows || '<tr><td colspan="3">No score data.</td></tr>'}</tbody>
+                    </table>
+                </div>
+
+                ${roundDetailsHtml}
+
+                <details class="workflow-test-details" open>
+                    <summary>Final Proposed Prompt Pack (Diff vs Initial)</summary>
+                    ${finalIsValidPack ? '' : '<p style="color:#d63638;"><strong>Final adjuster response is not valid prompt-pack JSON. Showing raw output below.</strong></p>'}
+                    ${finalIsValidPack ? `
+                        ${renderWorkflowPromptComparisonBlock('System Prompt', initialPromptPack.system_prompt, finalPromptPack.system_prompt)}
+                        ${renderWorkflowPromptComparisonBlock('User Message Template', initialPromptPack.user_message_template, finalPromptPack.user_message_template)}
+                        ${includeSchema ? renderWorkflowPromptComparisonBlock('Expected Output Schema', initialPromptPack.expected_output_schema, finalPromptPack.expected_output_schema) : ''}
+                    ` : ''}
+                    <h5>Final Prompt Pack JSON</h5>
+                    <pre><code>${escapeHtml(finalCombinedPack)}</code></pre>
+                </details>
+
+                <details class="workflow-test-details">
+                    <summary>Final Adjuster Prompt</summary>
+                    <pre><code>${escapeHtml(finalAdjustment.adjuster_prompt_rendered || '')}</code></pre>
+                </details>
+
+                <details class="workflow-test-details">
+                    <summary>Final Adjuster Raw Response</summary>
+                    <pre><code>${escapeHtml(finalAdjustment.adjuster_response || '')}</code></pre>
+                </details>
+
+                <details class="workflow-test-details">
+                    <summary>Final Adjuster Usage</summary>
+                    <pre><code>${escapeHtml(finalUsage)}</code></pre>
+                </details>
+            </div>
+        `).show();
+    }
+
+    function renderWorkflowRefinementError(message, partialIterations = []) {
+        const partialInfo = Array.isArray(partialIterations) && partialIterations.length
+            ? `<p><strong>Completed iterations before failure:</strong> ${escapeHtml(String(partialIterations.length))}</p>`
+            : '';
+
+        $('#workflow-refinement-results').html(`
+            <div class="test-results error">
+                <h4>Workflow Prompt Refinement - Failed</h4>
+                <div class="step-error-content">${escapeHtml(message || 'Workflow refinement failed.')}</div>
+                ${partialInfo}
+            </div>
+        `).show();
+    }
+
+    function normalizeWorkflowPromptPack(pack) {
+        const input = pack || {};
+        return {
+            system_prompt: String(input.system_prompt || ''),
+            user_message_template: String(input.user_message_template || ''),
+            expected_output_schema: String(input.expected_output_schema || '{}')
+        };
+    }
+
+    function formatWorkflowPromptPackArtifact(pack, includeSchema) {
+        const normalized = normalizeWorkflowPromptPack(pack);
+        const artifact = {
+            system_prompt: normalized.system_prompt,
+            user_message_template: normalized.user_message_template
+        };
+        if (includeSchema === false) {
+            return JSON.stringify(artifact, null, 2);
+        }
+        artifact.expected_output_schema = normalized.expected_output_schema;
+        return JSON.stringify(artifact, null, 2);
+    }
+
+    function resolveWorkflowAjaxErrorMessage(error, fallbackMessage = 'Request failed.') {
+        if (!error) {
+            return fallbackMessage;
+        }
+        if (typeof error === 'string') {
+            return error;
+        }
+        if (error.responseJSON?.data?.message) {
+            return String(error.responseJSON.data.message);
+        }
+        if (error.responseJSON?.message) {
+            return String(error.responseJSON.message);
+        }
+        if (error.statusText && error.status && Number(error.status) >= 400) {
+            return `${fallbackMessage} (${error.status} ${error.statusText})`;
+        }
+        if (error.message) {
+            return String(error.message);
+        }
+        return fallbackMessage;
+    }
+
+    function renderWorkflowPromptComparisonBlock(label, beforeText, afterText) {
+        const before = String(beforeText ?? '');
+        const after = String(afterText ?? '');
+        const diff = buildWorkflowSideBySideLineDiff(before, after);
+
+        return `
+            <div class="workflow-prompt-compare-block ${diff.hasChanges ? 'has-changes' : 'no-changes'}">
+                <h5>${escapeHtml(label || '')}${diff.hasChanges ? '' : ' (unchanged)'}</h5>
+                <div class="content-comparison workflow-prompt-comparison">
+                    <div class="comparison-side before">
+                        <h6>Before</h6>
+                        <div class="comparison-content workflow-diff-content">${diff.beforeHtml}</div>
+                    </div>
+                    <div class="comparison-side after">
+                        <h6>After</h6>
+                        <div class="comparison-content workflow-diff-content">${diff.afterHtml}</div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    function buildWorkflowSideBySideLineDiff(beforeText, afterText) {
+        const beforeLines = String(beforeText ?? '').split('\n');
+        const afterLines = String(afterText ?? '').split('\n');
+        const ops = diffWorkflowLinesLcs(beforeLines, afterLines);
+        const beforeRows = [];
+        const afterRows = [];
+        let hasChanges = false;
+        let index = 0;
+        const wrapLine = (contentHtml, lineClass = '') =>
+            `<div class="workflow-diff-line ${lineClass}">${contentHtml || '&nbsp;'}</div>`;
+        const placeholder = '<span class="workflow-diff-placeholder">empty</span>';
+
+        while (index < ops.length) {
+            const op = ops[index];
+            if (op.type === 'equal') {
+                const escaped = escapeHtml(op.line ?? '');
+                beforeRows.push(wrapLine(escaped, 'equal'));
+                afterRows.push(wrapLine(escaped, 'equal'));
+                index += 1;
+                continue;
+            }
+
+            const deleted = [];
+            const inserted = [];
+            while (index < ops.length && ops[index].type !== 'equal') {
+                if (ops[index].type === 'delete') {
+                    deleted.push(String(ops[index].line ?? ''));
+                } else if (ops[index].type === 'insert') {
+                    inserted.push(String(ops[index].line ?? ''));
+                }
+                index += 1;
+            }
+
+            const maxRows = Math.max(deleted.length, inserted.length);
+            for (let row = 0; row < maxRows; row++) {
+                const beforeLine = row < deleted.length ? deleted[row] : null;
+                const afterLine = row < inserted.length ? inserted[row] : null;
+
+                if (beforeLine !== null && afterLine !== null) {
+                    const linePair = renderWorkflowChangedLinePair(beforeLine, afterLine);
+                    hasChanges = hasChanges || linePair.changed;
+                    beforeRows.push(wrapLine(linePair.beforeHtml, linePair.changed ? 'changed' : 'equal'));
+                    afterRows.push(wrapLine(linePair.afterHtml, linePair.changed ? 'changed' : 'equal'));
+                    continue;
+                }
+
+                if (beforeLine !== null) {
+                    hasChanges = true;
+                    beforeRows.push(wrapLine(`<span class="workflow-diff-remove">${escapeHtml(beforeLine)}</span>`, 'changed'));
+                    afterRows.push(wrapLine(placeholder, 'placeholder'));
+                    continue;
+                }
+
+                if (afterLine !== null) {
+                    hasChanges = true;
+                    beforeRows.push(wrapLine(placeholder, 'placeholder'));
+                    afterRows.push(wrapLine(`<span class="workflow-diff-add">${escapeHtml(afterLine)}</span>`, 'changed'));
+                }
+            }
+        }
+
+        if (!beforeRows.length && !afterRows.length) {
+            beforeRows.push(wrapLine('&nbsp;', 'equal'));
+            afterRows.push(wrapLine('&nbsp;', 'equal'));
+        }
+
+        return {
+            hasChanges,
+            beforeHtml: beforeRows.join(''),
+            afterHtml: afterRows.join('')
+        };
+    }
+
+    function diffWorkflowLinesLcs(beforeLines, afterLines) {
+        const a = Array.isArray(beforeLines) ? beforeLines : [];
+        const b = Array.isArray(afterLines) ? afterLines : [];
+        const n = a.length;
+        const m = b.length;
+        const matrix = Array.from({ length: n + 1 }, () => Array(m + 1).fill(0));
+
+        for (let i = n - 1; i >= 0; i--) {
+            for (let j = m - 1; j >= 0; j--) {
+                matrix[i][j] = a[i] === b[j]
+                    ? matrix[i + 1][j + 1] + 1
+                    : Math.max(matrix[i + 1][j], matrix[i][j + 1]);
+            }
+        }
+
+        const ops = [];
+        let i = 0;
+        let j = 0;
+        while (i < n && j < m) {
+            if (a[i] === b[j]) {
+                ops.push({ type: 'equal', line: a[i] });
+                i += 1;
+                j += 1;
+            } else if (matrix[i + 1][j] >= matrix[i][j + 1]) {
+                ops.push({ type: 'delete', line: a[i] });
+                i += 1;
+            } else {
+                ops.push({ type: 'insert', line: b[j] });
+                j += 1;
+            }
+        }
+
+        while (i < n) {
+            ops.push({ type: 'delete', line: a[i] });
+            i += 1;
+        }
+        while (j < m) {
+            ops.push({ type: 'insert', line: b[j] });
+            j += 1;
+        }
+
+        return ops;
+    }
+
+    function renderWorkflowChangedLinePair(beforeLine, afterLine) {
+        const a = String(beforeLine ?? '');
+        const b = String(afterLine ?? '');
+        if (a === b) {
+            return {
+                changed: false,
+                beforeHtml: escapeHtml(a),
+                afterHtml: escapeHtml(b)
+            };
+        }
+
+        const minLen = Math.min(a.length, b.length);
+        let prefix = 0;
+        while (prefix < minLen && a[prefix] === b[prefix]) {
+            prefix += 1;
+        }
+
+        let suffix = 0;
+        const aTailLimit = a.length - prefix;
+        const bTailLimit = b.length - prefix;
+        while (
+            suffix < aTailLimit &&
+            suffix < bTailLimit &&
+            a[a.length - 1 - suffix] === b[b.length - 1 - suffix]
+        ) {
+            suffix += 1;
+        }
+
+        const aChangedEnd = a.length - suffix;
+        const bChangedEnd = b.length - suffix;
+        const beforeHtml = `${escapeHtml(a.slice(0, prefix))}${a.slice(prefix, aChangedEnd) ? `<span class="workflow-diff-remove">${escapeHtml(a.slice(prefix, aChangedEnd))}</span>` : ''}${escapeHtml(a.slice(aChangedEnd))}`;
+        const afterHtml = `${escapeHtml(b.slice(0, prefix))}${b.slice(prefix, bChangedEnd) ? `<span class="workflow-diff-add">${escapeHtml(b.slice(prefix, bChangedEnd))}</span>` : ''}${escapeHtml(b.slice(bChangedEnd))}`;
+
+        return {
+            changed: true,
+            beforeHtml,
+            afterHtml
+        };
     }
 
     /**

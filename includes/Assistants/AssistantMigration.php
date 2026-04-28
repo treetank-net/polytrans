@@ -163,8 +163,7 @@ class AssistantMigration
         // Note: Assistant Manager expects system_prompt and api_parameters
         $api_parameters = [
             'model' => $model,
-            'temperature' => $config['temperature'],
-            'migrated_from' => $config['migrated_from']
+            'temperature' => $config['temperature']
         ];
 
         $assistant_data = [

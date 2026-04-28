@@ -189,9 +189,11 @@ class AssistantExecutor
 			$model = $settings[$model_setting_key] ?? '';
 		}
 		
+		$api_parameters = self::sanitize_api_parameters($config['api_parameters'] ?? array());
+
 		// Build API parameters
 		$parameters = array_merge(
-			$config['api_parameters'] ?? array(),
+			$api_parameters,
 			array('model' => $model)
 		);
 		
@@ -211,6 +213,24 @@ class AssistantExecutor
 		}
 		
 		return $result['data'];
+	}
+
+	/**
+	 * Remove internal metadata from assistant API parameters before provider request.
+	 *
+	 * @param array $api_parameters Assistant API parameters.
+	 * @return array Sanitized parameters.
+	 */
+	private static function sanitize_api_parameters($api_parameters)
+	{
+		if (!is_array($api_parameters)) {
+			return array();
+		}
+
+		// Migration metadata is internal-only and not accepted by provider APIs.
+		unset($api_parameters['migrated_from']);
+
+		return $api_parameters;
 	}
 
 	/**

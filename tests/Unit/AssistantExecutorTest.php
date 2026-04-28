@@ -374,6 +374,24 @@ test('call_provider_api includes usage statistics', function () {
     expect($expected_response['usage'])->toHaveKey('total_tokens');
 });
 
+test('call_provider_api sanitizes internal migration metadata from api_parameters', function () {
+    $method = new \ReflectionMethod(\PolyTrans\Assistants\AssistantExecutor::class, 'sanitize_api_parameters');
+    $method->setAccessible(true);
+
+    $sanitized = $method->invoke(null, [
+        'model' => 'gpt-4o-mini',
+        'temperature' => 0.7,
+        'migrated_from' => [
+            'workflow_id' => 'workflow_123',
+            'step_name' => 'Legacy Step',
+        ],
+    ]);
+
+    expect($sanitized)->toHaveKey('model');
+    expect($sanitized)->toHaveKey('temperature');
+    expect($sanitized)->not->toHaveKey('migrated_from');
+});
+
 // ============================================================================
 // RESPONSE PROCESSING TESTS
 // ============================================================================

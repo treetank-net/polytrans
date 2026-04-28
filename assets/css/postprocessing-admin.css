@@ -336,6 +336,153 @@
     margin-bottom: 20px;
 }
 
+.workflow-test-tabs {
+    display: flex;
+    gap: 8px;
+    margin: 12px 0 18px;
+    border-bottom: 1px solid #dcdcde;
+    padding-bottom: 10px;
+}
+
+.workflow-test-tab.active {
+    background: #2271b1;
+    border-color: #2271b1;
+    color: #fff;
+}
+
+.workflow-mode-panel {
+    margin-top: 12px;
+}
+
+#workflow-refine-recent-posts {
+    width: 100%;
+    min-height: 220px;
+}
+
+.workflow-refinement-panel,
+.workflow-test-details {
+    background: #fff;
+    border: 1px solid #dcdcde;
+    border-radius: 4px;
+    margin-top: 16px;
+    padding: 14px;
+}
+
+.workflow-test-details summary {
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.workflow-refinement-panel h5,
+.workflow-test-details h5 {
+    margin: 0 0 8px;
+}
+
+.workflow-refinement-panel pre,
+.workflow-test-details pre {
+    max-height: 420px;
+    overflow: auto;
+    margin: 10px 0 0;
+    padding: 12px;
+    background: #f6f7f7;
+    border: 1px solid #dcdcde;
+    white-space: pre-wrap;
+}
+
+.workflow-refinement-actions-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin: 16px 0;
+}
+
+.workflow-refine-progress-bar {
+    width: 100%;
+    height: 10px;
+    border-radius: 999px;
+    background: #e5e7eb;
+    overflow: hidden;
+    margin-top: 12px;
+}
+
+.workflow-refine-progress-fill {
+    height: 100%;
+    background: #2271b1;
+    transition: width 0.2s ease;
+}
+
+.workflow-refine-progress-label {
+    margin-top: 6px;
+    font-size: 12px;
+    color: #50575e;
+}
+
+.workflow-refine-log-wrap {
+    margin-top: 12px;
+}
+
+.workflow-refine-log-wrap h5 {
+    margin: 0 0 8px;
+}
+
+.workflow-refine-log {
+    margin: 0;
+    padding: 10px 10px 10px 24px;
+    max-height: 220px;
+    overflow: auto;
+    border: 1px solid #dcdcde;
+    background: #f6f7f7;
+}
+
+.workflow-prompt-compare-block {
+    margin-top: 14px;
+}
+
+.workflow-prompt-compare-block h5 {
+    margin: 0 0 8px;
+}
+
+.workflow-diff-content {
+    font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
+    font-size: 12px;
+    line-height: 1.45;
+    white-space: pre-wrap;
+}
+
+.workflow-diff-line {
+    padding: 2px 0;
+    border-radius: 2px;
+}
+
+.workflow-diff-line.changed {
+    background: rgba(0, 0, 0, 0.03);
+}
+
+.workflow-diff-line.placeholder {
+    color: #9ca3af;
+}
+
+.workflow-diff-add {
+    background: #dcfce7;
+    color: #14532d;
+    border-radius: 2px;
+    padding: 0 2px;
+}
+
+.workflow-diff-remove {
+    background: #fee2e2;
+    color: #7f1d1d;
+    border-radius: 2px;
+    padding: 0 2px;
+    text-decoration: line-through;
+}
+
+.workflow-diff-placeholder {
+    color: #9ca3af;
+    font-style: italic;
+}
+
 .test-post-selector {
     background: #f9f9f9;
     border: 1px solid #ddd;

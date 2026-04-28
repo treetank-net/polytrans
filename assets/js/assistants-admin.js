@@ -45,6 +45,14 @@
             $('#run-assistant-test-btn').on('click', this.handleAssistantTest.bind(this));
             $('#assistant-test-recent-posts').on('change', this.handleAssistantRecentPostChange.bind(this));
             $('#assistant-test-source-language').on('change', this.loadRecentPostsForAssistantTest.bind(this));
+            $('#assistant-refine-source-language').on('change', this.loadRecentPostsForAssistantTest.bind(this));
+            $('#assistant-refine-refresh-posts').on('click', this.loadRecentPostsForAssistantTest.bind(this));
+            $('#assistant-refine-select-all-posts').on('click', this.handleSelectAllRefinementPosts.bind(this));
+            $('#assistant-refine-clear-posts').on('click', this.handleClearRefinementPosts.bind(this));
+            $('#run-assistant-refinement-btn').on('click', this.handleAssistantRefinement.bind(this));
+            $(document).on('click', '#assistant-refine-reeval-btn', this.handleAssistantReevaluateAgain.bind(this));
+            $(document).on('click', '#assistant-refine-apply-btn', this.handleAssistantApplyPromptPack.bind(this));
+            $(document).on('click', '.assistant-test-tab', this.handleAssistantModeSwitch.bind(this));
         },
 
         /**
@@ -54,6 +62,7 @@
             if (!$('#assistant-tester-container').length) {
                 return;
             }
+            this.handleAssistantModeSwitch(null, 'test');
             this.loadRecentPostsForAssistantTest();
         },
 
@@ -573,10 +582,23 @@
         /**
          * Load recent posts for assistant tester.
          */
-        loadRecentPostsForAssistantTest: function() {
-            const $dropdown = $('#assistant-test-recent-posts');
-            const language = $('#assistant-test-source-language').val();
-            $dropdown.html('<option value="">Loading posts...</option>');
+        loadRecentPostsForAssistantTest: function(e) {
+            const $singleDropdown = $('#assistant-test-recent-posts');
+            const $multiSelect = $('#assistant-refine-recent-posts');
+            let language = $('#assistant-test-source-language').val() || '';
+
+            if (e && e.currentTarget && e.currentTarget.id === 'assistant-refine-source-language') {
+                language = $('#assistant-refine-source-language').val() || language;
+            } else if ($('#assistant-mode-refine').is(':visible')) {
+                language = $('#assistant-refine-source-language').val() || language;
+            }
+
+            if ($singleDropdown.length) {
+                $singleDropdown.html('<option value="">Loading posts...</option>');
+            }
+            if ($multiSelect.length) {
+                $multiSelect.html('<option value="">Loading posts...</option>');
+            }
 
             $.ajax({
                 url: polytransAssistants.ajaxUrl,
@@ -589,20 +611,39 @@
                 },
                 success: (response) => {
                     if (!response.success || !response.data?.posts) {
-                        $dropdown.html('<option value="">No posts found</option>');
+                        if ($singleDropdown.length) {
+                            $singleDropdown.html('<option value="">No posts found</option>');
+                        }
+                        if ($multiSelect.length) {
+                            $multiSelect.html('<option value="">No posts found</option>');
+                        }
                         return;
                     }
 
                     window.polytransAssistantRecentPosts = response.data.posts;
-                    let options = '<option value="">Select a post...</option>';
+                    let singleOptions = '<option value="">Select a post...</option>';
+                    let multiOptions = '';
                     response.data.posts.forEach((post) => {
                         const dateStr = new Date(post.post_date).toLocaleDateString();
-                        options += `<option value="${post.id}">${this.escapeHtml(post.title)} (${dateStr})</option>`;
+                        const option = `<option value="${post.id}">${this.escapeHtml(post.title)} (${dateStr})</option>`;
+                        singleOptions += option;
+                        multiOptions += option;
                     });
-                    $dropdown.html(options);
+
+                    if ($singleDropdown.length) {
+                        $singleDropdown.html(singleOptions);
+                    }
+                    if ($multiSelect.length) {
+                        $multiSelect.html(multiOptions);
+                    }
                 },
                 error: () => {
-                    $dropdown.html('<option value="">Error loading posts</option>');
+                    if ($singleDropdown.length) {
+                        $singleDropdown.html('<option value="">Error loading posts</option>');
+                    }
+                    if ($multiSelect.length) {
+                        $multiSelect.html('<option value="">Error loading posts</option>');
+                    }
                 }
             });
         },
@@ -640,6 +681,1023 @@
                 return null;
             }
             return window.polytransAssistantRecentPosts.find((post) => String(post.id) === String(id)) || null;
+        },
+
+        /**
+         * Resolve selected posts for refinement mode.
+         */
+        getSelectedAssistantRefinementPosts: function() {
+            const selectedIds = $('#assistant-refine-recent-posts').val() || [];
+            if (!selectedIds.length || !Array.isArray(window.polytransAssistantRecentPosts)) {
+                return [];
+            }
+
+            const idSet = new Set(selectedIds.map((id) => String(id)));
+            return window.polytransAssistantRecentPosts.filter((post) => idSet.has(String(post.id)));
+        },
+
+        /**
+         * Switch between tester modes.
+         */
+        handleAssistantModeSwitch: function(e, forcedMode = null) {
+            if (e && typeof e.preventDefault === 'function') {
+                e.preventDefault();
+            }
+
+            const mode = forcedMode || $(e.currentTarget).data('mode') || 'test';
+
+            $('.assistant-test-tab').removeClass('is-active');
+            $(`.assistant-test-tab[data-mode="${mode}"]`).addClass('is-active');
+
+            $('.assistant-mode-panel').hide();
+            $(`#assistant-mode-${mode}`).show();
+        },
+
+        /**
+         * Select every post in refinement selector.
+         */
+        handleSelectAllRefinementPosts: function(e) {
+            if (e && typeof e.preventDefault === 'function') {
+                e.preventDefault();
+            }
+            const values = Array.isArray(window.polytransAssistantRecentPosts)
+                ? window.polytransAssistantRecentPosts.map((post) => String(post.id))
+                : [];
+            $('#assistant-refine-recent-posts').val(values);
+        },
+
+        /**
+         * Clear selected posts in refinement selector.
+         */
+        handleClearRefinementPosts: function(e) {
+            if (e && typeof e.preventDefault === 'function') {
+                e.preventDefault();
+            }
+            $('#assistant-refine-recent-posts').val([]);
+        },
+
+        /**
+         * Run prompt refinement flow:
+         * Full iterations on the same selected posts.
+         */
+        handleAssistantRefinement: async function(e) {
+            if (e && typeof e.preventDefault === 'function') {
+                e.preventDefault();
+            }
+
+            const $container = $('#assistant-tester-container');
+            const assistantId = parseInt($container.data('assistant-id') || 0, 10);
+            const sourceLanguage = ($('#assistant-refine-source-language').val() || '').trim();
+            const targetLanguage = ($('#assistant-refine-target-language').val() || '').trim();
+            const criteria = ($('#assistant-refine-criteria').val() || '').trim();
+            const evaluatorTemplate = ($('#assistant-refine-evaluator-template').val() || '').trim();
+            const adjusterTemplate = ($('#assistant-refine-adjuster-template').val() || '').trim();
+            const configuredIterations = parseInt($('#assistant-refine-iterations').val() || '1', 10);
+            const totalIterations = Number.isFinite(configuredIterations)
+                ? Math.max(1, Math.min(configuredIterations, 10))
+                : 1;
+            const selectedPosts = this.getSelectedAssistantRefinementPosts();
+
+            await this.runAssistantRefinementIterations({
+                assistantId,
+                sourceLanguage,
+                targetLanguage,
+                criteria,
+                evaluatorTemplate,
+                adjusterTemplate,
+                totalIterations,
+                selectedPosts,
+                initialPromptPack: null,
+                existingIterations: []
+            }, {
+                $button: $('#run-assistant-refinement-btn'),
+                runningLabel: 'Running Full Re-eval...',
+                idleLabel: 'Run Refinement',
+                successMessage: 'Prompt refinement + full re-eval completed.'
+            });
+        },
+
+        /**
+         * Continue with additional full re-eval iterations from the latest prompt pack.
+         */
+        handleAssistantReevaluateAgain: async function(e) {
+            if (e && typeof e.preventDefault === 'function') {
+                e.preventDefault();
+            }
+
+            const session = this.lastAssistantRefinementSession || null;
+            if (!session || !session.finalPromptPack) {
+                this.showNotice('Run refinement first to use re-evaluate again.', 'error');
+                return;
+            }
+
+            const configuredIterations = parseInt($('#assistant-refine-extra-iterations').val() || '1', 10);
+            const totalIterations = Number.isFinite(configuredIterations)
+                ? Math.max(1, Math.min(configuredIterations, 10))
+                : 1;
+
+            await this.runAssistantRefinementIterations({
+                assistantId: session.assistantId,
+                sourceLanguage: session.sourceLanguage,
+                targetLanguage: session.targetLanguage,
+                criteria: session.criteria,
+                evaluatorTemplate: session.evaluatorTemplate,
+                adjusterTemplate: session.adjusterTemplate,
+                totalIterations,
+                selectedPosts: session.selectedPosts,
+                initialPromptPack: session.finalPromptPack,
+                existingIterations: session.iterations
+            }, {
+                $button: $('#assistant-refine-reeval-btn'),
+                runningLabel: 'Re-evaluating...',
+                idleLabel: 'Re-evaluate Again',
+                successMessage: `Full re-eval completed (${totalIterations} extra iteration${totalIterations === 1 ? '' : 's'}).`
+            });
+        },
+
+        /**
+         * Apply final prompt pack from the latest refinement session.
+         */
+        handleAssistantApplyPromptPack: async function(e) {
+            if (e && typeof e.preventDefault === 'function') {
+                e.preventDefault();
+            }
+
+            const session = this.lastAssistantRefinementSession || null;
+            if (!session || !session.finalPromptPack) {
+                this.showNotice('No final prompt pack to apply. Run refinement first.', 'error');
+                return;
+            }
+
+            const $button = $('#assistant-refine-apply-btn');
+            const idleLabel = $button.text() || 'Apply Final Prompt Pack';
+            $button.prop('disabled', true).text('Applying...');
+
+            try {
+                const response = await $.ajax({
+                    url: polytransAssistants.ajaxUrl,
+                    type: 'POST',
+                    data: {
+                        action: 'polytrans_apply_assistant_prompt_pack',
+                        nonce: polytransAssistants.nonce,
+                        assistant_id: session.assistantId,
+                        system_prompt: session.finalPromptPack.system_prompt || '',
+                        user_message_template: session.finalPromptPack.user_message_template || '',
+                        expected_output_schema: session.finalPromptPack.expected_output_schema || '{}'
+                    }
+                });
+
+                if (!response || !response.success) {
+                    throw new Error(response?.data?.message || 'Failed to apply prompt pack.');
+                }
+
+                this.showNotice('Final prompt pack applied to assistant.', 'success');
+            } catch (error) {
+                const message = this.resolveAjaxErrorMessage(error, 'Failed to apply prompt pack.');
+                this.showNotice(message, 'error');
+            } finally {
+                $button.prop('disabled', false).text(idleLabel);
+            }
+        },
+
+        /**
+         * Execute one refinement run (N full iterations).
+         */
+        runAssistantRefinementIterations: async function(config, ui) {
+            const assistantId = parseInt(config.assistantId || 0, 10);
+            const sourceLanguage = String(config.sourceLanguage || '').trim();
+            const targetLanguage = String(config.targetLanguage || '').trim();
+            const criteria = String(config.criteria || '').trim();
+            const evaluatorTemplate = String(config.evaluatorTemplate || '').trim();
+            const adjusterTemplate = String(config.adjusterTemplate || '').trim();
+            const totalIterations = Number.isFinite(config.totalIterations)
+                ? Math.max(1, Math.min(parseInt(config.totalIterations, 10), 10))
+                : 1;
+            const selectedPosts = Array.isArray(config.selectedPosts) ? config.selectedPosts : [];
+            const existingIterations = Array.isArray(config.existingIterations) ? config.existingIterations.slice() : [];
+            const baseIterationCount = existingIterations.length;
+            let currentPromptPack = config.initialPromptPack ? this.normalizePromptPack(config.initialPromptPack) : null;
+
+            if (!assistantId) {
+                this.showNotice('Assistant context is missing.', 'error');
+                return;
+            }
+            if (!sourceLanguage || !targetLanguage) {
+                this.showNotice('Source and target language are required.', 'error');
+                return;
+            }
+            if (!criteria) {
+                this.showNotice('Refinement criteria is required.', 'error');
+                return;
+            }
+            if (!selectedPosts.length) {
+                this.showNotice('Select at least one post for refinement.', 'error');
+                return;
+            }
+
+            const $button = ui?.$button || $('#run-assistant-refinement-btn');
+            const runningLabel = ui?.runningLabel || 'Running...';
+            const idleLabel = ui?.idleLabel || 'Run';
+            const successMessage = ui?.successMessage || 'Refinement completed.';
+            const $progress = $('#assistant-refinement-progress');
+            const $results = $('#assistant-refinement-results');
+            const $primaryButton = $('#run-assistant-refinement-btn');
+            const $reevalButton = $('#assistant-refine-reeval-btn');
+            const $applyButton = $('#assistant-refine-apply-btn');
+            const stepsPerIteration = (selectedPosts.length * 2) + 1;
+
+            const progressState = {
+                totalPosts: selectedPosts.length,
+                completedPosts: 0,
+                totalIterations,
+                currentIteration: 1,
+                absoluteIteration: baseIterationCount + 1,
+                phase: 'execution',
+                errors: [],
+                totalSteps: totalIterations * stepsPerIteration,
+                completedSteps: 0,
+                logs: []
+            };
+
+            this.pushRefinementLog(
+                progressState,
+                `Starting full re-eval: ${totalIterations} iteration(s), ${selectedPosts.length} post(s) per iteration.`
+            );
+
+            const previousButtonText = $button.text();
+            const spinner = $button.next('.spinner');
+            $button.prop('disabled', true).text(runningLabel);
+            if (spinner.length) {
+                spinner.addClass('is-active');
+            }
+            $primaryButton.prop('disabled', true);
+            $reevalButton.prop('disabled', true);
+            $applyButton.prop('disabled', true);
+            $progress.show();
+            $results.hide().empty();
+            this.renderAssistantRefinementProgress(progressState);
+
+            const iterationResults = existingIterations.slice();
+
+            try {
+                for (let iterationOffset = 1; iterationOffset <= totalIterations; iterationOffset++) {
+                    const iterationNumber = baseIterationCount + iterationOffset;
+                    progressState.currentIteration = iterationOffset;
+                    progressState.absoluteIteration = iterationNumber;
+                    progressState.phase = 'execution';
+                    progressState.completedPosts = 0;
+                    progressState.currentPost = '';
+                    this.pushRefinementLog(progressState, `Iteration ${iterationNumber}: running assistant and evaluator.`);
+                    this.renderAssistantRefinementProgress(progressState);
+
+                    const evaluatedRuns = [];
+                    for (let index = 0; index < selectedPosts.length; index++) {
+                        const post = selectedPosts[index];
+                        progressState.currentPost = post.title || `Post #${post.id}`;
+                        this.pushRefinementLog(progressState, `Iteration ${iterationNumber}, post ${index + 1}/${selectedPosts.length}: assistant execution started.`);
+                        this.renderAssistantRefinementProgress(progressState);
+
+                        const assistantRunRequest = {
+                            action: 'polytrans_run_assistant_refinement_post',
+                            nonce: polytransAssistants.nonce,
+                            assistant_id: assistantId,
+                            selected_post_id: post.id,
+                            source_language: sourceLanguage,
+                            target_language: targetLanguage
+                        };
+                        if (currentPromptPack) {
+                            assistantRunRequest.override_system_prompt = currentPromptPack.system_prompt || '';
+                            assistantRunRequest.override_user_message_template = currentPromptPack.user_message_template || '';
+                            assistantRunRequest.override_expected_output_schema = currentPromptPack.expected_output_schema || '';
+                        }
+
+                        const assistantRunResponse = await $.ajax({
+                            url: polytransAssistants.ajaxUrl,
+                            type: 'POST',
+                            data: assistantRunRequest
+                        });
+                        if (!assistantRunResponse || !assistantRunResponse.success) {
+                            const message = assistantRunResponse?.data?.message || `Assistant execution failed for post #${post.id}.`;
+                            throw new Error(message);
+                        }
+
+                        const runData = assistantRunResponse.data || {};
+                        const runId = String(runData.run_id || '').trim();
+                        if (!runId) {
+                            throw new Error(`Assistant run for post #${post.id} did not return run_id.`);
+                        }
+
+                        progressState.completedSteps += 1;
+                        this.pushRefinementLog(
+                            progressState,
+                            `Iteration ${iterationNumber}, post ${index + 1}/${selectedPosts.length}: assistant done (run_id: ${runId}).`
+                        );
+                        this.renderAssistantRefinementProgress(progressState);
+
+                        const evaluateRequest = {
+                            action: 'polytrans_evaluate_assistant_run',
+                            nonce: polytransAssistants.nonce,
+                            assistant_id: assistantId,
+                            run_id: runId,
+                            criteria: criteria,
+                            evaluator_prompt_template: evaluatorTemplate
+                        };
+
+                        const evaluateResponse = await $.ajax({
+                            url: polytransAssistants.ajaxUrl,
+                            type: 'POST',
+                            data: evaluateRequest
+                        });
+                        if (!evaluateResponse || !evaluateResponse.success) {
+                            const message = evaluateResponse?.data?.message || `Evaluation failed for post #${post.id}.`;
+                            throw new Error(message);
+                        }
+
+                        const evaluatedRun = Object.assign({}, runData, {
+                            run_id: String(evaluateResponse?.data?.run_id || runId),
+                            evaluation: evaluateResponse?.data?.evaluation || null,
+                            final_post_candidate: evaluateResponse?.data?.final_post_candidate || runData?.final_post_candidate || null,
+                        });
+                        evaluatedRuns.push(evaluatedRun);
+
+                        progressState.completedPosts = index + 1;
+                        progressState.completedSteps += 1; // evaluator
+                        const score = evaluateResponse?.data?.evaluation?.score;
+                        this.pushRefinementLog(
+                            progressState,
+                            `Iteration ${iterationNumber}, post ${index + 1}/${selectedPosts.length}: evaluator done${score !== null && score !== undefined ? ` (score ${score})` : ''}.`
+                        );
+                        this.renderAssistantRefinementProgress(progressState);
+                    }
+
+                    progressState.phase = 'adjustment';
+                    progressState.currentPost = '';
+                    this.pushRefinementLog(progressState, `Iteration ${iterationNumber}: running prompt adjuster.`);
+                    this.renderAssistantRefinementProgress(progressState);
+
+                    const adjustRequest = {
+                        action: 'polytrans_adjust_assistant_prompt',
+                        nonce: polytransAssistants.nonce,
+                        assistant_id: assistantId,
+                        criteria: criteria,
+                        adjuster_prompt_template: adjusterTemplate,
+                        evaluations: JSON.stringify(evaluatedRuns)
+                    };
+                    if (currentPromptPack) {
+                        adjustRequest.current_system_prompt = currentPromptPack.system_prompt || '';
+                        adjustRequest.current_user_message_template = currentPromptPack.user_message_template || '';
+                        adjustRequest.current_expected_output_schema = currentPromptPack.expected_output_schema || '';
+                    }
+
+                    const adjustResponse = await $.ajax({
+                        url: polytransAssistants.ajaxUrl,
+                        type: 'POST',
+                        data: adjustRequest
+                    });
+                    if (!adjustResponse || !adjustResponse.success) {
+                        const message = adjustResponse?.data?.message || 'Prompt adjuster failed.';
+                        throw new Error(message);
+                    }
+
+                    progressState.completedSteps += 1;
+                    const adjustment = adjustResponse.data || {};
+                    const parsed = adjustment.parsed || {};
+                    const hasValidPack = !!parsed.is_valid_pack;
+                    const nextPromptPack = hasValidPack ? this.normalizePromptPack(parsed) : null;
+                    const scoredRuns = evaluatedRuns.filter((run) => run?.evaluation && run.evaluation.score !== null && run.evaluation.score !== undefined);
+                    const averageScore = scoredRuns.length
+                        ? (scoredRuns.reduce((sum, run) => sum + Number(run.evaluation.score || 0), 0) / scoredRuns.length)
+                        : null;
+
+                    iterationResults.push({
+                        iteration: iterationNumber,
+                        runs: evaluatedRuns,
+                        adjustment: adjustment,
+                        average_score: averageScore,
+                        input_prompt_pack: this.normalizePromptPack(adjustment.input_prompt_pack || currentPromptPack || {}),
+                        output_prompt_pack: nextPromptPack
+                    });
+
+                    this.pushRefinementLog(
+                        progressState,
+                        `Iteration ${iterationNumber}: adjuster finished${hasValidPack ? '' : ' (invalid prompt pack format)'}.`
+                    );
+
+                    if (!hasValidPack && iterationOffset < totalIterations) {
+                        throw new Error(`Iteration ${iterationNumber}: adjuster response is not valid prompt-pack JSON.`);
+                    }
+                    if (nextPromptPack) {
+                        currentPromptPack = nextPromptPack;
+                    }
+
+                    this.renderAssistantRefinementProgress(progressState);
+                }
+
+                progressState.phase = 'completed';
+                progressState.currentPost = '';
+                this.pushRefinementLog(progressState, 'Full re-eval completed.');
+                this.renderAssistantRefinementProgress(progressState);
+
+                const finalIteration = iterationResults.length ? iterationResults[iterationResults.length - 1] : null;
+                const finalAdjustment = finalIteration?.adjustment || {};
+                const finalParsed = finalAdjustment.parsed || {};
+                const finalPromptPack = finalParsed.is_valid_pack
+                    ? this.normalizePromptPack(finalParsed)
+                    : (finalIteration?.output_prompt_pack || currentPromptPack || null);
+
+                this.lastAssistantRefinementSession = {
+                    assistantId,
+                    sourceLanguage,
+                    targetLanguage,
+                    criteria,
+                    evaluatorTemplate,
+                    adjusterTemplate,
+                    selectedPosts,
+                    iterations: iterationResults,
+                    finalPromptPack
+                };
+
+                this.renderAssistantRefinementResults({
+                    assistantId,
+                    criteria,
+                    iterations: iterationResults,
+                    selectedPosts: selectedPosts
+                });
+                this.showNotice(successMessage, 'success');
+            } catch (error) {
+                const message = this.resolveAjaxErrorMessage(error, 'Refinement failed.');
+                progressState.phase = 'failed';
+                progressState.errors.push(message);
+                this.pushRefinementLog(progressState, `FAILED: ${message}`);
+                this.renderAssistantRefinementProgress(progressState);
+                this.renderAssistantRefinementError(message, iterationResults);
+                this.showNotice(message, 'error');
+            } finally {
+                $button.prop('disabled', false).text(previousButtonText || idleLabel);
+                if (spinner.length) {
+                    spinner.removeClass('is-active');
+                }
+                $primaryButton.prop('disabled', false);
+                $reevalButton.prop('disabled', false);
+                $applyButton.prop('disabled', false);
+            }
+        },
+
+        /**
+         * Keep chronological logs of refinement steps.
+         */
+        pushRefinementLog: function(state, message) {
+            if (!state || !Array.isArray(state.logs)) {
+                return;
+            }
+            const timeLabel = new Date().toLocaleTimeString();
+            state.logs.push(`[${timeLabel}] ${String(message || '')}`);
+            if (state.logs.length > 400) {
+                state.logs.splice(0, state.logs.length - 400);
+            }
+        },
+
+        /**
+         * Normalize jQuery/AJAX error payload into readable message.
+         */
+        resolveAjaxErrorMessage: function(error, fallbackMessage = 'Request failed.') {
+            if (!error) {
+                return fallbackMessage;
+            }
+            if (typeof error === 'string') {
+                return error;
+            }
+            if (error.responseJSON?.data?.message) {
+                return String(error.responseJSON.data.message);
+            }
+            if (error.responseJSON?.message) {
+                return String(error.responseJSON.message);
+            }
+            if (error.statusText && error.status && Number(error.status) >= 400) {
+                return `${fallbackMessage} (${error.status} ${error.statusText})`;
+            }
+            if (error.message) {
+                return String(error.message);
+            }
+            return fallbackMessage;
+        },
+
+        /**
+         * Render refinement progress summary.
+         */
+        renderAssistantRefinementProgress: function(state) {
+            const phaseLabel = {
+                execution: 'Running assistant + evaluator',
+                adjustment: 'Running prompt adjuster',
+                completed: 'Completed',
+                failed: 'Failed'
+            }[state.phase] || 'Preparing';
+
+            const visibleIteration = state.absoluteIteration || state.currentIteration || 1;
+            const iterationLine = state.totalIterations > 1
+                ? `<div><strong>Iteration in current run:</strong> ${this.escapeHtml(String(state.currentIteration || 1))}/${this.escapeHtml(String(state.totalIterations || 1))}</div><div><strong>Absolute iteration:</strong> ${this.escapeHtml(String(visibleIteration))}</div>`
+                : `<div><strong>Iteration:</strong> ${this.escapeHtml(String(visibleIteration))}</div>`;
+
+            const currentPostLine = state.currentPost
+                ? `<div><strong>Current post:</strong> ${this.escapeHtml(state.currentPost)}</div>`
+                : '';
+
+            const errorLine = state.errors && state.errors.length
+                ? `<div style="color:#d63638;"><strong>Error:</strong> ${this.escapeHtml(state.errors[state.errors.length - 1])}</div>`
+                : '';
+
+            const totalSteps = Number(state.totalSteps || 0);
+            const completedSteps = Math.min(Number(state.completedSteps || 0), totalSteps || Number(state.completedSteps || 0));
+            const progressPercent = totalSteps > 0
+                ? Math.max(0, Math.min((completedSteps / totalSteps) * 100, 100))
+                : 0;
+            const logs = Array.isArray(state.logs) ? state.logs : [];
+            const logsHtml = logs.length
+                ? logs.map((line) => `<li>${this.escapeHtml(line)}</li>`).join('')
+                : `<li>${this.escapeHtml('Waiting to start...')}</li>`;
+
+            $('#assistant-refinement-progress').html(`
+                <div class="execution-details">
+                    <div class="execution-detail">
+                        <span class="value">${this.escapeHtml(String(state.completedPosts || 0))}/${this.escapeHtml(String(state.totalPosts || 0))}</span>
+                        <span class="label">Posts Processed</span>
+                    </div>
+                    <div class="execution-detail">
+                        <span class="value">${this.escapeHtml(phaseLabel)}</span>
+                        <span class="label">Phase</span>
+                    </div>
+                    <div class="execution-detail">
+                        <span class="value">${this.escapeHtml(String(completedSteps))}/${this.escapeHtml(String(totalSteps || 0))}</span>
+                        <span class="label">Steps Completed</span>
+                    </div>
+                </div>
+                ${iterationLine}
+                ${currentPostLine}
+                ${errorLine}
+                <div class="assistant-refine-progress-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${this.escapeHtml(String(Math.round(progressPercent)))}">
+                    <div class="assistant-refine-progress-fill" style="width:${progressPercent}%;"></div>
+                </div>
+                <div class="assistant-refine-progress-label">${this.escapeHtml(progressPercent.toFixed(1))}%</div>
+                <div class="assistant-refine-log-wrap">
+                    <h5>Execution Log</h5>
+                    <ol class="assistant-refine-log">${logsHtml}</ol>
+                </div>
+            `).show();
+        },
+
+        /**
+         * Render refinement result payload.
+         */
+        renderAssistantRefinementResults: function(data) {
+            const iterations = Array.isArray(data.iterations) ? data.iterations : [];
+            const selectedPosts = Array.isArray(data.selectedPosts) ? data.selectedPosts : [];
+            const finalIteration = iterations.length ? iterations[iterations.length - 1] : null;
+            const finalAdjustment = finalIteration?.adjustment || {};
+            const finalParsed = finalAdjustment.parsed || {};
+            const finalIsValidPack = !!finalParsed.is_valid_pack;
+
+            const avgTableRows = iterations.map((round) => {
+                const avg = round.average_score === null || round.average_score === undefined
+                    ? 'n/a'
+                    : Number(round.average_score).toFixed(2);
+                return `
+                    <tr>
+                        <td>${this.escapeHtml(String(round.iteration || 0))}</td>
+                        <td>${this.escapeHtml(avg)}</td>
+                        <td>${this.escapeHtml(String((round.runs || []).length))}</td>
+                    </tr>
+                `;
+            }).join('');
+
+            const roundDetailsHtml = iterations.map((round) => {
+                const runs = Array.isArray(round.runs) ? round.runs : [];
+                const adjustment = round.adjustment || {};
+                const parsed = adjustment.parsed || {};
+                const isValidPack = !!parsed.is_valid_pack;
+                const combinedPack = isValidPack
+                    ? this.formatPromptPackArtifact(parsed, adjustment.adjust_expected_output_schema !== false)
+                    : (adjustment.adjuster_response || '');
+                const inputPromptPack = this.normalizePromptPack(round.input_prompt_pack || {});
+                const outputPromptPack = round.output_prompt_pack ? this.normalizePromptPack(round.output_prompt_pack) : null;
+
+                const runsHtml = runs.map((run, idx) => {
+                    const score = run?.evaluation?.score;
+                    const feedback = run?.evaluation?.feedback || '';
+                    const evaluatorPrompt = run?.evaluation?.rendered_prompt || '';
+                    const runId = String(run?.run_id || '').trim();
+                    const assistantOutput = typeof run?.assistant_output === 'string'
+                        ? run.assistant_output
+                        : JSON.stringify(run?.assistant_output || {}, null, 2);
+                    const finalPostCandidate = run?.final_post_candidate || null;
+                    const finalPostCandidateText = finalPostCandidate ? JSON.stringify(finalPostCandidate, null, 2) : '';
+
+                    return `
+                        <details class="assistant-test-details">
+                            <summary>Post #${idx + 1}: ${this.escapeHtml(run.post_title || `ID ${run.post_id || 0}`)}${score !== null && score !== undefined ? ` | Score: ${this.escapeHtml(String(score))}` : ''}${runId ? ` | Run ID: ${this.escapeHtml(runId)}` : ''}</summary>
+                            ${runId ? `<h5>Run ID</h5><pre><code>${this.escapeHtml(runId)}</code></pre>` : ''}
+                            <h5>Evaluator Feedback</h5>
+                            <pre><code>${this.escapeHtml(feedback)}</code></pre>
+                            <h5>Rendered Evaluator Prompt</h5>
+                            <pre><code>${this.escapeHtml(evaluatorPrompt)}</code></pre>
+                            <h5>Assistant Output</h5>
+                            <pre><code>${this.escapeHtml(assistantOutput)}</code></pre>
+                            ${finalPostCandidateText ? `<h5>Final Post Candidate</h5><pre><code>${this.escapeHtml(finalPostCandidateText)}</code></pre>` : ''}
+                        </details>
+                    `;
+                }).join('');
+
+                const promptComparisonHtml = outputPromptPack
+                    ? `
+                        <details class="assistant-test-details" open>
+                            <summary>Prompt Diff (Input vs Adjusted)</summary>
+                            ${this.renderPromptComparisonBlock('System Prompt', inputPromptPack.system_prompt, outputPromptPack.system_prompt)}
+                            ${this.renderPromptComparisonBlock('User Message Template', inputPromptPack.user_message_template, outputPromptPack.user_message_template)}
+                            ${this.renderPromptComparisonBlock('Expected Output Schema', inputPromptPack.expected_output_schema, outputPromptPack.expected_output_schema)}
+                        </details>
+                    `
+                    : `
+                        <div class="single-content">
+                            <h6>Prompt Diff</h6>
+                            <div class="comparison-content">No side-by-side diff for this iteration because adjuster output is not a valid 3-part prompt pack.</div>
+                        </div>
+                    `;
+
+                return `
+                    <details class="assistant-test-details" ${round.iteration === iterations.length ? 'open' : ''}>
+                        <summary>Iteration ${this.escapeHtml(String(round.iteration || 0))} | Avg score: ${this.escapeHtml(round.average_score === null || round.average_score === undefined ? 'n/a' : Number(round.average_score).toFixed(2))}</summary>
+                        ${runsHtml}
+                        ${promptComparisonHtml}
+
+                        <details class="assistant-test-details">
+                            <summary>Input Prompt Pack (iteration ${this.escapeHtml(String(round.iteration || 0))})</summary>
+                            <h5>System Prompt</h5>
+                            <pre><code>${this.escapeHtml(inputPromptPack.system_prompt || '')}</code></pre>
+                            <h5>User Message Template</h5>
+                            <pre><code>${this.escapeHtml(inputPromptPack.user_message_template || '')}</code></pre>
+                            <h5>Expected Output Schema</h5>
+                            <pre><code>${this.escapeHtml(inputPromptPack.expected_output_schema || '')}</code></pre>
+                        </details>
+
+                        <details class="assistant-test-details">
+                            <summary>Adjuster Output (iteration ${this.escapeHtml(String(round.iteration || 0))})</summary>
+                            ${isValidPack ? '' : '<p style="color:#d63638;"><strong>Adjuster response is not valid prompt-pack JSON. Raw output shown below.</strong></p>'}
+                            <h5>System Prompt</h5>
+                            <pre><code>${this.escapeHtml(parsed.system_prompt || '')}</code></pre>
+                            <h5>User Message Template</h5>
+                            <pre><code>${this.escapeHtml(parsed.user_message_template || '')}</code></pre>
+                            <h5>Expected Output Schema</h5>
+                            <pre><code>${this.escapeHtml(parsed.expected_output_schema || '')}</code></pre>
+                            <h5>Prompt Pack JSON</h5>
+                            <pre><code>${this.escapeHtml(combinedPack)}</code></pre>
+                        </details>
+                    </details>
+                `;
+            }).join('');
+
+            const finalUsage = finalAdjustment.usage && Object.keys(finalAdjustment.usage).length
+                ? JSON.stringify(finalAdjustment.usage, null, 2)
+                : 'No usage data returned.';
+            const finalIncludeSchema = finalAdjustment.adjust_expected_output_schema !== false;
+            const initialPromptPack = this.normalizePromptPack(iterations[0]?.input_prompt_pack || {});
+            const finalPromptPack = this.normalizePromptPack(finalParsed || {});
+
+            const finalCombinedPack = finalIsValidPack
+                ? this.formatPromptPackArtifact(finalParsed, finalIncludeSchema)
+                : (finalAdjustment.adjuster_response || '');
+
+            $('#assistant-refinement-results').html(`
+                <div class="test-results success">
+                    <h4>Refinement Results (Full Re-eval)</h4>
+                    <div class="execution-details">
+                        <div class="execution-detail">
+                            <span class="value">${this.escapeHtml(String(iterations.length))}</span>
+                            <span class="label">Iterations</span>
+                        </div>
+                        <div class="execution-detail">
+                            <span class="value">${this.escapeHtml(String(selectedPosts.length))}</span>
+                            <span class="label">Posts / Iteration</span>
+                        </div>
+                        <div class="execution-detail">
+                            <span class="value">${this.escapeHtml(finalAdjustment.provider || 'unknown')}</span>
+                            <span class="label">Adjuster Provider</span>
+                        </div>
+                        <div class="execution-detail">
+                            <span class="value">${this.escapeHtml(finalAdjustment.model || 'default')}</span>
+                            <span class="label">Adjuster Model</span>
+                        </div>
+                    </div>
+
+                    <div class="assistant-test-section">
+                        <h5>Criteria</h5>
+                        <pre><code>${this.escapeHtml(data.criteria || '')}</code></pre>
+                    </div>
+
+                    <div class="assistant-test-section assistant-refinement-actions">
+                        <h5>Next Actions</h5>
+                        <div class="assistant-refinement-actions-row">
+                            <label for="assistant-refine-extra-iterations"><strong>Re-evaluate Again</strong></label>
+                            <input type="number" id="assistant-refine-extra-iterations" class="small-text" min="1" max="10" step="1" value="1">
+                            <button type="button" id="assistant-refine-reeval-btn" class="button">Re-evaluate Again</button>
+                            <button type="button" id="assistant-refine-apply-btn" class="button button-primary" ${finalIsValidPack ? '' : 'disabled'}>Apply Final Prompt Pack</button>
+                        </div>
+                        <p class="description">
+                            Re-evaluate runs additional full iterations on the same selected posts using the latest prompt pack. Apply saves the final prompt pack to this assistant.
+                        </p>
+                    </div>
+
+                    <div class="assistant-test-section">
+                        <h5>Iteration Score Comparison</h5>
+                        <table class="widefat striped">
+                            <thead>
+                                <tr>
+                                    <th>Iteration</th>
+                                    <th>Average Score</th>
+                                    <th>Posts</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${avgTableRows || '<tr><td colspan="3">No score data.</td></tr>'}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    ${roundDetailsHtml}
+
+                    <details class="assistant-test-details" open>
+                        <summary>Final Proposed Prompt Pack (Diff vs Initial)</summary>
+                        ${finalIsValidPack ? '' : '<p style="color:#d63638;"><strong>Final adjuster response is not valid prompt-pack JSON. Showing raw output below.</strong></p>'}
+                        ${finalIsValidPack ? `
+                            ${this.renderPromptComparisonBlock('System Prompt', initialPromptPack.system_prompt, finalPromptPack.system_prompt)}
+                            ${this.renderPromptComparisonBlock('User Message Template', initialPromptPack.user_message_template, finalPromptPack.user_message_template)}
+                            ${finalIncludeSchema ? this.renderPromptComparisonBlock('Expected Output Schema', initialPromptPack.expected_output_schema, finalPromptPack.expected_output_schema) : ''}
+                        ` : ''}
+                        <h5>Final Prompt Pack JSON</h5>
+                        <pre><code>${this.escapeHtml(finalCombinedPack)}</code></pre>
+                    </details>
+
+                    <details class="assistant-test-details">
+                        <summary>Final Adjuster Prompt</summary>
+                        <pre><code>${this.escapeHtml(finalAdjustment.adjuster_prompt_rendered || '')}</code></pre>
+                    </details>
+
+                    <details class="assistant-test-details">
+                        <summary>Final Adjuster Raw Response</summary>
+                        <pre><code>${this.escapeHtml(finalAdjustment.adjuster_response || '')}</code></pre>
+                    </details>
+
+                    <details class="assistant-test-details">
+                        <summary>Final Adjuster Usage</summary>
+                        <pre><code>${this.escapeHtml(finalUsage)}</code></pre>
+                    </details>
+                </div>
+            `).show();
+        },
+
+        /**
+         * Render refinement error block.
+         */
+        renderAssistantRefinementError: function(message, partialIterations = []) {
+            const partialInfo = Array.isArray(partialIterations) && partialIterations.length
+                ? `<p><strong>Completed iterations before failure:</strong> ${this.escapeHtml(String(partialIterations.length))}</p>`
+                : '';
+
+            $('#assistant-refinement-results').html(`
+                <div class="test-results error">
+                    <h4>Refinement - Failed</h4>
+                    <div class="step-error-content">${this.escapeHtml(message || 'Refinement failed.')}</div>
+                    ${partialInfo}
+                </div>
+            `).show();
+        },
+
+        /**
+         * Normalize prompt pack shape for refinement iterations.
+         */
+        normalizePromptPack: function(pack) {
+            const input = pack || {};
+            return {
+                system_prompt: String(input.system_prompt || ''),
+                user_message_template: String(input.user_message_template || ''),
+                expected_output_schema: String(input.expected_output_schema || '{}')
+            };
+        },
+
+        formatPromptPackArtifact: function(pack, includeSchema) {
+            const normalized = this.normalizePromptPack(pack);
+            const artifact = {
+                system_prompt: normalized.system_prompt,
+                user_message_template: normalized.user_message_template
+            };
+            if (includeSchema !== false) {
+                artifact.expected_output_schema = normalized.expected_output_schema;
+            }
+            return JSON.stringify(artifact, null, 2);
+        },
+
+        /**
+         * Render side-by-side prompt comparison block with highlighted changes.
+         */
+        renderPromptComparisonBlock: function(label, beforeText, afterText) {
+            const before = String(beforeText ?? '');
+            const after = String(afterText ?? '');
+            const diff = this.buildSideBySideLineDiff(before, after);
+
+            return `
+                <div class="assistant-prompt-compare-block ${diff.hasChanges ? 'has-changes' : 'no-changes'}">
+                    <h5>${this.escapeHtml(label || '')}${diff.hasChanges ? '' : ' (unchanged)'}</h5>
+                    <div class="content-comparison assistant-prompt-comparison">
+                        <div class="comparison-side before">
+                            <h6>Before</h6>
+                            <div class="comparison-content assistant-diff-content">${diff.beforeHtml}</div>
+                        </div>
+                        <div class="comparison-side after">
+                            <h6>After</h6>
+                            <div class="comparison-content assistant-diff-content">${diff.afterHtml}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        },
+
+        /**
+         * Build side-by-side line diff and highlight changed fragments.
+         */
+        buildSideBySideLineDiff: function(beforeText, afterText) {
+            const beforeLines = String(beforeText ?? '').split('\n');
+            const afterLines = String(afterText ?? '').split('\n');
+            const ops = this.diffLinesLcs(beforeLines, afterLines);
+
+            const beforeRows = [];
+            const afterRows = [];
+            let hasChanges = false;
+            let index = 0;
+
+            const wrapLine = (contentHtml, lineClass = '') =>
+                `<div class="assistant-diff-line ${lineClass}">${contentHtml || '&nbsp;'}</div>`;
+            const placeholder = `<span class="assistant-diff-placeholder">∅</span>`;
+
+            while (index < ops.length) {
+                const op = ops[index];
+                if (op.type === 'equal') {
+                    const escaped = this.escapeHtml(op.line ?? '');
+                    beforeRows.push(wrapLine(escaped, 'equal'));
+                    afterRows.push(wrapLine(escaped, 'equal'));
+                    index += 1;
+                    continue;
+                }
+
+                const deleted = [];
+                const inserted = [];
+                while (index < ops.length && ops[index].type !== 'equal') {
+                    if (ops[index].type === 'delete') {
+                        deleted.push(String(ops[index].line ?? ''));
+                    } else if (ops[index].type === 'insert') {
+                        inserted.push(String(ops[index].line ?? ''));
+                    }
+                    index += 1;
+                }
+
+                const maxRows = Math.max(deleted.length, inserted.length);
+                for (let row = 0; row < maxRows; row++) {
+                    const beforeLine = row < deleted.length ? deleted[row] : null;
+                    const afterLine = row < inserted.length ? inserted[row] : null;
+
+                    if (beforeLine !== null && afterLine !== null) {
+                        const linePair = this.renderChangedLinePair(beforeLine, afterLine);
+                        hasChanges = hasChanges || linePair.changed;
+                        beforeRows.push(wrapLine(linePair.beforeHtml, linePair.changed ? 'changed' : 'equal'));
+                        afterRows.push(wrapLine(linePair.afterHtml, linePair.changed ? 'changed' : 'equal'));
+                        continue;
+                    }
+
+                    if (beforeLine !== null) {
+                        hasChanges = true;
+                        beforeRows.push(
+                            wrapLine(`<span class="assistant-diff-remove">${this.escapeHtml(beforeLine)}</span>`, 'changed')
+                        );
+                        afterRows.push(wrapLine(placeholder, 'placeholder'));
+                        continue;
+                    }
+
+                    if (afterLine !== null) {
+                        hasChanges = true;
+                        beforeRows.push(wrapLine(placeholder, 'placeholder'));
+                        afterRows.push(
+                            wrapLine(`<span class="assistant-diff-add">${this.escapeHtml(afterLine)}</span>`, 'changed')
+                        );
+                    }
+                }
+            }
+
+            if (!beforeRows.length && !afterRows.length) {
+                beforeRows.push(wrapLine('&nbsp;', 'equal'));
+                afterRows.push(wrapLine('&nbsp;', 'equal'));
+            }
+
+            return {
+                hasChanges,
+                beforeHtml: beforeRows.join(''),
+                afterHtml: afterRows.join(''),
+            };
+        },
+
+        /**
+         * Line-level LCS diff operations.
+         */
+        diffLinesLcs: function(beforeLines, afterLines) {
+            const a = Array.isArray(beforeLines) ? beforeLines : [];
+            const b = Array.isArray(afterLines) ? afterLines : [];
+            const n = a.length;
+            const m = b.length;
+            const matrix = Array.from({ length: n + 1 }, () => Array(m + 1).fill(0));
+
+            for (let i = n - 1; i >= 0; i--) {
+                for (let j = m - 1; j >= 0; j--) {
+                    if (a[i] === b[j]) {
+                        matrix[i][j] = matrix[i + 1][j + 1] + 1;
+                    } else {
+                        matrix[i][j] = Math.max(matrix[i + 1][j], matrix[i][j + 1]);
+                    }
+                }
+            }
+
+            const ops = [];
+            let i = 0;
+            let j = 0;
+            while (i < n && j < m) {
+                if (a[i] === b[j]) {
+                    ops.push({ type: 'equal', line: a[i] });
+                    i += 1;
+                    j += 1;
+                } else if (matrix[i + 1][j] >= matrix[i][j + 1]) {
+                    ops.push({ type: 'delete', line: a[i] });
+                    i += 1;
+                } else {
+                    ops.push({ type: 'insert', line: b[j] });
+                    j += 1;
+                }
+            }
+
+            while (i < n) {
+                ops.push({ type: 'delete', line: a[i] });
+                i += 1;
+            }
+            while (j < m) {
+                ops.push({ type: 'insert', line: b[j] });
+                j += 1;
+            }
+
+            return ops;
+        },
+
+        /**
+         * Highlight changed fragments in a pair of lines.
+         */
+        renderChangedLinePair: function(beforeLine, afterLine) {
+            const a = String(beforeLine ?? '');
+            const b = String(afterLine ?? '');
+            if (a === b) {
+                return {
+                    changed: false,
+                    beforeHtml: this.escapeHtml(a),
+                    afterHtml: this.escapeHtml(b),
+                };
+            }
+
+            const minLen = Math.min(a.length, b.length);
+            let prefix = 0;
+            while (prefix < minLen && a[prefix] === b[prefix]) {
+                prefix += 1;
+            }
+
+            let suffix = 0;
+            const aTailLimit = a.length - prefix;
+            const bTailLimit = b.length - prefix;
+            while (
+                suffix < aTailLimit &&
+                suffix < bTailLimit &&
+                a[a.length - 1 - suffix] === b[b.length - 1 - suffix]
+            ) {
+                suffix += 1;
+            }
+
+            const aChangedEnd = a.length - suffix;
+            const bChangedEnd = b.length - suffix;
+            const aPrefix = a.slice(0, prefix);
+            const bPrefix = b.slice(0, prefix);
+            const aChanged = a.slice(prefix, aChangedEnd);
+            const bChanged = b.slice(prefix, bChangedEnd);
+            const aSuffix = a.slice(aChangedEnd);
+            const bSuffix = b.slice(bChangedEnd);
+
+            const beforeHtml = `${this.escapeHtml(aPrefix)}${aChanged ? `<span class="assistant-diff-remove">${this.escapeHtml(aChanged)}</span>` : ''}${this.escapeHtml(aSuffix)}`;
+            const afterHtml = `${this.escapeHtml(bPrefix)}${bChanged ? `<span class="assistant-diff-add">${this.escapeHtml(bChanged)}</span>` : ''}${this.escapeHtml(bSuffix)}`;
+
+            return {
+                changed: true,
+                beforeHtml,
+                afterHtml,
+            };
         },
 
         /**

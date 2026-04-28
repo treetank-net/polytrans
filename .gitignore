@@ -40,3 +40,4 @@ wp-content/uploads/
 .env
 .env.local
 cache/twig/*
+.codex

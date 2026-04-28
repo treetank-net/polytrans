@@ -12,6 +12,7 @@ namespace PolyTrans\Menu;
 use PolyTrans\Assistants\AssistantManager;
 use PolyTrans\Assistants\AssistantExecutor;
 use PolyTrans\Assistants\AssistantMigration;
+use PolyTrans\Core\ChatClientFactory;
 use PolyTrans\Templating\TemplateRenderer;
 use PolyTrans\Providers\SettingsProviderInterface;
 
@@ -49,6 +50,11 @@ class AssistantsMenu
         add_action('wp_ajax_polytrans_get_provider_models', [$this, 'ajax_get_provider_models']);
         add_action('wp_ajax_polytrans_test_assistant', [$this, 'ajax_test_assistant']);
         add_action('wp_ajax_polytrans_get_recent_posts_for_assistant_test', [$this, 'ajax_get_recent_posts_for_assistant_test']);
+        add_action('wp_ajax_polytrans_run_assistant_refinement_post', [$this, 'ajax_run_assistant_refinement_post']);
+        add_action('wp_ajax_polytrans_evaluate_assistant_run', [$this, 'ajax_evaluate_assistant_run']);
+        add_action('wp_ajax_polytrans_refine_assistant_post', [$this, 'ajax_refine_assistant_post']);
+        add_action('wp_ajax_polytrans_adjust_assistant_prompt', [$this, 'ajax_adjust_assistant_prompt']);
+        add_action('wp_ajax_polytrans_apply_assistant_prompt_pack', [$this, 'ajax_apply_assistant_prompt_pack']);
     }
 
     /**
@@ -279,6 +285,8 @@ class AssistantsMenu
         // phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped -- Twig templates handle escaping
         echo TemplateRenderer::render('admin/assistants/tester.twig', [
             'assistant' => $assistant,
+            'default_evaluator_prompt_template' => $this->get_default_evaluator_prompt_template(),
+            'default_adjuster_prompt_template' => $this->get_default_adjuster_prompt_template(),
         ]);
         // phpcs:enable WordPress.Security.EscapeOutput.OutputNotEscaped
     }
@@ -485,7 +493,13 @@ class AssistantsMenu
         $system_prompt = isset($_POST['system_prompt']) ? sanitize_textarea_field(wp_unslash($_POST['system_prompt'])) : '';
         $user_message_template = isset($_POST['user_message_template']) ? sanitize_textarea_field(wp_unslash($_POST['user_message_template'])) : '';
         $response_format = isset($_POST['response_format']) ? sanitize_text_field(wp_unslash($_POST['response_format'])) : 'text';
-        $expected_output_schema = isset($_POST['expected_output_schema']) ? sanitize_textarea_field(wp_unslash($_POST['expected_output_schema'])) : null;
+        $expected_output_schema = null;
+        if (isset($_POST['expected_output_schema'])) {
+            $expected_output_schema = sanitize_textarea_field(wp_unslash($_POST['expected_output_schema']));
+            if (trim($expected_output_schema) === '') {
+                $expected_output_schema = null;
+            }
+        }
         $config = isset($_POST['config']) ? array_map('sanitize_text_field', wp_unslash($_POST['config'])) : [];
 
         // Check if provider supports system prompt
@@ -544,10 +558,20 @@ class AssistantsMenu
                 $result = AssistantManager::update_assistant($assistant_id, $assistant_data);
             } else {
                 $result = AssistantManager::create_assistant($assistant_data);
-                $assistant_id = $result;
+            }
+
+            if (is_wp_error($result)) {
+                wp_send_json_error([
+                    'message' => $result->get_error_message(),
+                    'errors' => $result->get_error_data(),
+                ]);
             }
 
             if ($result) {
+                if ($assistant_id <= 0) {
+                    $assistant_id = (int) $result;
+                }
+
                 wp_send_json_success([
                     'message' => __('Assistant saved successfully.', 'polytrans'),
                     'assistant_id' => $assistant_id
@@ -949,6 +973,1008 @@ class AssistantsMenu
         }
 
         wp_send_json_success(['posts' => $results]);
+    }
+
+    /**
+     * AJAX: Execute assistant step for one refinement post and persist the run in transient storage.
+     */
+    public function ajax_run_assistant_refinement_post()
+    {
+        check_ajax_referer('polytrans_assistants', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => __('Permission denied.', 'polytrans')]);
+        }
+
+        $assistant_id = isset($_POST['assistant_id']) ? intval($_POST['assistant_id']) : 0;
+        $selected_post_id = isset($_POST['selected_post_id']) ? intval($_POST['selected_post_id']) : 0;
+        $source_language = isset($_POST['source_language']) ? sanitize_text_field(wp_unslash($_POST['source_language'])) : 'en';
+        $target_language = isset($_POST['target_language']) ? sanitize_text_field(wp_unslash($_POST['target_language'])) : 'pl';
+        $override_system_prompt = array_key_exists('override_system_prompt', $_POST) // phpcs:ignore WordPress.Security.NonceVerification.Missing -- protected by check_ajax_referer above
+            ? wp_unslash($_POST['override_system_prompt']) // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- trusted admin test payload
+            : null;
+        $override_user_message_template = array_key_exists('override_user_message_template', $_POST) // phpcs:ignore WordPress.Security.NonceVerification.Missing -- protected by check_ajax_referer above
+            ? wp_unslash($_POST['override_user_message_template']) // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- trusted admin test payload
+            : null;
+        $override_expected_output_schema = array_key_exists('override_expected_output_schema', $_POST) // phpcs:ignore WordPress.Security.NonceVerification.Missing -- protected by check_ajax_referer above
+            ? wp_unslash($_POST['override_expected_output_schema']) // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- trusted admin test payload
+            : null;
+
+        $execution = $this->execute_refinement_assistant_step(
+            $assistant_id,
+            $selected_post_id,
+            $source_language,
+            $target_language,
+            $override_system_prompt,
+            $override_user_message_template,
+            $override_expected_output_schema
+        );
+
+        if (is_wp_error($execution)) {
+            wp_send_json_error([
+                'message' => $execution->get_error_message(),
+                'error_code' => $execution->get_error_code(),
+            ]);
+        }
+
+        $run_id = $this->generate_assistant_refinement_run_id();
+        $run_payload = $this->build_assistant_refinement_run_payload($run_id, $execution);
+        if (!set_transient($this->get_assistant_refinement_run_transient_key($run_id), $run_payload, $this->get_assistant_refinement_run_ttl())) {
+            wp_send_json_error([
+                'message' => __('Failed to persist assistant run. Please retry.', 'polytrans'),
+                'error_code' => 'assistant_run_persist_failed',
+            ]);
+        }
+
+        wp_send_json_success($this->build_assistant_refinement_run_response($run_payload));
+    }
+
+    /**
+     * AJAX: Evaluate a previously executed assistant run by run_id.
+     */
+    public function ajax_evaluate_assistant_run()
+    {
+        check_ajax_referer('polytrans_assistants', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => __('Permission denied.', 'polytrans')]);
+        }
+
+        $assistant_id = isset($_POST['assistant_id']) ? intval($_POST['assistant_id']) : 0;
+        $run_id = isset($_POST['run_id']) ? sanitize_text_field(wp_unslash($_POST['run_id'])) : '';
+        $criteria = isset($_POST['criteria']) ? sanitize_textarea_field(wp_unslash($_POST['criteria'])) : '';
+        $evaluator_prompt_template = isset($_POST['evaluator_prompt_template']) ? wp_unslash($_POST['evaluator_prompt_template']) : '';
+
+        if ($assistant_id <= 0) {
+            wp_send_json_error(['message' => __('Invalid assistant ID.', 'polytrans')]);
+        }
+        if (trim($run_id) === '') {
+            wp_send_json_error(['message' => __('Run ID is required.', 'polytrans')]);
+        }
+        if (trim($criteria) === '') {
+            wp_send_json_error(['message' => __('Refinement criteria is required.', 'polytrans')]);
+        }
+        if (!is_string($evaluator_prompt_template) || trim($evaluator_prompt_template) === '') {
+            $evaluator_prompt_template = $this->get_default_evaluator_prompt_template();
+        }
+
+        $run_payload = get_transient($this->get_assistant_refinement_run_transient_key($run_id));
+        if (!is_array($run_payload)) {
+            wp_send_json_error([
+                'message' => __('Assistant run not found or expired. Run assistant step again.', 'polytrans'),
+                'error_code' => 'assistant_run_not_found',
+            ]);
+        }
+
+        if ((int) ($run_payload['assistant_id'] ?? 0) !== $assistant_id) {
+            wp_send_json_error([
+                'message' => __('Run ID does not belong to the selected assistant.', 'polytrans'),
+                'error_code' => 'assistant_run_mismatch',
+            ]);
+        }
+
+        $assistant_config = is_array($run_payload['assistant_config'] ?? null) ? $run_payload['assistant_config'] : [];
+        $assistant_result = is_array($run_payload['assistant_result'] ?? null) ? $run_payload['assistant_result'] : [];
+        $context = is_array($run_payload['context'] ?? null) ? $run_payload['context'] : [];
+
+        if (empty($assistant_config) || empty($assistant_result)) {
+            wp_send_json_error([
+                'message' => __('Stored assistant run is incomplete. Please execute assistant step again.', 'polytrans'),
+                'error_code' => 'assistant_run_incomplete',
+            ]);
+        }
+
+        $evaluation = $this->evaluate_assistant_run(
+            $assistant_config,
+            $context,
+            $assistant_result,
+            $criteria,
+            $evaluator_prompt_template
+        );
+
+        if (is_wp_error($evaluation)) {
+            wp_send_json_error([
+                'message' => $evaluation->get_error_message(),
+                'error_code' => $evaluation->get_error_code(),
+            ]);
+        }
+
+        $run_payload['evaluation'] = $evaluation;
+        $run_payload['evaluated_at'] = time();
+        set_transient($this->get_assistant_refinement_run_transient_key($run_id), $run_payload, $this->get_assistant_refinement_run_ttl());
+
+        wp_send_json_success([
+            'run_id' => $run_id,
+            'assistant_id' => $assistant_id,
+            'post_id' => (int) ($run_payload['post']['id'] ?? 0),
+            'post_title' => (string) ($run_payload['post']['title'] ?? ''),
+            'post_excerpt' => (string) ($run_payload['post']['excerpt'] ?? ''),
+            'evaluation' => $evaluation,
+            'final_post_candidate' => $run_payload['final_post_candidate'] ?? null,
+        ]);
+    }
+
+    /**
+     * AJAX: Backward-compatible endpoint combining assistant execution + evaluation.
+     */
+    public function ajax_refine_assistant_post()
+    {
+        check_ajax_referer('polytrans_assistants', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => __('Permission denied.', 'polytrans')]);
+        }
+
+        $assistant_id = isset($_POST['assistant_id']) ? intval($_POST['assistant_id']) : 0;
+        $selected_post_id = isset($_POST['selected_post_id']) ? intval($_POST['selected_post_id']) : 0;
+        $source_language = isset($_POST['source_language']) ? sanitize_text_field(wp_unslash($_POST['source_language'])) : 'en';
+        $target_language = isset($_POST['target_language']) ? sanitize_text_field(wp_unslash($_POST['target_language'])) : 'pl';
+        $criteria = isset($_POST['criteria']) ? sanitize_textarea_field(wp_unslash($_POST['criteria'])) : '';
+        $evaluator_prompt_template = isset($_POST['evaluator_prompt_template']) ? wp_unslash($_POST['evaluator_prompt_template']) : '';
+        $override_system_prompt = array_key_exists('override_system_prompt', $_POST) // phpcs:ignore WordPress.Security.NonceVerification.Missing -- protected by check_ajax_referer above
+            ? wp_unslash($_POST['override_system_prompt']) // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- trusted admin test payload
+            : null;
+        $override_user_message_template = array_key_exists('override_user_message_template', $_POST) // phpcs:ignore WordPress.Security.NonceVerification.Missing -- protected by check_ajax_referer above
+            ? wp_unslash($_POST['override_user_message_template']) // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- trusted admin test payload
+            : null;
+        $override_expected_output_schema = array_key_exists('override_expected_output_schema', $_POST) // phpcs:ignore WordPress.Security.NonceVerification.Missing -- protected by check_ajax_referer above
+            ? wp_unslash($_POST['override_expected_output_schema']) // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- trusted admin test payload
+            : null;
+
+        if (trim($criteria) === '') {
+            wp_send_json_error(['message' => __('Refinement criteria is required.', 'polytrans')]);
+        }
+        if (!is_string($evaluator_prompt_template) || trim($evaluator_prompt_template) === '') {
+            $evaluator_prompt_template = $this->get_default_evaluator_prompt_template();
+        }
+
+        $execution = $this->execute_refinement_assistant_step(
+            $assistant_id,
+            $selected_post_id,
+            $source_language,
+            $target_language,
+            $override_system_prompt,
+            $override_user_message_template,
+            $override_expected_output_schema
+        );
+
+        if (is_wp_error($execution)) {
+            wp_send_json_error([
+                'message' => $execution->get_error_message(),
+                'error_code' => $execution->get_error_code(),
+            ]);
+        }
+
+        $run_id = $this->generate_assistant_refinement_run_id();
+        $run_payload = $this->build_assistant_refinement_run_payload($run_id, $execution);
+
+        $evaluation = $this->evaluate_assistant_run(
+            $execution['assistant_config'],
+            $execution['context'],
+            $execution['assistant_result'],
+            $criteria,
+            $evaluator_prompt_template
+        );
+
+        if (is_wp_error($evaluation)) {
+            wp_send_json_error([
+                'message' => $evaluation->get_error_message(),
+                'error_code' => $evaluation->get_error_code(),
+            ]);
+        }
+
+        $run_payload['evaluation'] = $evaluation;
+        $run_payload['evaluated_at'] = time();
+        set_transient($this->get_assistant_refinement_run_transient_key($run_id), $run_payload, $this->get_assistant_refinement_run_ttl());
+
+        $response = $this->build_assistant_refinement_run_response($run_payload);
+        $response['evaluation'] = $evaluation;
+        wp_send_json_success($response);
+    }
+
+    /**
+     * Execute assistant step for refinement and return normalized execution payload.
+     *
+     * @param int $assistant_id Assistant ID
+     * @param int $selected_post_id Source post ID
+     * @param string $source_language Source language code
+     * @param string $target_language Target language code
+     * @param mixed $override_system_prompt Optional prompt override
+     * @param mixed $override_user_message_template Optional prompt override
+     * @param mixed $override_expected_output_schema Optional schema override
+     * @return array|\WP_Error
+     */
+    private function execute_refinement_assistant_step($assistant_id, $selected_post_id, $source_language, $target_language, $override_system_prompt, $override_user_message_template, $override_expected_output_schema)
+    {
+        if ($assistant_id <= 0) {
+            return new \WP_Error('invalid_assistant_id', __('Invalid assistant ID.', 'polytrans'));
+        }
+        if ($selected_post_id <= 0) {
+            return new \WP_Error('invalid_post_id', __('Select a valid post for refinement.', 'polytrans'));
+        }
+
+        $assistant = AssistantManager::get_assistant($assistant_id);
+        if (!$assistant) {
+            return new \WP_Error('assistant_not_found', __('Assistant not found.', 'polytrans'));
+        }
+        if (($assistant['status'] ?? 'active') !== 'active') {
+            return new \WP_Error('assistant_inactive', __('Assistant is inactive.', 'polytrans'));
+        }
+
+        $context = $this->build_assistant_test_context_from_post($selected_post_id, $source_language, $target_language);
+        if (!is_array($context)) {
+            return new \WP_Error('post_not_found', __('Selected post not found.', 'polytrans'));
+        }
+
+        $assistant_config = $assistant;
+        $has_prompt_overrides = $override_system_prompt !== null
+            || $override_user_message_template !== null
+            || $override_expected_output_schema !== null;
+
+        if ($has_prompt_overrides) {
+            if ($override_system_prompt !== null) {
+                $assistant_config['system_prompt'] = (string) $override_system_prompt;
+            }
+            if ($override_user_message_template !== null) {
+                $assistant_config['user_message_template'] = (string) $override_user_message_template;
+            }
+            if ($override_expected_output_schema !== null) {
+                $assistant_config['expected_output_schema'] = (string) $override_expected_output_schema;
+            }
+            $assistant_result = AssistantExecutor::execute_with_config($assistant_config, $context);
+        } else {
+            $assistant_result = AssistantExecutor::execute($assistant_id, $context);
+        }
+
+        if (is_wp_error($assistant_result)) {
+            return $assistant_result;
+        }
+        if (empty($assistant_result['success'])) {
+            return new \WP_Error(
+                'assistant_execution_failed',
+                (string) ($assistant_result['error'] ?? __('Assistant execution failed.', 'polytrans'))
+            );
+        }
+
+        $post_data = is_array($context['payload']['post'] ?? null) ? $context['payload']['post'] : [];
+
+        return [
+            'assistant' => $assistant,
+            'assistant_config' => $assistant_config,
+            'assistant_result' => $assistant_result,
+            'context' => $context,
+            'post_data' => $post_data,
+            'source_language' => $source_language,
+            'target_language' => $target_language,
+            'selected_post_id' => $selected_post_id,
+        ];
+    }
+
+    /**
+     * Build transient payload for assistant refinement run.
+     *
+     * @param string $run_id Run identifier
+     * @param array $execution Assistant execution payload
+     * @return array
+     */
+    private function build_assistant_refinement_run_payload($run_id, $execution)
+    {
+        $post_data = is_array($execution['post_data'] ?? null) ? $execution['post_data'] : [];
+        $assistant_result = is_array($execution['assistant_result'] ?? null) ? $execution['assistant_result'] : [];
+        $assistant_config = is_array($execution['assistant_config'] ?? null) ? $execution['assistant_config'] : [];
+        $context = is_array($execution['context'] ?? null) ? $execution['context'] : [];
+
+        return [
+            'run_id' => (string) $run_id,
+            'assistant_id' => (int) ($execution['assistant']['id'] ?? 0),
+            'assistant_name' => (string) ($execution['assistant']['name'] ?? ''),
+            'assistant_config' => $assistant_config,
+            'assistant_result' => $assistant_result,
+            'context' => [
+                'source_language' => (string) ($context['source_language'] ?? ''),
+                'target_language' => (string) ($context['target_language'] ?? ''),
+                'payload' => [
+                    'post' => [
+                        'id' => (int) ($post_data['id'] ?? 0),
+                        'title' => (string) ($post_data['title'] ?? ''),
+                        'excerpt' => (string) ($post_data['excerpt'] ?? ''),
+                    ],
+                ],
+            ],
+            'post' => [
+                'id' => (int) ($post_data['id'] ?? 0),
+                'title' => (string) ($post_data['title'] ?? ''),
+                'excerpt' => (string) ($post_data['excerpt'] ?? ''),
+            ],
+            'used_prompt_pack' => $this->get_prompt_pack_from_assistant($assistant_config),
+            'final_post_candidate' => $this->build_assistant_final_post_candidate($assistant_result['output'] ?? null, $context),
+            'created_at' => time(),
+        ];
+    }
+
+    /**
+     * Build API response from stored assistant run payload.
+     *
+     * @param array $run_payload Run payload from transient
+     * @return array
+     */
+    private function build_assistant_refinement_run_response($run_payload)
+    {
+        $assistant_result = is_array($run_payload['assistant_result'] ?? null) ? $run_payload['assistant_result'] : [];
+        $assistant_config = is_array($run_payload['assistant_config'] ?? null) ? $run_payload['assistant_config'] : [];
+        $post_data = is_array($run_payload['post'] ?? null) ? $run_payload['post'] : [];
+
+        return [
+            'run_id' => (string) ($run_payload['run_id'] ?? ''),
+            'run_ttl_seconds' => $this->get_assistant_refinement_run_ttl(),
+            'post_id' => (int) ($post_data['id'] ?? 0),
+            'post_title' => (string) ($post_data['title'] ?? ''),
+            'post_excerpt' => (string) ($post_data['excerpt'] ?? ''),
+            'assistant_id' => (int) ($run_payload['assistant_id'] ?? 0),
+            'assistant_name' => (string) ($run_payload['assistant_name'] ?? ''),
+            'provider' => $assistant_result['provider'] ?? ($assistant_config['provider'] ?? ''),
+            'model' => $assistant_result['model'] ?? ($assistant_config['api_parameters']['model'] ?? ''),
+            'assistant_output' => $assistant_result['output'] ?? '',
+            'assistant_usage' => $assistant_result['usage'] ?? [],
+            'interpolated_system_prompt' => $assistant_result['interpolated_system_prompt'] ?? '',
+            'interpolated_user_message' => $assistant_result['interpolated_user_message'] ?? '',
+            'used_prompt_pack' => $run_payload['used_prompt_pack'] ?? $this->get_prompt_pack_from_assistant($assistant_config),
+            'final_post_candidate' => $run_payload['final_post_candidate'] ?? null,
+        ];
+    }
+
+    /**
+     * Build transient key for assistant refinement run payload.
+     *
+     * @param string $run_id Run identifier
+     * @return string
+     */
+    private function get_assistant_refinement_run_transient_key($run_id)
+    {
+        return 'polytrans_assistant_refine_run_' . md5((string) $run_id);
+    }
+
+    /**
+     * Generate unique run ID for assistant refinement run.
+     *
+     * @return string
+     */
+    private function generate_assistant_refinement_run_id()
+    {
+        if (function_exists('wp_generate_uuid4')) {
+            return (string) wp_generate_uuid4();
+        }
+
+        return uniqid('assistant_run_', true);
+    }
+
+    /**
+     * Get transient TTL (seconds) for assistant refinement runs.
+     *
+     * @return int
+     */
+    private function get_assistant_refinement_run_ttl()
+    {
+        return 2 * HOUR_IN_SECONDS;
+    }
+
+    /**
+     * Build best-effort "final post" candidate from assistant output.
+     *
+     * @param mixed $assistant_output Assistant output payload
+     * @param array $context Translation-shaped context
+     * @return array|null
+     */
+    private function build_assistant_final_post_candidate($assistant_output, $context)
+    {
+        $post_data = is_array($context['payload']['post'] ?? null) ? $context['payload']['post'] : [];
+        $base_meta = is_array($post_data['meta'] ?? null) ? $post_data['meta'] : [];
+
+        if (is_array($assistant_output)) {
+            $meta = $assistant_output['meta'] ?? $base_meta;
+            if (!is_array($meta)) {
+                $meta = $base_meta;
+            }
+
+            return [
+                'title' => isset($assistant_output['title']) ? (string) $assistant_output['title'] : (string) ($post_data['title'] ?? ''),
+                'content' => isset($assistant_output['content']) ? (string) $assistant_output['content'] : (string) ($post_data['content'] ?? ''),
+                'excerpt' => isset($assistant_output['excerpt']) ? (string) $assistant_output['excerpt'] : (string) ($post_data['excerpt'] ?? ''),
+                'slug' => isset($assistant_output['slug']) ? (string) $assistant_output['slug'] : (string) ($post_data['slug'] ?? ''),
+                'meta' => $meta,
+            ];
+        }
+
+        if (is_string($assistant_output) && trim($assistant_output) !== '') {
+            return [
+                'title' => (string) ($post_data['title'] ?? ''),
+                'content' => $assistant_output,
+                'excerpt' => (string) ($post_data['excerpt'] ?? ''),
+                'slug' => (string) ($post_data['slug'] ?? ''),
+                'meta' => $base_meta,
+            ];
+        }
+
+        return null;
+    }
+
+    /**
+     * AJAX: Build prompt adjustment proposal from per-post refinement evaluations.
+     */
+    public function ajax_adjust_assistant_prompt()
+    {
+        check_ajax_referer('polytrans_assistants', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => __('Permission denied.', 'polytrans')]);
+        }
+
+        $assistant_id = isset($_POST['assistant_id']) ? intval($_POST['assistant_id']) : 0;
+        $criteria = isset($_POST['criteria']) ? sanitize_textarea_field(wp_unslash($_POST['criteria'])) : '';
+        $adjuster_prompt_template = isset($_POST['adjuster_prompt_template']) ? wp_unslash($_POST['adjuster_prompt_template']) : '';
+        $evaluations_payload = $_POST['evaluations'] ?? '[]'; // phpcs:ignore WordPress.Security.NonceVerification.Missing -- protected by check_ajax_referer above
+        $current_system_prompt = array_key_exists('current_system_prompt', $_POST) // phpcs:ignore WordPress.Security.NonceVerification.Missing -- protected by check_ajax_referer above
+            ? wp_unslash($_POST['current_system_prompt']) // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- trusted admin test payload
+            : null;
+        $current_user_message_template = array_key_exists('current_user_message_template', $_POST) // phpcs:ignore WordPress.Security.NonceVerification.Missing -- protected by check_ajax_referer above
+            ? wp_unslash($_POST['current_user_message_template']) // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- trusted admin test payload
+            : null;
+        $current_expected_output_schema = array_key_exists('current_expected_output_schema', $_POST) // phpcs:ignore WordPress.Security.NonceVerification.Missing -- protected by check_ajax_referer above
+            ? wp_unslash($_POST['current_expected_output_schema']) // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- trusted admin test payload
+            : null;
+
+        if ($assistant_id <= 0) {
+            wp_send_json_error(['message' => __('Invalid assistant ID.', 'polytrans')]);
+        }
+        if (trim($criteria) === '') {
+            wp_send_json_error(['message' => __('Refinement criteria is required.', 'polytrans')]);
+        }
+        if (!is_string($adjuster_prompt_template) || trim($adjuster_prompt_template) === '') {
+            $adjuster_prompt_template = $this->get_default_adjuster_prompt_template();
+        }
+
+        $assistant = AssistantManager::get_assistant($assistant_id);
+        if (!$assistant) {
+            wp_send_json_error(['message' => __('Assistant not found.', 'polytrans')]);
+        }
+
+        $evaluations = [];
+        if (is_string($evaluations_payload)) {
+            $decoded = json_decode(wp_unslash($evaluations_payload), true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                $evaluations = $decoded;
+            }
+        } elseif (is_array($evaluations_payload)) {
+            // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- evaluation payload is normalized below
+            $evaluations = wp_unslash($evaluations_payload);
+        }
+
+        if (empty($evaluations)) {
+            wp_send_json_error(['message' => __('At least one evaluated post is required.', 'polytrans')]);
+        }
+
+        $normalized_evaluations = array_map(function ($item) {
+            $score = null;
+            if (isset($item['evaluation']['score']) && is_numeric($item['evaluation']['score'])) {
+                $score = (float) $item['evaluation']['score'];
+            } elseif (isset($item['score']) && is_numeric($item['score'])) {
+                $score = (float) $item['score'];
+            }
+
+            return [
+                'post_id' => isset($item['post_id']) ? (int) $item['post_id'] : 0,
+                'post_title' => isset($item['post_title']) ? sanitize_text_field((string) $item['post_title']) : '',
+                'score' => $score,
+                'feedback' => isset($item['evaluation']['feedback'])
+                    ? (string) $item['evaluation']['feedback']
+                    : ((isset($item['feedback'])) ? (string) $item['feedback'] : ''),
+            ];
+        }, $evaluations);
+
+        $current_prompt_pack = $this->get_prompt_pack_from_assistant($assistant);
+        if ($current_system_prompt !== null) {
+            $current_prompt_pack['system_prompt'] = (string) $current_system_prompt;
+        }
+        if ($current_user_message_template !== null) {
+            $current_prompt_pack['user_message_template'] = (string) $current_user_message_template;
+        }
+        if ($current_expected_output_schema !== null) {
+            $current_prompt_pack['expected_output_schema'] = (string) $current_expected_output_schema;
+        }
+        $should_adjust_expected_output_schema = $this->should_adjust_expected_output_schema($assistant);
+
+        $render_context = [
+            'criteria' => $criteria,
+            'adjust_expected_output_schema' => $should_adjust_expected_output_schema,
+            'non_interpolated_system_prompt' => $current_prompt_pack['system_prompt'],
+            'non_interpolated_user_message_template' => $current_prompt_pack['user_message_template'],
+            'non_interpolated_expected_output_schema' => $current_prompt_pack['expected_output_schema'],
+            'evaluations' => $normalized_evaluations,
+            'evaluations_json' => wp_json_encode(
+                $normalized_evaluations,
+                JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+            ),
+        ];
+
+        $rendered_adjuster_prompt = $this->render_prompt_template($adjuster_prompt_template, $render_context);
+
+        $adjustment = $this->execute_chat_text_with_assistant(
+            $assistant,
+            $rendered_adjuster_prompt,
+            $this->get_adjuster_system_prompt()
+        );
+
+        if (is_wp_error($adjustment)) {
+            wp_send_json_error([
+                'message' => $adjustment->get_error_message(),
+                'error_code' => $adjustment->get_error_code(),
+            ]);
+        }
+
+        $parsed = $this->parse_adjusted_prompt_pack(
+            $adjustment['content'] ?? '',
+            $should_adjust_expected_output_schema,
+            $current_prompt_pack['expected_output_schema'] ?? '{}'
+        );
+
+        wp_send_json_success([
+            'assistant_id' => $assistant_id,
+            'assistant_name' => $assistant['name'] ?? '',
+            'provider' => $adjustment['provider'] ?? ($assistant['provider'] ?? ''),
+            'model' => $adjustment['model'] ?? ($assistant['api_parameters']['model'] ?? ''),
+            'usage' => $adjustment['usage'] ?? [],
+            'adjuster_prompt_rendered' => $rendered_adjuster_prompt,
+            'adjuster_response' => $adjustment['content'] ?? '',
+            'format' => 'json',
+            'adjust_expected_output_schema' => $should_adjust_expected_output_schema,
+            'input_prompt_pack' => $current_prompt_pack,
+            'parsed' => $parsed,
+        ]);
+    }
+
+    /**
+     * AJAX: Apply prompt pack to assistant configuration.
+     */
+    public function ajax_apply_assistant_prompt_pack()
+    {
+        check_ajax_referer('polytrans_assistants', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => __('Permission denied.', 'polytrans')]);
+        }
+
+        $assistant_id = isset($_POST['assistant_id']) ? intval($_POST['assistant_id']) : 0;
+        $system_prompt = array_key_exists('system_prompt', $_POST) // phpcs:ignore WordPress.Security.NonceVerification.Missing -- protected by check_ajax_referer above
+            ? (string) wp_unslash($_POST['system_prompt']) // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- trusted admin payload
+            : '';
+        $user_message_template = array_key_exists('user_message_template', $_POST) // phpcs:ignore WordPress.Security.NonceVerification.Missing -- protected by check_ajax_referer above
+            ? (string) wp_unslash($_POST['user_message_template']) // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- trusted admin payload
+            : '';
+        $expected_output_schema = array_key_exists('expected_output_schema', $_POST) // phpcs:ignore WordPress.Security.NonceVerification.Missing -- protected by check_ajax_referer above
+            ? (string) wp_unslash($_POST['expected_output_schema']) // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- trusted admin payload
+            : '{}';
+
+        if ($assistant_id <= 0) {
+            wp_send_json_error(['message' => __('Invalid assistant ID.', 'polytrans')]);
+        }
+        if (trim($system_prompt) === '') {
+            wp_send_json_error(['message' => __('System prompt cannot be empty.', 'polytrans')]);
+        }
+
+        $assistant = AssistantManager::get_assistant($assistant_id);
+        if (!$assistant) {
+            wp_send_json_error(['message' => __('Assistant not found.', 'polytrans')]);
+        }
+
+        $previous_prompt_pack = $this->get_prompt_pack_from_assistant($assistant);
+        if (!$this->should_adjust_expected_output_schema($assistant)) {
+            $expected_output_schema = $assistant['expected_output_schema'] ?? null;
+        }
+        $assistant_update = [
+            'name' => $assistant['name'] ?? '',
+            'description' => $assistant['description'] ?? '',
+            'provider' => $assistant['provider'] ?? 'openai',
+            'status' => $assistant['status'] ?? 'active',
+            'system_prompt' => $system_prompt,
+            'user_message_template' => $user_message_template,
+            'api_parameters' => $assistant['api_parameters'] ?? [],
+            'expected_format' => $assistant['expected_format'] ?? 'text',
+            'expected_output_schema' => $expected_output_schema,
+            'output_variables' => $assistant['output_variables'] ?? null,
+        ];
+
+        $updated = AssistantManager::update_assistant($assistant_id, $assistant_update);
+        if (is_wp_error($updated)) {
+            wp_send_json_error([
+                'message' => $updated->get_error_message(),
+                'error_code' => $updated->get_error_code(),
+                'errors' => $updated->get_error_data(),
+            ]);
+        }
+
+        wp_send_json_success([
+            'assistant_id' => $assistant_id,
+            'assistant_name' => $assistant['name'] ?? '',
+            'previous_prompt_pack' => $previous_prompt_pack,
+            'applied_prompt_pack' => [
+                'system_prompt' => $system_prompt,
+                'user_message_template' => $user_message_template,
+                'expected_output_schema' => $expected_output_schema,
+            ],
+        ]);
+    }
+
+    /**
+     * Evaluate a single assistant run using evaluator prompt template.
+     *
+     * @param array $assistant Assistant configuration
+     * @param array $context Translation-shaped test context
+     * @param array $assistant_result Result from AssistantExecutor::execute()
+     * @param string $criteria User-defined refinement criteria
+     * @param string $evaluator_prompt_template Evaluator prompt template
+     * @return array|\WP_Error
+     */
+    private function evaluate_assistant_run($assistant, $context, $assistant_result, $criteria, $evaluator_prompt_template)
+    {
+        $assistant_output = $assistant_result['output'] ?? '';
+        if (!is_string($assistant_output)) {
+            $assistant_output = wp_json_encode($assistant_output, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        }
+
+        $render_context = [
+            'criteria' => $criteria,
+            'source_language' => $context['source_language'] ?? '',
+            'target_language' => $context['target_language'] ?? '',
+            'include_expected_output_schema' => $this->should_adjust_expected_output_schema($assistant),
+            'interpolated_system_prompt' => (string) ($assistant_result['interpolated_system_prompt'] ?? ''),
+            'interpolated_user_message' => (string) ($assistant_result['interpolated_user_message'] ?? ''),
+            'assistant_output' => (string) $assistant_output,
+            'expected_output_schema' => $this->normalize_expected_output_schema_for_prompt($assistant['expected_output_schema'] ?? null),
+        ];
+
+        $rendered_evaluator_prompt = $this->render_prompt_template($evaluator_prompt_template, $render_context);
+
+        $evaluation_response = $this->execute_chat_text_with_assistant(
+            $assistant,
+            $rendered_evaluator_prompt,
+            'You are a strict quality evaluator. Be concise and always include one numeric score.'
+        );
+
+        if (is_wp_error($evaluation_response)) {
+            return $evaluation_response;
+        }
+
+        $feedback = (string) ($evaluation_response['content'] ?? '');
+        $score = $this->extract_numeric_score($feedback);
+
+        return [
+            'score' => $score,
+            'feedback' => $feedback,
+            'rendered_prompt' => $rendered_evaluator_prompt,
+            'provider' => $evaluation_response['provider'] ?? ($assistant['provider'] ?? ''),
+            'model' => $evaluation_response['model'] ?? ($assistant['api_parameters']['model'] ?? ''),
+            'usage' => $evaluation_response['usage'] ?? [],
+        ];
+    }
+
+    /**
+     * Execute a plain text prompt using the same provider/model as the assistant.
+     *
+     * @param array $assistant Assistant configuration
+     * @param string $user_prompt Prompt passed as user message
+     * @param string $system_prompt System role prompt
+     * @return array|\WP_Error
+     */
+    private function execute_chat_text_with_assistant($assistant, $user_prompt, $system_prompt)
+    {
+        $provider = (string) ($assistant['provider'] ?? 'openai');
+        $settings = get_option('polytrans_settings', []);
+        $client = ChatClientFactory::create($provider, $settings);
+
+        if (!$client) {
+            return new \WP_Error(
+                'assistant_refinement_provider_unavailable',
+                sprintf(
+                    /* translators: %s: provider ID */
+                    __('Provider "%s" is not available for refinement.', 'polytrans'),
+                    $provider
+                )
+            );
+        }
+
+        $parameters = isset($assistant['api_parameters']) && is_array($assistant['api_parameters'])
+            ? $assistant['api_parameters']
+            : [];
+
+        $model = isset($parameters['model']) ? trim((string) $parameters['model']) : '';
+        if ($model === '') {
+            $setting_key = $provider . '_model';
+            $model = isset($settings[$setting_key]) ? trim((string) $settings[$setting_key]) : '';
+        }
+        if ($model !== '') {
+            $parameters['model'] = $model;
+        }
+
+        $messages = [
+            [
+                'role' => 'system',
+                'content' => (string) $system_prompt,
+            ],
+            [
+                'role' => 'user',
+                'content' => (string) $user_prompt,
+            ],
+        ];
+
+        $result = $client->chat_completion($messages, $parameters);
+        if (empty($result['success'])) {
+            return new \WP_Error(
+                'assistant_refinement_api_error',
+                (string) ($result['error'] ?? __('Prompt refinement request failed.', 'polytrans'))
+            );
+        }
+
+        $raw = $result['data'] ?? [];
+        $content = $client->extract_content($raw);
+        if ($content === null || trim((string) $content) === '') {
+            return new \WP_Error('assistant_refinement_empty_response', __('Prompt refinement returned an empty response.', 'polytrans'));
+        }
+
+        return [
+            'content' => (string) $content,
+            'provider' => $provider,
+            'model' => $model,
+            'usage' => is_array($raw) && isset($raw['usage']) ? $raw['usage'] : [],
+        ];
+    }
+
+    /**
+     * Render Twig-like template for evaluator/adjuster prompts.
+     *
+     * @param string $template Template string
+     * @param array $context Rendering context
+     * @return string
+     */
+    private function render_prompt_template($template, $context)
+    {
+        if (!is_string($template)) {
+            return '';
+        }
+
+        try {
+            if (class_exists('\PolyTrans\Templating\TwigEngine')) {
+                return \PolyTrans\Templating\TwigEngine::render($template, $context);
+            }
+        } catch (\Throwable $e) {
+            // Fall back to raw template if Twig rendering fails.
+        }
+
+        return $template;
+    }
+
+    /**
+     * Normalize expected output schema into text for prompt composition.
+     *
+     * @param mixed $schema Assistant expected output schema
+     * @return string
+     */
+    private function normalize_expected_output_schema_for_prompt($schema)
+    {
+        if ($schema === null || $schema === '') {
+            return '{}';
+        }
+        if (is_array($schema) || is_object($schema)) {
+            return (string) wp_json_encode($schema, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        }
+        return (string) $schema;
+    }
+
+    /**
+     * Extract non-interpolated prompt pack from assistant data.
+     *
+     * @param array $assistant Assistant configuration
+     * @return array
+     */
+    private function get_prompt_pack_from_assistant($assistant)
+    {
+        return [
+            'system_prompt' => (string) ($assistant['system_prompt'] ?? ''),
+            'user_message_template' => (string) ($assistant['user_message_template'] ?? ''),
+            'expected_output_schema' => $this->normalize_expected_output_schema_for_prompt($assistant['expected_output_schema'] ?? null),
+        ];
+    }
+
+    /**
+     * Decide whether expected output schema should be adjusted by the prompt adjuster.
+     *
+     * @param array $assistant Assistant configuration
+     * @return bool
+     */
+    private function should_adjust_expected_output_schema($assistant)
+    {
+        $expected_format = isset($assistant['expected_format']) ? strtolower(trim((string) $assistant['expected_format'])) : 'text';
+        return $expected_format === 'json';
+    }
+
+    /**
+     * Parse adjuster response into a prompt pack. JSON is preferred; legacy separator format remains as fallback.
+     *
+     * JSON mode: expects 3 sections (system, user template, schema).
+     * Text mode: expects 2 sections (system, user template) and keeps schema unchanged.
+     *
+     * @param string $content Adjuster raw response
+     * @param bool $should_adjust_expected_output_schema Whether schema section is expected
+     * @param string $fallback_expected_output_schema Schema preserved when not adjusted
+     * @return array
+     */
+    private function parse_adjusted_prompt_pack($content, $should_adjust_expected_output_schema = true, $fallback_expected_output_schema = '{}')
+    {
+        $text = trim((string) $content);
+        $fallback_schema = $this->normalize_expected_output_schema_for_prompt($fallback_expected_output_schema);
+        $decoded = json_decode($text, true);
+
+        if (json_last_error() !== JSON_ERROR_NONE && preg_match('/\{.*\}/s', $text, $matches)) {
+            $decoded = json_decode($matches[0], true);
+        }
+
+        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+            $system_prompt = isset($decoded['system_prompt']) ? trim((string) $decoded['system_prompt']) : '';
+            $user_message_template = isset($decoded['user_message_template']) ? trim((string) $decoded['user_message_template']) : '';
+            $expected_output_schema = $should_adjust_expected_output_schema
+                ? (isset($decoded['expected_output_schema']) ? $this->normalize_expected_output_schema_for_prompt($decoded['expected_output_schema']) : '')
+                : $fallback_schema;
+
+            if ($system_prompt !== '' && $user_message_template !== '' && (!$should_adjust_expected_output_schema || $expected_output_schema !== '')) {
+                return [
+                    'is_valid_pack' => true,
+                    'system_prompt' => $system_prompt,
+                    'user_message_template' => $user_message_template,
+                    'expected_output_schema' => $expected_output_schema,
+                ];
+            }
+        }
+
+        $parts = preg_split('/\R---\R/', $text, 3);
+
+        if ($should_adjust_expected_output_schema) {
+            $is_valid_pack = is_array($parts) && count($parts) === 3;
+
+            if ($is_valid_pack) {
+                return [
+                    'is_valid_pack' => true,
+                    'system_prompt' => trim((string) $parts[0]),
+                    'user_message_template' => trim((string) $parts[1]),
+                    'expected_output_schema' => trim((string) $parts[2]),
+                ];
+            }
+
+            return [
+                'is_valid_pack' => false,
+                'system_prompt' => '',
+                'user_message_template' => '',
+                'expected_output_schema' => '',
+            ];
+        }
+
+        $has_two_sections = is_array($parts) && count($parts) >= 2;
+        if ($has_two_sections) {
+            return [
+                'is_valid_pack' => true,
+                'system_prompt' => trim((string) $parts[0]),
+                'user_message_template' => trim((string) $parts[1]),
+                'expected_output_schema' => $fallback_schema,
+            ];
+        }
+
+        return [
+            'is_valid_pack' => false,
+            'system_prompt' => '',
+            'user_message_template' => '',
+            'expected_output_schema' => $fallback_schema,
+        ];
+    }
+
+    /**
+     * Extract first numeric score from evaluator response text.
+     *
+     * @param string $text Evaluator response
+     * @return float|null
+     */
+    private function extract_numeric_score($text)
+    {
+        $score_patterns = [
+            '/(?:score|rating|ocena)\s*[:=]\s*(100(?:\.\d+)?|[0-9]{1,2}(?:\.\d+)?)/i',
+            '/\b(100(?:\.\d+)?|[0-9]{1,2}(?:\.\d+)?)\b/',
+        ];
+
+        foreach ($score_patterns as $pattern) {
+            if (preg_match($pattern, (string) $text, $matches)) {
+                $score = (float) $matches[1];
+                if ($score >= 0 && $score <= 100) {
+                    return $score;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Default evaluator prompt template for refinement mode.
+     *
+     * @return string
+     */
+    private function get_default_evaluator_prompt_template()
+    {
+        return "You will receive a system prompt, user message and assistant output.\n" .
+            "Your task is to evaluate assistant response based on this criteria: {{ criteria }}\n\n" .
+            "Be brief and provide:\n" .
+            "1) Numeric score (0-100)\n" .
+            "2) 2-4 short findings\n" .
+            "3) One concrete suggestion\n\n" .
+            "System prompt:\n{{ interpolated_system_prompt }}\n\n" .
+            "User message:\n{{ interpolated_user_message }}\n\n" .
+            "{% if include_expected_output_schema %}Expected output schema:\n{{ expected_output_schema }}\n\n{% endif %}" .
+            "Assistant output:\n{{ assistant_output }}";
+    }
+
+    /**
+     * Default adjuster prompt template for refinement mode.
+     *
+     * @return string
+     */
+    private function get_default_adjuster_prompt_template()
+    {
+        return "You will receive a non-interpolated system prompt and user message template.\n" .
+            "{% if adjust_expected_output_schema %}You will also receive expected output schema for JSON output mode.\n{% endif %}" .
+            "You will also receive instructions evaluated over several posts based on criteria: {{ criteria }}.\n\n" .
+            "Remember, interpolation contains Twig-specific variables that relate to specific parts of the user input. Maintain syntax exactly.\n" .
+            "Do not rewrite Twig tags, delimiters or whitespace within tags.\n" .
+            "Variables like content may contain large text blocks. Keep variable references and do not inline or truncate their values.\n\n" .
+            "Adjust the prompts to satisfy the criteria better.\n" .
+            "Return only valid JSON with these keys:\n" .
+            "- system_prompt: improved system prompt string\n" .
+            "- user_message_template: improved user message template string\n" .
+            "{% if adjust_expected_output_schema %}- expected_output_schema: improved expected output schema as a JSON object or JSON string\n{% endif %}" .
+            "Do not use markdown fences. Do not split the answer with separators. Prompt text may contain --- and that must remain literal content.\n\n" .
+            "Current system prompt:\n{{ non_interpolated_system_prompt }}\n\n" .
+            "Current user message template:\n{{ non_interpolated_user_message_template }}\n\n" .
+            "{% if adjust_expected_output_schema %}Current expected output schema:\n{{ non_interpolated_expected_output_schema }}\n\n{% else %}Expected output schema is not part of this adjustment and must stay unchanged.\n\n{% endif %}" .
+            "Evaluations JSON:\n{{ evaluations_json }}";
+    }
+
+    /**
+     * System prompt for prompt-adjuster runs.
+     *
+     * @return string
+     */
+    private function get_adjuster_system_prompt()
+    {
+        return "You are a prompt optimization assistant. Return only the requested JSON object.\n" .
+            "Do not wrap the JSON in markdown fences and do not use section separators.\n" .
+            "Remember, interpolation contains Twig-specific variables that relate to specific parts of the user input. Maintain syntax exactly.\n" .
+            "Do not rewrite Twig tags, delimiters or whitespace within tags (for example keep {{ content }} exactly as provided).\n" .
+            "Variables like content may contain large text blocks. Keep variable references and do not inline or truncate their values.";
     }
 
     /**

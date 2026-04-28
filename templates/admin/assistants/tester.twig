@@ -10,47 +10,131 @@
         </a>
     </p>
 
-    <div id="assistant-tester-container" data-assistant-id="{{ assistant.id|esc_attr }}" data-assistant-name="{{ assistant.name|esc_attr }}">
-        <div class="assistant-test-panel">
-            <h2>{{ __('Single Test Run', 'polytrans') }}</h2>
-            <p class="description">
-                {{ __('Run this managed assistant with a translation-shaped test context. Later evaluation rounds can build on the same result structure.', 'polytrans') }}
-            </p>
-
-            <table class="form-table" role="presentation">
-                <tbody>
-                    <tr>
-                        <th scope="row"><label for="assistant-test-source-language">{{ __('Source Language', 'polytrans') }}</label></th>
-                        <td><input type="text" id="assistant-test-source-language" class="small-text" value="en"></td>
-                    </tr>
-                    <tr>
-                        <th scope="row"><label for="assistant-test-target-language">{{ __('Target Language', 'polytrans') }}</label></th>
-                        <td><input type="text" id="assistant-test-target-language" class="small-text" value="pl"></td>
-                    </tr>
-                    <tr id="assistant-existing-post-row">
-                        <th scope="row"><label for="assistant-test-recent-posts">{{ __('Existing Post', 'polytrans') }}</label></th>
-                        <td>
-                            <select id="assistant-test-recent-posts" class="regular-text">
-                                <option value="">{{ __('Loading posts...', 'polytrans') }}</option>
-                            </select>
-                            <p class="description">{{ __('Loads last 20 posts (optionally filtered by source language).', 'polytrans') }}</p>
-                            <div id="assistant-selected-post-info" style="display:none; margin-top:10px; padding:10px; background:#f6f7f7; border:1px solid #dcdcde;">
-                                <strong>{{ __('Selected post', 'polytrans') }}:</strong>
-                                <div id="assistant-selected-post-details"></div>
-                            </div>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-
-            <p>
-                <button type="button" id="run-assistant-test-btn" class="button button-primary">
-                    {{ __('Run Test', 'polytrans') }}
-                </button>
-                <span class="spinner" style="float:none; margin:0 10px;"></span>
-            </p>
+    <div id="assistant-tester-container" data-assistant-id="{{ assistant.id|esc_attr }}" data-assistant-name="{{ assistant.name|esc_attr }}" data-assistant-expected-format="{{ (assistant.expected_format ?? 'text')|esc_attr }}">
+        <div class="assistant-test-tabs" role="tablist" aria-label="{{ __('Assistant testing modes', 'polytrans') }}">
+            <button type="button" class="button assistant-test-tab is-active" data-mode="test">
+                {{ __('Prompt Test', 'polytrans') }}
+            </button>
+            <button type="button" class="button assistant-test-tab" data-mode="refine">
+                {{ __('Prompt Refinement', 'polytrans') }}
+            </button>
         </div>
 
-        <div id="assistant-test-results" style="display:none;"></div>
+        <div id="assistant-mode-test" class="assistant-mode-panel">
+            <div class="assistant-test-panel">
+                <h2>{{ __('Single Prompt Test', 'polytrans') }}</h2>
+                <p class="description">
+                    {{ __('Run the selected managed assistant on one real post and inspect output, interpolated prompts, and context.', 'polytrans') }}
+                </p>
+
+                <table class="form-table" role="presentation">
+                    <tbody>
+                        <tr>
+                            <th scope="row"><label for="assistant-test-source-language">{{ __('Source Language', 'polytrans') }}</label></th>
+                            <td><input type="text" id="assistant-test-source-language" class="small-text" value="en"></td>
+                        </tr>
+                        <tr>
+                            <th scope="row"><label for="assistant-test-target-language">{{ __('Target Language', 'polytrans') }}</label></th>
+                            <td><input type="text" id="assistant-test-target-language" class="small-text" value="pl"></td>
+                        </tr>
+                        <tr id="assistant-existing-post-row">
+                            <th scope="row"><label for="assistant-test-recent-posts">{{ __('Existing Post', 'polytrans') }}</label></th>
+                            <td>
+                                <select id="assistant-test-recent-posts" class="regular-text">
+                                    <option value="">{{ __('Loading posts...', 'polytrans') }}</option>
+                                </select>
+                                <p class="description">{{ __('Loads last 20 posts (optionally filtered by source language).', 'polytrans') }}</p>
+                                <div id="assistant-selected-post-info" style="display:none; margin-top:10px; padding:10px; background:#f6f7f7; border:1px solid #dcdcde;">
+                                    <strong>{{ __('Selected post', 'polytrans') }}:</strong>
+                                    <div id="assistant-selected-post-details"></div>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <p>
+                    <button type="button" id="run-assistant-test-btn" class="button button-primary">
+                        {{ __('Run Test', 'polytrans') }}
+                    </button>
+                    <span class="spinner" style="float:none; margin:0 10px;"></span>
+                </p>
+            </div>
+
+            <div id="assistant-test-results" style="display:none;"></div>
+        </div>
+
+        <div id="assistant-mode-refine" class="assistant-mode-panel" style="display:none;">
+            <div class="assistant-test-panel">
+                <h2>{{ __('Prompt Refinement', 'polytrans') }}</h2>
+                <p class="description">
+                    {{ __('Evaluate assistant behavior over selected real posts, then generate a proposed prompt adjustment pack.', 'polytrans') }}
+                </p>
+
+                <table class="form-table" role="presentation">
+                    <tbody>
+                        <tr>
+                            <th scope="row"><label for="assistant-refine-source-language">{{ __('Source Language', 'polytrans') }}</label></th>
+                            <td><input type="text" id="assistant-refine-source-language" class="small-text" value="en"></td>
+                        </tr>
+                        <tr>
+                            <th scope="row"><label for="assistant-refine-target-language">{{ __('Target Language', 'polytrans') }}</label></th>
+                            <td><input type="text" id="assistant-refine-target-language" class="small-text" value="pl"></td>
+                        </tr>
+                        <tr>
+                            <th scope="row"><label for="assistant-refine-recent-posts">{{ __('Posts for Refinement', 'polytrans') }}</label></th>
+                            <td>
+                                <select id="assistant-refine-recent-posts" class="large-text" size="10" multiple>
+                                    <option value="">{{ __('Loading posts...', 'polytrans') }}</option>
+                                </select>
+                                <p>
+                                    <button type="button" id="assistant-refine-refresh-posts" class="button">{{ __('Refresh List', 'polytrans') }}</button>
+                                    <button type="button" id="assistant-refine-select-all-posts" class="button">{{ __('Select All', 'polytrans') }}</button>
+                                    <button type="button" id="assistant-refine-clear-posts" class="button">{{ __('Clear', 'polytrans') }}</button>
+                                </p>
+                                <p class="description">{{ __('Choose at least one post. The refinement run executes and evaluates the assistant on each selected post.', 'polytrans') }}</p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row"><label for="assistant-refine-criteria">{{ __('Refinement Criteria', 'polytrans') }}</label></th>
+                            <td>
+                                <textarea id="assistant-refine-criteria" class="large-text code" rows="4" placeholder="{{ __('As admin, I want this assistant to do X, Y, Z...', 'polytrans') }}"></textarea>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row"><label for="assistant-refine-iterations">{{ __('Full Re-eval Iterations', 'polytrans') }}</label></th>
+                            <td>
+                                <input type="number" id="assistant-refine-iterations" class="small-text" min="1" max="10" step="1" value="2">
+                                <p class="description">{{ __('Each iteration runs assistant + evaluator on the same selected posts, then runs prompt adjuster. Iteration 2+ is full re-eval of adjusted prompts.', 'polytrans') }}</p>
+                            </td>
+                        </tr>
+                        <tr id="assistant-refine-evaluator-template-row">
+                            <th scope="row"><label for="assistant-refine-evaluator-template">{{ __('Evaluator Prompt Template', 'polytrans') }}</label></th>
+                            <td>
+                                <textarea id="assistant-refine-evaluator-template" class="large-text code" rows="12">{{ default_evaluator_prompt_template|e('html') }}</textarea>
+                                <p class="description">{{ __('Template variables: criteria, interpolated_system_prompt, interpolated_user_message, assistant_output, source_language, target_language, expected_output_schema (for JSON-output assistants).', 'polytrans') }}</p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row"><label for="assistant-refine-adjuster-template">{{ __('Prompt Adjuster Template', 'polytrans') }}</label></th>
+                            <td>
+                                <textarea id="assistant-refine-adjuster-template" class="large-text code" rows="14">{{ default_adjuster_prompt_template|e('html') }}</textarea>
+                                <p class="description">{{ __('Template variables: criteria, separator, non_interpolated_system_prompt, non_interpolated_user_message_template, non_interpolated_expected_output_schema, evaluations, evaluations_json.', 'polytrans') }}</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <p>
+                    <button type="button" id="run-assistant-refinement-btn" class="button button-primary">
+                        {{ __('Run Refinement', 'polytrans') }}
+                    </button>
+                    <span class="spinner" style="float:none; margin:0 10px;"></span>
+                </p>
+            </div>
+
+            <div id="assistant-refinement-progress" class="assistant-test-section" style="display:none;"></div>
+            <div id="assistant-refinement-results" style="display:none;"></div>
+        </div>
     </div>
 </div>

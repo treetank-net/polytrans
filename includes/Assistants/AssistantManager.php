@@ -207,15 +207,17 @@ class AssistantManager
 		// Optional: expected_output_schema (validate JSON if present and not Twig template)
 		if (isset($data['expected_output_schema']) && ! is_null($data['expected_output_schema'])) {
 			if (is_string($data['expected_output_schema'])) {
-				$schema_str = $data['expected_output_schema'];
-				// Skip JSON validation if schema contains Twig syntax (dynamic template)
-				$has_twig = strpos($schema_str, '{%') !== false || strpos($schema_str, '{{') !== false;
-				if (! $has_twig) {
-					$decoded = json_decode($schema_str, true);
-					if (json_last_error() !== JSON_ERROR_NONE) {
-						$errors['expected_output_schema'] = __('Invalid JSON in expected_output_schema', 'polytrans');
-					} elseif (! is_array($decoded)) {
-						$errors['expected_output_schema'] = __('Expected output schema must be a JSON object', 'polytrans');
+				$schema_str = trim($data['expected_output_schema']);
+				if ($schema_str !== '') {
+					// Skip JSON validation if schema contains Twig syntax (dynamic template)
+					$has_twig = strpos($schema_str, '{%') !== false || strpos($schema_str, '{{') !== false;
+					if (! $has_twig) {
+						$decoded = json_decode($schema_str, true);
+						if (json_last_error() !== JSON_ERROR_NONE) {
+							$errors['expected_output_schema'] = __('Invalid JSON in expected_output_schema', 'polytrans');
+						} elseif (! is_array($decoded)) {
+							$errors['expected_output_schema'] = __('Expected output schema must be a JSON object', 'polytrans');
+						}
 					}
 				}
 			}
@@ -584,15 +586,19 @@ class AssistantManager
 		// Expected output schema (decode if JSON string, keep as-is if Twig template)
 		if (isset($data['expected_output_schema']) && ! is_null($data['expected_output_schema'])) {
 			if (is_string($data['expected_output_schema'])) {
-				$schema_str = $data['expected_output_schema'];
-				$has_twig = strpos($schema_str, '{%') !== false || strpos($schema_str, '{{') !== false;
-				if ($has_twig) {
-					// Twig template - store as string
-					$sanitized['expected_output_schema'] = $schema_str;
+				$schema_str = trim($data['expected_output_schema']);
+				if ($schema_str === '') {
+					$sanitized['expected_output_schema'] = null;
 				} else {
-					// Pure JSON - decode to array
-					$decoded = json_decode($schema_str, true);
-					$sanitized['expected_output_schema'] = (json_last_error() === JSON_ERROR_NONE) ? $decoded : null;
+					$has_twig = strpos($schema_str, '{%') !== false || strpos($schema_str, '{{') !== false;
+					if ($has_twig) {
+						// Twig template - store as string
+						$sanitized['expected_output_schema'] = $schema_str;
+					} else {
+						// Pure JSON - decode to array
+						$decoded = json_decode($schema_str, true);
+						$sanitized['expected_output_schema'] = (json_last_error() === JSON_ERROR_NONE) ? $decoded : null;
+					}
 				}
 			} else {
 				$sanitized['expected_output_schema'] = $data['expected_output_schema'];

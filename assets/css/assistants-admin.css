@@ -54,6 +54,22 @@
 }
 
 /* Assistant Tester */
+.assistant-test-tabs {
+    display: flex;
+    gap: 8px;
+    margin: 16px 0 0;
+}
+
+.assistant-test-tab.is-active {
+    background: #2271b1;
+    border-color: #135e96;
+    color: #fff;
+}
+
+.assistant-mode-panel {
+    margin-top: 8px;
+}
+
 .assistant-test-panel {
     background: #fff;
     border: 1px solid #c3c4c7;
@@ -94,6 +110,104 @@
     background: #f6f7f7;
     border: 1px solid #dcdcde;
     white-space: pre-wrap;
+}
+
+#assistant-refine-recent-posts {
+    width: 100%;
+    min-height: 220px;
+}
+
+.assistant-refine-progress-bar {
+    width: 100%;
+    height: 10px;
+    border-radius: 999px;
+    background: #e5e7eb;
+    overflow: hidden;
+    margin-top: 12px;
+}
+
+.assistant-refine-progress-fill {
+    height: 100%;
+    background: #2271b1;
+    transition: width 0.2s ease;
+}
+
+.assistant-refine-progress-label {
+    margin-top: 6px;
+    font-size: 12px;
+    color: #50575e;
+}
+
+.assistant-refine-log-wrap {
+    margin-top: 12px;
+}
+
+.assistant-refine-log-wrap h5 {
+    margin: 0 0 8px;
+}
+
+.assistant-refine-log {
+    margin: 0;
+    padding: 10px 10px 10px 24px;
+    max-height: 220px;
+    overflow: auto;
+    border: 1px solid #dcdcde;
+    background: #f6f7f7;
+}
+
+.assistant-refinement-actions-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.assistant-prompt-compare-block {
+    margin-top: 14px;
+}
+
+.assistant-prompt-compare-block h5 {
+    margin: 0 0 8px;
+}
+
+.assistant-diff-content {
+    font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
+    font-size: 12px;
+    line-height: 1.45;
+    white-space: pre-wrap;
+}
+
+.assistant-diff-line {
+    padding: 2px 0;
+    border-radius: 2px;
+}
+
+.assistant-diff-line.changed {
+    background: rgba(0, 0, 0, 0.03);
+}
+
+.assistant-diff-line.placeholder {
+    color: #9ca3af;
+}
+
+.assistant-diff-add {
+    background: #dcfce7;
+    color: #14532d;
+    border-radius: 2px;
+    padding: 0 2px;
+}
+
+.assistant-diff-remove {
+    background: #fee2e2;
+    color: #7f1d1d;
+    border-radius: 2px;
+    padding: 0 2px;
+    text-decoration: line-through;
+}
+
+.assistant-diff-placeholder {
+    color: #9ca3af;
+    font-style: italic;
 }
 
 /* Notices */

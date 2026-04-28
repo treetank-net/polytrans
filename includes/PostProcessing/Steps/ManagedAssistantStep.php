@@ -75,8 +75,26 @@ class ManagedAssistantStep implements WorkflowStepInterface
                 ];
             }
 
+            $assistant_config = $assistant;
+            $step_id = (string) ($step_config['id'] ?? '');
+            $prompt_overrides = $this->get_prompt_overrides($context, $step_id, $assistant_id);
+
+            if (!empty($prompt_overrides)) {
+                if (array_key_exists('system_prompt', $prompt_overrides)) {
+                    $assistant_config['system_prompt'] = (string) $prompt_overrides['system_prompt'];
+                }
+                if (array_key_exists('user_message_template', $prompt_overrides)) {
+                    $assistant_config['user_message_template'] = (string) $prompt_overrides['user_message_template'];
+                }
+                if (array_key_exists('expected_output_schema', $prompt_overrides)) {
+                    $assistant_config['expected_output_schema'] = (string) $prompt_overrides['expected_output_schema'];
+                }
+            }
+
             // Execute assistant with context as variables
-            $result = AssistantExecutor::execute($assistant_id, $context);
+            $result = !empty($prompt_overrides)
+                ? AssistantExecutor::execute_with_config($assistant_config, $context)
+                : AssistantExecutor::execute($assistant_id, $context);
 
             $execution_time = microtime(true) - $start_time;
 
@@ -125,9 +143,9 @@ class ManagedAssistantStep implements WorkflowStepInterface
             $parse_warnings = [];
             $auto_actions = [];
 
-            if (!empty($assistant['expected_output_schema']) && $assistant['expected_format'] === 'json') {
+            if (!empty($assistant_config['expected_output_schema']) && ($assistant_config['expected_format'] ?? '') === 'json') {
                 // Interpolate schema through Twig (allows dynamic field generation)
-                $schema = $assistant['expected_output_schema'];
+                $schema = $assistant_config['expected_output_schema'];
                 if (is_string($schema)) {
                     $variable_manager = new \PolyTrans\PostProcessing\VariableManager();
                     $interpolated_schema = $variable_manager->interpolate_template($schema, $context);
@@ -205,6 +223,32 @@ class ManagedAssistantStep implements WorkflowStepInterface
                 'execution_time' => microtime(true) - $start_time
             ];
         }
+    }
+
+    /**
+     * Get temporary prompt overrides for workflow tester/refinement runs.
+     *
+     * @param array $context Workflow execution context
+     * @param string $step_id Workflow step ID
+     * @param int $assistant_id Managed assistant ID
+     * @return array
+     */
+    private function get_prompt_overrides($context, $step_id, $assistant_id)
+    {
+        $overrides = is_array($context['__assistant_prompt_overrides'] ?? null)
+            ? $context['__assistant_prompt_overrides']
+            : [];
+
+        if ($step_id !== '' && isset($overrides[$step_id]) && is_array($overrides[$step_id])) {
+            return $overrides[$step_id];
+        }
+
+        $assistant_key = 'assistant_' . (int) $assistant_id;
+        if (isset($overrides[$assistant_key]) && is_array($overrides[$assistant_key])) {
+            return $overrides[$assistant_key];
+        }
+
+        return [];
     }
 
     /**

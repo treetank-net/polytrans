@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.12.0] - 2026-04-28
+
+### Added
+- Prompt refinement mode for managed assistants, including multi-post full re-evaluation loops, evaluator prompts, prompt adjuster prompts, progress logs, score comparison, prompt diffs, and apply action.
+- Prompt refinement mode for workflow tester, allowing a selected managed-assistant step to be refined in the context of a full workflow run.
+- Workflow refinement run IDs persisted through transients so workflow execution and evaluation can happen as separate AJAX steps.
+- Workflow refinement context for evaluators and adjusters, including target step, surrounding workflow steps, output actions, run summaries, and final output snapshots.
+- Side-by-side prompt diff views for assistant and workflow refinement iterations and final proposed prompt packs.
+
+### Changed
+- Prompt adjusters now return prompt packs as JSON (`system_prompt`, `user_message_template`, optional `expected_output_schema`) instead of using fragile `---` section separators.
+- Workflow refinement prompts now evaluate a selected target step by its contribution to the complete workflow outcome.
+- Workflow refinement payloads and prompt-context JSON are compacted and size-limited to avoid oversized transient values and model token-limit failures.
+- Managed assistant workflow steps can run with temporary prompt overrides during refinement without mutating stored assistant configuration.
+- Assistant expected-output schema validation now treats empty schema strings as empty instead of invalid JSON.
+
+### Fixed
+- Workflow refinement parser no longer breaks when prompts legitimately contain `---`.
+- Workflow refinement persistence no longer fails on large raw workflow results by storing compact snapshots.
+- Managed assistant workflow step schema parsing now uses temporary override schema during refinement runs.
+- Internal assistant migration metadata is no longer sent as provider API parameters.
+- Migrated assistant configurations no longer store `migrated_from` inside runtime API parameters.
+
 ## [1.11.0] - 2026-04-28
 
 ### Added
