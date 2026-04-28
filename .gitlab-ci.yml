@@ -151,8 +151,13 @@ sync-github-main:
     GIT_STRATEGY: clone
     GIT_DEPTH: 0
   script:
+    - |
+      if [ -z "${GITHUB_TREETANK_TOKEN:-}" ]; then
+        echo "GITHUB_TREETANK_TOKEN must be configured in GitLab CI variables." >&2
+        exit 1
+      fi
     - git checkout -B main "$CI_COMMIT_SHA"
-    - git push --force "https://${GITHUB_TOKEN}@github.com/treetank-net/polytrans.git" main
+    - git push --force "https://${GITHUB_TREETANK_TOKEN}@github.com/treetank-net/polytrans.git" main
     - echo "✅ Synced main to GitHub repository treetank-net/polytrans"
   rules:
     - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "main" && $CI_COMMIT_MESSAGE !~ /\[skip ci\]/

@@ -100,8 +100,8 @@ git push origin vX.Y.Z
 
 Always push releases to `origin` (GitLab).
 
-GitLab CI mirrors successful `main` pipelines to GitHub using `GITHUB_TOKEN`,
-matching the Hooker mirror pipeline.
+GitLab CI mirrors successful `main` pipelines to GitHub using
+`GITHUB_TREETANK_TOKEN`, scoped to the `treetank-net/polytrans` GitHub repo.
 
 ## Common Tasks
 
