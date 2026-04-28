@@ -100,10 +100,8 @@ git push origin vX.Y.Z
 
 Always push releases to `origin` (GitLab).
 
-GitLab CI mirrors successful `main` pipelines to GitHub using
-`GITHUB_MIRROR_TOKEN` or `GITHUB_TOKEN`, authenticated as `GITHUB_MIRROR_USERNAME`
-(`jmarianski` by default). If the token variable already contains `user:token`,
-CI uses it as-is.
+GitLab CI mirrors successful `main` pipelines to GitHub using `GITHUB_TOKEN`,
+matching the Hooker mirror pipeline.
 
 ## Common Tasks
 
