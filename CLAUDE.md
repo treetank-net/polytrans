@@ -96,7 +96,7 @@ git push origin vX.Y.Z
 ## Git Remotes
 
 - `origin` - GitLab (https://gitlab.com/treetank/polytrans) - PRIMARY for releases
-- `github` - GitHub mirror (https://github.com/jmarianski/polytrans)
+- `github` - GitHub mirror (https://github.com/treetank-net/polytrans)
 
 Always push releases to `origin` (GitLab).
 

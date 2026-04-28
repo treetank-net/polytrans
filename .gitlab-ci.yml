@@ -2,9 +2,11 @@ stages:
   - test
   - build
   - release
+  - sync
 
 variables:
   PHP_VERSION: "8.1"
+  GITHUB_MIRROR_REPOSITORY: "treetank-net/polytrans"
 
 # ==============================================================================
 # Test Stage - runs on main branch and merge requests
@@ -137,6 +139,41 @@ build:
     expire_in: 30 days
   rules:
     - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/
+
+# ==============================================================================
+# Sync Stage - mirrors successful main pushes to GitHub
+# ==============================================================================
+
+sync-github-main:
+  stage: sync
+  tags:
+    - vps
+  variables:
+    GIT_DEPTH: "0"
+  script:
+    - |
+      set -eu
+
+      MIRROR_TOKEN="${GITHUB_MIRROR_TOKEN:-${GITHUB_TOKEN:-}}"
+      if [ -z "$MIRROR_TOKEN" ]; then
+        echo "GITHUB_MIRROR_TOKEN or GITHUB_TOKEN must be configured in GitLab CI variables." >&2
+        exit 1
+      fi
+
+      cleanup() {
+        git remote remove github-sync 2>/dev/null || true
+      }
+      trap cleanup EXIT
+
+      git config --global --add safe.directory "$CI_PROJECT_DIR"
+      git remote remove github-sync 2>/dev/null || true
+      git remote add github-sync "https://x-access-token:${MIRROR_TOKEN}@github.com/${GITHUB_MIRROR_REPOSITORY}.git"
+
+      # GitLab is the source of truth; keep GitHub main exactly aligned with it.
+      git push github-sync "${CI_COMMIT_SHA}:refs/heads/main" --force
+      echo "✅ Synced main to GitHub repository ${GITHUB_MIRROR_REPOSITORY}"
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "main" && $CI_COMMIT_MESSAGE !~ /\[skip ci\]/
 
 # Create GitLab Release
 release:
