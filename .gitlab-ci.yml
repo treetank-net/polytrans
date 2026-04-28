@@ -7,6 +7,7 @@ stages:
 variables:
   PHP_VERSION: "8.1"
   GITHUB_MIRROR_REPOSITORY: "treetank-net/polytrans"
+  GITHUB_MIRROR_USERNAME: "jmarianski"
 
 # ==============================================================================
 # Test Stage - runs on main branch and merge requests
@@ -159,6 +160,13 @@ sync-github-main:
         echo "GITHUB_MIRROR_TOKEN or GITHUB_TOKEN must be configured in GitLab CI variables." >&2
         exit 1
       fi
+      if printf '%s' "$MIRROR_TOKEN" | grep -q ':'; then
+        MIRROR_CREDENTIALS="$MIRROR_TOKEN"
+        echo "Using GitHub mirror credentials from token variable."
+      else
+        MIRROR_CREDENTIALS="${GITHUB_MIRROR_USERNAME}:${MIRROR_TOKEN}"
+        echo "Using GitHub mirror username ${GITHUB_MIRROR_USERNAME} with token variable."
+      fi
 
       cleanup() {
         git remote remove github-sync 2>/dev/null || true
@@ -167,7 +175,7 @@ sync-github-main:
 
       git config --global --add safe.directory "$CI_PROJECT_DIR"
       git remote remove github-sync 2>/dev/null || true
-      git remote add github-sync "https://${MIRROR_TOKEN}@github.com/${GITHUB_MIRROR_REPOSITORY}.git"
+      git remote add github-sync "https://${MIRROR_CREDENTIALS}@github.com/${GITHUB_MIRROR_REPOSITORY}.git"
 
       # GitLab is the source of truth; keep GitHub main exactly aligned with it.
       git push github-sync "${CI_COMMIT_SHA}:refs/heads/main" --force
