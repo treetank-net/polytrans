@@ -15,6 +15,7 @@
         init: function() {
             this.bindEvents();
             this.initEditor();
+            this.initAssistantTester();
         },
 
         /**
@@ -39,6 +40,21 @@
 
             // Migrate workflows
             $('#migrate-workflows-btn').on('click', this.handleMigration.bind(this));
+
+            // Test assistant
+            $('#run-assistant-test-btn').on('click', this.handleAssistantTest.bind(this));
+            $('#assistant-test-recent-posts').on('change', this.handleAssistantRecentPostChange.bind(this));
+            $('#assistant-test-source-language').on('change', this.loadRecentPostsForAssistantTest.bind(this));
+        },
+
+        /**
+         * Initialize assistant tester page.
+         */
+        initAssistantTester: function() {
+            if (!$('#assistant-tester-container').length) {
+                return;
+            }
+            this.loadRecentPostsForAssistantTest();
         },
 
         /**
@@ -497,9 +513,213 @@
         },
 
         /**
+         * Handle assistant test run
+         */
+        handleAssistantTest: function(e) {
+            e.preventDefault();
+
+            const $container = $('#assistant-tester-container');
+            const $button = $(e.currentTarget);
+            const $spinner = $button.next('.spinner');
+            const assistantId = $container.data('assistant-id');
+            const selectedPost = this.getSelectedAssistantPost();
+            const content = (selectedPost?.content || '').trim();
+            const title = selectedPost?.title || '';
+
+            if (!content) {
+                this.showNotice('Select an existing post with non-empty content.', 'error');
+                return;
+            }
+
+            $button.prop('disabled', true).text('Running Test...');
+            $spinner.addClass('is-active');
+            $('#assistant-test-results').hide().empty();
+
+            $.ajax({
+                url: polytransAssistants.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'polytrans_test_assistant',
+                    nonce: polytransAssistants.nonce,
+                    assistant_id: assistantId,
+                    source_language: $('#assistant-test-source-language').val(),
+                    target_language: $('#assistant-test-target-language').val(),
+                    selected_post_id: selectedPost?.id || 0,
+                    title: title,
+                    content: content
+                },
+                success: (response) => {
+                    if (response.success) {
+                        this.renderAssistantTestResults(response.data);
+                        this.showNotice('Assistant test completed.', 'success');
+                    } else {
+                        const message = response.data?.message || 'Assistant test failed.';
+                        this.renderAssistantTestError(message);
+                        this.showNotice(message, 'error');
+                    }
+                },
+                error: () => {
+                    const message = 'Assistant test failed. Please check logs.';
+                    this.renderAssistantTestError(message);
+                    this.showNotice(message, 'error');
+                },
+                complete: () => {
+                    $button.prop('disabled', false).text('Run Test');
+                    $spinner.removeClass('is-active');
+                }
+            });
+        },
+
+        /**
+         * Load recent posts for assistant tester.
+         */
+        loadRecentPostsForAssistantTest: function() {
+            const $dropdown = $('#assistant-test-recent-posts');
+            const language = $('#assistant-test-source-language').val();
+            $dropdown.html('<option value="">Loading posts...</option>');
+
+            $.ajax({
+                url: polytransAssistants.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'polytrans_get_recent_posts_for_assistant_test',
+                    nonce: polytransAssistants.nonce,
+                    language: language,
+                    limit: 20
+                },
+                success: (response) => {
+                    if (!response.success || !response.data?.posts) {
+                        $dropdown.html('<option value="">No posts found</option>');
+                        return;
+                    }
+
+                    window.polytransAssistantRecentPosts = response.data.posts;
+                    let options = '<option value="">Select a post...</option>';
+                    response.data.posts.forEach((post) => {
+                        const dateStr = new Date(post.post_date).toLocaleDateString();
+                        options += `<option value="${post.id}">${this.escapeHtml(post.title)} (${dateStr})</option>`;
+                    });
+                    $dropdown.html(options);
+                },
+                error: () => {
+                    $dropdown.html('<option value="">Error loading posts</option>');
+                }
+            });
+        },
+
+        /**
+         * Display selected post details in assistant tester.
+         */
+        handleAssistantRecentPostChange: function() {
+            const post = this.getSelectedAssistantPost();
+            if (!post) {
+                $('#assistant-selected-post-info').hide();
+                return;
+            }
+
+            const metaKeys = Object.keys(post.meta || {});
+            const metaHtml = metaKeys.length
+                ? `<div><strong>Meta:</strong> ${this.escapeHtml(metaKeys.join(', '))}</div>`
+                : '';
+
+            $('#assistant-selected-post-details').html(`
+                <div><strong>Title:</strong> ${this.escapeHtml(post.title || '')}</div>
+                <div><strong>Type:</strong> ${this.escapeHtml(post.post_type || '')} | <strong>ID:</strong> ${this.escapeHtml(String(post.id || ''))}</div>
+                <div><strong>Content preview:</strong> ${this.escapeHtml(post.description || '')}</div>
+                ${metaHtml}
+            `);
+            $('#assistant-selected-post-info').show();
+        },
+
+        /**
+         * Resolve selected post object for assistant tester.
+         */
+        getSelectedAssistantPost: function() {
+            const id = $('#assistant-test-recent-posts').val();
+            if (!id || !Array.isArray(window.polytransAssistantRecentPosts)) {
+                return null;
+            }
+            return window.polytransAssistantRecentPosts.find((post) => String(post.id) === String(id)) || null;
+        },
+
+        /**
+         * Render assistant test result payload
+         */
+        renderAssistantTestResults: function(data) {
+            const output = typeof data.output === 'string'
+                ? data.output
+                : JSON.stringify(data.output, null, 2);
+            const usage = data.usage && Object.keys(data.usage).length
+                ? JSON.stringify(data.usage, null, 2)
+                : 'No usage data returned.';
+
+            const html = `
+                <div class="test-results success">
+                    <h4>Test Results - Success</h4>
+                    <div class="execution-details">
+                        <div class="execution-detail">
+                            <span class="value">${this.escapeHtml(data.provider || 'unknown')}</span>
+                            <span class="label">Provider</span>
+                        </div>
+                        <div class="execution-detail">
+                            <span class="value">${this.escapeHtml(data.model || 'default')}</span>
+                            <span class="label">Model</span>
+                        </div>
+                        <div class="execution-detail">
+                            <span class="value">${(data.execution_time || 0).toFixed(3)}s</span>
+                            <span class="label">Execution Time</span>
+                        </div>
+                        <div class="execution-detail">
+                            <span class="value">${this.escapeHtml(data.expected_format || 'text')}</span>
+                            <span class="label">Format</span>
+                        </div>
+                    </div>
+
+                    <div class="assistant-test-section">
+                        <h5>Output</h5>
+                        <pre><code>${this.escapeHtml(output)}</code></pre>
+                    </div>
+
+                    <details class="assistant-test-details">
+                        <summary>Interpolated Prompts</summary>
+                        <h5>System Prompt</h5>
+                        <pre><code>${this.escapeHtml(data.interpolated_system_prompt || '')}</code></pre>
+                        <h5>User Message</h5>
+                        <pre><code>${this.escapeHtml(data.interpolated_user_message || '')}</code></pre>
+                    </details>
+
+                    <details class="assistant-test-details">
+                        <summary>Test Context</summary>
+                        <pre><code>${this.escapeHtml(JSON.stringify(data.context || {}, null, 2))}</code></pre>
+                    </details>
+
+                    <details class="assistant-test-details">
+                        <summary>Usage</summary>
+                        <pre><code>${this.escapeHtml(usage)}</code></pre>
+                    </details>
+                </div>
+            `;
+
+            $('#assistant-test-results').html(html).show();
+        },
+
+        /**
+         * Render assistant test failure
+         */
+        renderAssistantTestError: function(message) {
+            $('#assistant-test-results').html(`
+                <div class="test-results error">
+                    <h4>Test Results - Failed</h4>
+                    <div class="step-error-content">${this.escapeHtml(message)}</div>
+                </div>
+            `).show();
+        },
+
+        /**
          * Escape HTML
          */
         escapeHtml: function(text) {
+            text = String(text ?? '');
             const map = {
                 '&': '&amp;',
                 '<': '&lt;',
@@ -517,4 +737,3 @@
     });
 
 })(jQuery);
-

@@ -10,6 +10,7 @@
 namespace PolyTrans\Menu;
 
 use PolyTrans\Assistants\AssistantManager;
+use PolyTrans\Assistants\AssistantExecutor;
 use PolyTrans\Assistants\AssistantMigration;
 use PolyTrans\Templating\TemplateRenderer;
 use PolyTrans\Providers\SettingsProviderInterface;
@@ -46,6 +47,8 @@ class AssistantsMenu
         add_action('wp_ajax_polytrans_get_assistant', [$this, 'ajax_get_assistant']);
         add_action('wp_ajax_polytrans_migrate_workflows', [$this, 'ajax_migrate_workflows']);
         add_action('wp_ajax_polytrans_get_provider_models', [$this, 'ajax_get_provider_models']);
+        add_action('wp_ajax_polytrans_test_assistant', [$this, 'ajax_test_assistant']);
+        add_action('wp_ajax_polytrans_get_recent_posts_for_assistant_test', [$this, 'ajax_get_recent_posts_for_assistant_test']);
     }
 
     /**
@@ -250,10 +253,34 @@ class AssistantsMenu
                 $this->render_assistant_editor($assistant_id, $action === 'new');
                 break;
 
+            case 'test':
+                $this->render_assistant_tester($assistant_id);
+                break;
+
             default:
                 $this->render_assistant_list();
                 break;
         }
+    }
+
+    /**
+     * Render assistant tester
+     *
+     * @param int $assistant_id Assistant ID
+     * @return void
+     */
+    private function render_assistant_tester($assistant_id)
+    {
+        $assistant = AssistantManager::get_assistant($assistant_id);
+        if (!$assistant) {
+            wp_die(esc_html__('Assistant not found.', 'polytrans'));
+        }
+
+        // phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped -- Twig templates handle escaping
+        echo TemplateRenderer::render('admin/assistants/tester.twig', [
+            'assistant' => $assistant,
+        ]);
+        // phpcs:enable WordPress.Security.EscapeOutput.OutputNotEscaped
     }
 
     /**
@@ -757,5 +784,358 @@ class AssistantsMenu
             'models' => $models,
             'selected_model' => $selected_model
         ]);
+    }
+
+    /**
+     * AJAX: Test managed assistant with a single translation-like input.
+     */
+    public function ajax_test_assistant()
+    {
+        check_ajax_referer('polytrans_assistants', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => __('Permission denied.', 'polytrans')]);
+        }
+
+        $assistant_id = isset($_POST['assistant_id']) ? intval($_POST['assistant_id']) : 0;
+        $source_language = isset($_POST['source_language']) ? sanitize_text_field(wp_unslash($_POST['source_language'])) : 'en';
+        $target_language = isset($_POST['target_language']) ? sanitize_text_field(wp_unslash($_POST['target_language'])) : 'pl';
+        $selected_post_id = isset($_POST['selected_post_id']) ? intval($_POST['selected_post_id']) : 0;
+        $title = isset($_POST['title']) ? sanitize_text_field(wp_unslash($_POST['title'])) : '';
+        $content = isset($_POST['content']) ? wp_kses_post(wp_unslash($_POST['content'])) : '';
+
+        if ($assistant_id <= 0) {
+            wp_send_json_error(['message' => __('Invalid assistant ID.', 'polytrans')]);
+        }
+
+        if ($selected_post_id <= 0 && trim(wp_strip_all_tags($content)) === '') {
+            wp_send_json_error(['message' => __('Test content is required.', 'polytrans')]);
+        }
+
+        $assistant = AssistantManager::get_assistant($assistant_id);
+        if (!$assistant) {
+            wp_send_json_error(['message' => __('Assistant not found.', 'polytrans')]);
+        }
+
+        if ($selected_post_id > 0) {
+            $context = $this->build_assistant_test_context_from_post($selected_post_id, $source_language, $target_language);
+            if ($context === null) {
+                wp_send_json_error(['message' => __('Selected post not found.', 'polytrans')]);
+            }
+        } else {
+            if (trim(wp_strip_all_tags($content)) === '') {
+                wp_send_json_error(['message' => __('Test content is required.', 'polytrans')]);
+            }
+            $context = $this->build_assistant_test_context($title, $content, $source_language, $target_language);
+        }
+
+        $start_time = microtime(true);
+        $result = AssistantExecutor::execute($assistant_id, $context);
+        $execution_time = microtime(true) - $start_time;
+
+        if (is_wp_error($result)) {
+            wp_send_json_error([
+                'message' => $result->get_error_message(),
+                'error_code' => $result->get_error_code(),
+            ]);
+        }
+
+        if (empty($result['success'])) {
+            wp_send_json_error([
+                'message' => $result['error'] ?? __('Assistant execution failed.', 'polytrans'),
+            ]);
+        }
+
+        wp_send_json_success([
+            'assistant_id' => $assistant_id,
+            'assistant_name' => $assistant['name'],
+            'provider' => $result['provider'] ?? $assistant['provider'],
+            'model' => $result['model'] ?? ($assistant['api_parameters']['model'] ?? ''),
+            'expected_format' => $assistant['expected_format'] ?? 'text',
+            'output' => $result['output'] ?? '',
+            'usage' => $result['usage'] ?? [],
+            'execution_time' => $execution_time,
+            'interpolated_system_prompt' => $result['interpolated_system_prompt'] ?? null,
+            'interpolated_user_message' => $result['interpolated_user_message'] ?? null,
+            'context' => $this->build_assistant_test_context_compact($context),
+            'context_full' => $context,
+        ]);
+    }
+
+    /**
+     * AJAX: Load recent posts for assistant tester (same shape as workflow tester).
+     */
+    public function ajax_get_recent_posts_for_assistant_test()
+    {
+        check_ajax_referer('polytrans_assistants', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => __('Permission denied.', 'polytrans')]);
+        }
+
+        $language = isset($_POST['language']) ? sanitize_text_field(wp_unslash($_POST['language'])) : '';
+        $limit = isset($_POST['limit']) ? intval($_POST['limit']) : 20;
+        if ($limit < 1) {
+            $limit = 20;
+        }
+        if ($limit > 50) {
+            $limit = 50;
+        }
+
+        $args = [
+            'post_type' => ['post', 'page'],
+            'post_status' => ['publish', 'draft', 'private'],
+            'posts_per_page' => $limit,
+            'orderby' => 'date',
+            'order' => 'DESC',
+            'meta_query' => [
+                'relation' => 'OR',
+                [
+                    'key' => '_polytrans_original_post_id',
+                    'compare' => 'NOT EXISTS'
+                ],
+                [
+                    'key' => '_polytrans_original_post_id',
+                    'value' => '',
+                    'compare' => '='
+                ]
+            ]
+        ];
+
+        if ($language && function_exists('pll_get_post_language')) {
+            $args['lang'] = $language;
+            $args['tax_query'][] = [
+                'taxonomy' => 'language',
+                'field' => 'slug',
+                'terms' => $language,
+            ];
+        }
+
+        $posts = get_posts($args);
+        $results = [];
+        foreach ($posts as $post) {
+            $excerpt = !empty($post->post_excerpt) ? $post->post_excerpt : wp_trim_words($post->post_content, 20);
+            $original_post_id = get_post_meta($post->ID, '_polytrans_original_post_id', true);
+            $is_translation = !empty($original_post_id);
+
+            $custom_fields = [];
+            $common_meta_keys = [
+                '_yoast_wpseo_title',
+                '_yoast_wpseo_metadesc',
+                'custom_field_example',
+                '_featured_text',
+                '_subtitle'
+            ];
+            foreach ($common_meta_keys as $meta_key) {
+                $meta_value = get_post_meta($post->ID, $meta_key, true);
+                if (!empty($meta_value)) {
+                    $custom_fields[$meta_key] = $meta_value;
+                }
+            }
+
+            $results[] = [
+                'id' => $post->ID,
+                'title' => $post->post_title,
+                'content' => $post->post_content,
+                'excerpt' => $excerpt,
+                'post_type' => $post->post_type,
+                'post_status' => $post->post_status,
+                'post_date' => $post->post_date,
+                'is_translation' => $is_translation,
+                'original_post_id' => $original_post_id,
+                'meta' => $custom_fields,
+                'description' => wp_trim_words($excerpt, 15) . '...'
+            ];
+        }
+
+        wp_send_json_success(['posts' => $results]);
+    }
+
+    /**
+     * Build a translation-shaped context for assistant tests.
+     *
+     * @param string $title Source title
+     * @param string $content Source content
+     * @param string $source_language Source language code
+     * @param string $target_language Target language code
+     * @return array
+     */
+    private function build_assistant_test_context($title, $content, $source_language, $target_language)
+    {
+        $plain_content = wp_strip_all_tags($content);
+        $excerpt = function_exists('wp_trim_words') ? wp_trim_words($plain_content, 35, '...') : substr($plain_content, 0, 240);
+        $slug = sanitize_title($title);
+        $word_count = str_word_count($plain_content);
+        $char_count = strlen($plain_content);
+
+        $post_data = [
+            'ID' => 0,
+            'post_title' => $title,
+            'post_content' => $content,
+            'post_excerpt' => $excerpt,
+            'post_name' => $slug,
+            'post_status' => 'test',
+            'post_type' => 'post',
+            'id' => 0,
+            'title' => $title,
+            'content' => $content,
+            'excerpt' => $excerpt,
+            'slug' => $slug,
+            'status' => 'test',
+            'type' => 'post',
+            'meta' => [],
+            'word_count' => $word_count,
+            'character_count' => $char_count,
+        ];
+
+        return [
+            'source_language' => $source_language,
+            'target_language' => $target_language,
+            'translation_service' => 'managed_assistant_test',
+            'title' => $title,
+            'content' => $content,
+            'excerpt' => $excerpt,
+            // Keep real translation-shaped objects for prompts using translated.title/content/meta
+            'original' => $post_data,
+            'translated' => $post_data,
+            // Keep raw string aliases for prompts that interpolate plain text fields
+            'original_text' => $content,
+            'translated_text' => $content,
+            'original_post' => $post_data,
+            'translated_post' => $post_data,
+            // Structured namespace for future eval/refinement prompts.
+            'payload' => [
+                'post' => $post_data,
+                'translation' => [
+                    'source_language' => $source_language,
+                    'target_language' => $target_language,
+                    'service' => 'managed_assistant_test',
+                ],
+                'runtime' => [
+                    'test_mode' => true,
+                ],
+            ],
+            'test_mode' => true,
+        ];
+    }
+
+    /**
+     * Build assistant test context from a real WordPress post including metadata.
+     *
+     * @param int $post_id Post ID
+     * @param string $source_language Source language code
+     * @param string $target_language Target language code
+     * @return array|null
+     */
+    private function build_assistant_test_context_from_post($post_id, $source_language, $target_language)
+    {
+        $post = get_post($post_id);
+        if (!$post) {
+            return null;
+        }
+
+        $plain_content = wp_strip_all_tags($post->post_content);
+        $excerpt = !empty($post->post_excerpt)
+            ? $post->post_excerpt
+            : (function_exists('wp_trim_words') ? wp_trim_words($plain_content, 35, '...') : substr($plain_content, 0, 240));
+
+        $meta = $this->get_post_meta_for_assistant_test($post_id);
+        $slug = !empty($post->post_name) ? $post->post_name : sanitize_title($post->post_title);
+        $word_count = str_word_count($plain_content);
+        $char_count = strlen($plain_content);
+
+        $post_data = [
+            'ID' => (int) $post->ID,
+            'post_title' => $post->post_title,
+            'post_content' => $post->post_content,
+            'post_excerpt' => $excerpt,
+            'post_name' => $slug,
+            'post_status' => $post->post_status,
+            'post_type' => $post->post_type,
+            'id' => (int) $post->ID,
+            'title' => $post->post_title,
+            'content' => $post->post_content,
+            'excerpt' => $excerpt,
+            'slug' => $slug,
+            'status' => $post->post_status,
+            'type' => $post->post_type,
+            'meta' => $meta,
+            'word_count' => $word_count,
+            'character_count' => $char_count,
+        ];
+
+        return [
+            'source_language' => $source_language,
+            'target_language' => $target_language,
+            'translation_service' => 'managed_assistant_test',
+            'title' => $post->post_title,
+            'content' => $post->post_content,
+            'excerpt' => $excerpt,
+            'original' => $post_data,
+            'translated' => $post_data,
+            'original_text' => $post->post_content,
+            'translated_text' => $post->post_content,
+            'original_post' => $post_data,
+            'translated_post' => $post_data,
+            'payload' => [
+                'post' => $post_data,
+                'translation' => [
+                    'source_language' => $source_language,
+                    'target_language' => $target_language,
+                    'service' => 'managed_assistant_test',
+                ],
+                'runtime' => [
+                    'test_mode' => true,
+                ],
+            ],
+            'test_mode' => true,
+        ];
+    }
+
+    /**
+     * Collect post meta for assistant test context.
+     *
+     * @param int $post_id Post ID
+     * @return array
+     */
+    private function get_post_meta_for_assistant_test($post_id)
+    {
+        $all_meta = get_post_meta($post_id);
+        $meta_data = [];
+
+        foreach ($all_meta as $key => $values) {
+            // Skip WordPress internal editing/locking metadata.
+            if (strpos($key, '_wp_') === 0 || strpos($key, '_edit_') === 0) {
+                continue;
+            }
+
+            $value = (is_array($values) && count($values) === 1) ? $values[0] : $values;
+
+            // Keep prompt-friendly scalar values; JSON-encode nested structures.
+            if (is_array($value) || is_object($value)) {
+                $meta_data[$key] = wp_json_encode($value, JSON_UNESCAPED_UNICODE);
+            } else {
+                $meta_data[$key] = $value;
+            }
+        }
+
+        return $meta_data;
+    }
+
+    /**
+     * Build a compact context for UI display without duplicated compatibility aliases.
+     *
+     * @param array $context Full execution context
+     * @return array
+     */
+    private function build_assistant_test_context_compact($context)
+    {
+        return [
+            'source_language' => $context['source_language'] ?? '',
+            'target_language' => $context['target_language'] ?? '',
+            'translation_service' => $context['translation_service'] ?? '',
+            'payload' => $context['payload'] ?? [],
+            'test_mode' => !empty($context['test_mode']),
+        ];
     }
 }

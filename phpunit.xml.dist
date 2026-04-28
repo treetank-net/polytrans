@@ -1,30 +1,31 @@
-<?xml version="1.0"?>
-<phpunit
-    bootstrap="tests/bootstrap.php"
-    backupGlobals="false"
-    colors="true"
-    convertErrorsToExceptions="true"
-    convertNoticesToExceptions="true"
-    convertWarningsToExceptions="true"
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/10.3/phpunit.xsd"
+         bootstrap="tests/bootstrap.php"
+         backupGlobals="false"
+         colors="true"
 >
     <testsuites>
-        <testsuite name="PolyTrans Test Suite">
-            <directory>./tests/</directory>
+        <testsuite name="Unit">
+            <directory suffix="Test.php">./tests/Unit</directory>
+        </testsuite>
+        <testsuite name="Architecture">
+            <directory suffix="Test.php">./tests/Architecture</directory>
+        </testsuite>
+        <testsuite name="All">
+            <directory suffix="Test.php">./tests/Unit</directory>
+            <directory suffix="Test.php">./tests/Architecture</directory>
         </testsuite>
     </testsuites>
-    
-    <coverage>
+
+    <source>
         <include>
-            <directory suffix=".php">./includes/</directory>
+            <file>./polytrans.php</file>
+            <directory suffix=".php">./includes</directory>
         </include>
         <exclude>
-            <directory>./tests/</directory>
-            <directory>./vendor/</directory>
+            <directory>./tests</directory>
+            <directory>./vendor</directory>
         </exclude>
-    </coverage>
-    
-    <logging>
-        <log type="coverage-html" target="coverage"/>
-        <log type="coverage-clover" target="coverage.xml"/>
-    </logging>
+    </source>
 </phpunit>

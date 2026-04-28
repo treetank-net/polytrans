@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.11.0] - 2026-04-28
+
+### Added
+- Managed Assistant single test runner in the Assistants UI, including existing-post selection and one-click execution.
+- Dedicated assistant test page (`action=test`) with detailed result panels for output, interpolated prompts, context, and usage.
+- New AJAX endpoints for assistant testing: `polytrans_test_assistant` and `polytrans_get_recent_posts_for_assistant_test`.
+
+### Changed
+- Assistant test execution context now includes a structured `payload` namespace (`post`, `translation`, `runtime`) for future evaluation/refinement workflows.
+- CI unit test job now runs the full Pest suite instead of only `tests/Unit`.
+- `phpunit.xml.dist` updated for PHPUnit 10 schema and explicit Unit/Architecture test suites.
+- Provider layer cleanup toward PSR-4 symbols (`LogsManager`, `ProviderRegistry`, `OpenAISettingsProvider::class`) with architecture test allowlist updates.
+- Contributor instructions now explicitly recommend Docker-based Pest runs and document that `AGENTS.md` is a symlink to `CLAUDE.md`.
+
+### Fixed
+- Assistant test run now forwards `selected_post_id`, so context can be built from the real selected WordPress post.
+- Assistant test context `original.meta`/`translated.meta` is now an associative array, which makes Twig `for` loops and `set ... merge(...)` prompt patterns work reliably.
+- Assistant tester validation now correctly supports real-post execution path and no longer depends on fallback-only content checks.
+
 ## [1.10.1] - 2026-04-24
 
 ### Fixed

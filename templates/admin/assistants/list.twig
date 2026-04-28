@@ -89,6 +89,9 @@
                             <a href="{{ polytrans_admin_url('polytrans-assistants&action=edit&assistant_id=' ~ assistant.id) }}" class="button button-small">
                                 {{ __('Edit', 'polytrans') }}
                             </a>
+                            <a href="{{ polytrans_admin_url('polytrans-assistants&action=test&assistant_id=' ~ assistant.id) }}" class="button button-small">
+                                {{ __('Test', 'polytrans') }}
+                            </a>
                             <button type="button" class="button button-small button-link-delete assistant-delete" data-assistant-id="{{ assistant.id|esc_attr }}">
                                 {{ __('Delete', 'polytrans') }}
                             </button>
@@ -99,4 +102,3 @@
         </table>
     {% endif %}
 </div>
-

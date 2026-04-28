@@ -19,7 +19,7 @@ unit-tests:
       docker run --rm
       -v "${CI_PROJECT_DIR}:/src:ro"
       php:8.3-cli
-      sh -c "apt-get update && apt-get install -y unzip git libxml2-dev && docker-php-ext-install dom && cp -r /src /work && cd /work && curl -sS https://getcomposer.org/installer | php && php composer.phar install --no-interaction && ./vendor/bin/pest tests/Unit --colors=never"
+      sh -c "apt-get update && apt-get install -y unzip git libxml2-dev && docker-php-ext-install dom && cp -r /src /work && cd /work && curl -sS https://getcomposer.org/installer | php && php composer.phar install --no-interaction && ./vendor/bin/pest --colors=never"
   rules:
     - if: $CI_COMMIT_BRANCH == "main" && $CI_COMMIT_MESSAGE !~ /\[skip ci\]/
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"

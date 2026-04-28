@@ -1,0 +1,56 @@
+<div class="wrap">
+    <h1>{{ __('Test Assistant', 'polytrans') }}: {{ assistant.name|esc_html }}</h1>
+
+    <p>
+        <a href="{{ polytrans_admin_url('polytrans-assistants') }}" class="button">
+            {{ __('Back to Assistants', 'polytrans') }}
+        </a>
+        <a href="{{ polytrans_admin_url('polytrans-assistants&action=edit&assistant_id=' ~ assistant.id) }}" class="button">
+            {{ __('Edit Assistant', 'polytrans') }}
+        </a>
+    </p>
+
+    <div id="assistant-tester-container" data-assistant-id="{{ assistant.id|esc_attr }}" data-assistant-name="{{ assistant.name|esc_attr }}">
+        <div class="assistant-test-panel">
+            <h2>{{ __('Single Test Run', 'polytrans') }}</h2>
+            <p class="description">
+                {{ __('Run this managed assistant with a translation-shaped test context. Later evaluation rounds can build on the same result structure.', 'polytrans') }}
+            </p>
+
+            <table class="form-table" role="presentation">
+                <tbody>
+                    <tr>
+                        <th scope="row"><label for="assistant-test-source-language">{{ __('Source Language', 'polytrans') }}</label></th>
+                        <td><input type="text" id="assistant-test-source-language" class="small-text" value="en"></td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><label for="assistant-test-target-language">{{ __('Target Language', 'polytrans') }}</label></th>
+                        <td><input type="text" id="assistant-test-target-language" class="small-text" value="pl"></td>
+                    </tr>
+                    <tr id="assistant-existing-post-row">
+                        <th scope="row"><label for="assistant-test-recent-posts">{{ __('Existing Post', 'polytrans') }}</label></th>
+                        <td>
+                            <select id="assistant-test-recent-posts" class="regular-text">
+                                <option value="">{{ __('Loading posts...', 'polytrans') }}</option>
+                            </select>
+                            <p class="description">{{ __('Loads last 20 posts (optionally filtered by source language).', 'polytrans') }}</p>
+                            <div id="assistant-selected-post-info" style="display:none; margin-top:10px; padding:10px; background:#f6f7f7; border:1px solid #dcdcde;">
+                                <strong>{{ __('Selected post', 'polytrans') }}:</strong>
+                                <div id="assistant-selected-post-details"></div>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <p>
+                <button type="button" id="run-assistant-test-btn" class="button button-primary">
+                    {{ __('Run Test', 'polytrans') }}
+                </button>
+                <span class="spinner" style="float:none; margin:0 10px;"></span>
+            </p>
+        </div>
+
+        <div id="assistant-test-results" style="display:none;"></div>
+    </div>
+</div>

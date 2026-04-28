@@ -53,6 +53,49 @@
     margin-right: 10px;
 }
 
+/* Assistant Tester */
+.assistant-test-panel {
+    background: #fff;
+    border: 1px solid #c3c4c7;
+    border-radius: 6px;
+    padding: 20px;
+    margin: 20px 0;
+}
+
+.assistant-test-panel h2 {
+    margin-top: 0;
+}
+
+.assistant-test-section,
+.assistant-test-details {
+    background: #fff;
+    border: 1px solid #dcdcde;
+    border-radius: 4px;
+    margin-top: 16px;
+    padding: 14px;
+}
+
+.assistant-test-section h5,
+.assistant-test-details h5 {
+    margin: 0 0 8px;
+}
+
+.assistant-test-details summary {
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.assistant-test-section pre,
+.assistant-test-details pre {
+    max-height: 420px;
+    overflow: auto;
+    margin: 10px 0 0;
+    padding: 12px;
+    background: #f6f7f7;
+    border: 1px solid #dcdcde;
+    white-space: pre-wrap;
+}
+
 /* Notices */
 .notice.is-dismissible {
     position: relative;
@@ -82,4 +125,3 @@
         width: 40%;
     }
 }
-

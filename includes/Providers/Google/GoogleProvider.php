@@ -3,6 +3,7 @@
 namespace PolyTrans\Providers\Google;
 
 use PolyTrans\Providers\TranslationProviderInterface;
+use PolyTrans\Core\LogsManager;
 
 /**
  * Google Translate Provider
@@ -53,7 +54,7 @@ class GoogleProvider implements TranslationProviderInterface
      */
     public function translate(array $content, string $source_lang, string $target_lang, array $settings)
     {
-        \PolyTrans_Logs_Manager::log("Google Translate: translating from $source_lang to $target_lang", "info");
+        LogsManager::log("Google Translate: translating from $source_lang to $target_lang", "info");
 
         try {
             $translated = $this->deep_translate($content, $source_lang, $target_lang);
@@ -224,7 +225,7 @@ class GoogleProvider implements TranslationProviderInterface
             return $json[0][0][0];
         }
 
-        \PolyTrans_Logs_Manager::log("Google Translate API fallback for '$text'", "info");
+        LogsManager::log("Google Translate API fallback for '$text'", "info");
         return null;
     }
 }

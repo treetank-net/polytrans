@@ -3,6 +3,7 @@
 namespace PolyTrans\Providers\OpenAI;
 
 use PolyTrans\Providers\SettingsProviderInterface;
+use PolyTrans\Providers\ProviderRegistry;
 use PolyTrans\Assistants\AssistantManager;
 
 /**
@@ -845,7 +846,7 @@ class OpenAISettingsProvider implements SettingsProviderInterface
         // Skip if excluded (for workflow predefined assistant step - only AI assistants, not translation providers)
         if (!$exclude_providers) {
             // OpenAI is NOT included here - it only provides assistants, not direct translation
-            $registry = \PolyTrans_Provider_Registry::get_instance();
+            $registry = ProviderRegistry::get_instance();
             $all_providers = $registry->get_providers();
             
             foreach ($all_providers as $provider_id => $provider) {
@@ -1106,7 +1107,7 @@ class OpenAISettingsProvider implements SettingsProviderInterface
         }
 
         $settings = get_option('polytrans_settings', []);
-        $registry = \PolyTrans_Provider_Registry::get_instance();
+        $registry = ProviderRegistry::get_instance();
         $providers = $registry->get_providers();
         
         $manifests = [];

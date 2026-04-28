@@ -119,6 +119,15 @@ cd /home/jm/projects/trans-info/plugins/polytrans
 ./vendor/bin/pest
 ```
 
+Prefer Docker for Pest runs because local PHP may miss PHPUnit extensions such as `dom`/`php-xml`:
+
+```bash
+docker compose -f docker-compose.test.yml run --rm polytrans-test ./vendor/bin/pest tests/Unit/AssistantExecutorTest.php
+docker compose -f docker-compose.test.yml run --rm polytrans-test ./vendor/bin/pest
+```
+
+Note: `AGENTS.md` is a symlink to `CLAUDE.md`; update either path and the shared instruction file changes.
+
 ### Checking Version
 
 ```bash

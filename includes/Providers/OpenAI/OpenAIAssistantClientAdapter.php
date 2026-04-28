@@ -4,6 +4,7 @@ namespace PolyTrans\Providers\OpenAI;
 
 use PolyTrans\Providers\AIAssistantClientInterface;
 use PolyTrans\PostProcessing\JsonResponseParser;
+use PolyTrans\Core\LogsManager;
 
 /**
  * OpenAI Assistant Client Adapter
@@ -35,7 +36,7 @@ class OpenAIAssistantClientAdapter implements AIAssistantClientInterface
     
     public function execute_assistant($assistant_id, $content, $source_lang, $target_lang)
     {
-        \PolyTrans_Logs_Manager::log("OpenAI Assistant: executing $assistant_id ($source_lang -> $target_lang)", "info");
+        LogsManager::log("OpenAI Assistant: executing $assistant_id ($source_lang -> $target_lang)", "info");
         
         // Prepare the content for translation as JSON
         $content_to_translate = [
@@ -150,7 +151,7 @@ class OpenAIAssistantClientAdapter implements AIAssistantClientInterface
         $parse_result = $parser->parse_with_schema($response_text, $schema);
         
         if (!$parse_result['success']) {
-            \PolyTrans_Logs_Manager::log(
+            LogsManager::log(
                 "Failed to parse translation response: " . $parse_result['error'],
                 "error",
                 ['raw_response' => substr($response_text, 0, 500)]
@@ -164,7 +165,7 @@ class OpenAIAssistantClientAdapter implements AIAssistantClientInterface
         
         // Log warnings if any
         if (!empty($parse_result['warnings'])) {
-            \PolyTrans_Logs_Manager::log(
+            LogsManager::log(
                 "Translation response parsing warnings: " . implode(', ', $parse_result['warnings']),
                 "warning"
             );
@@ -177,4 +178,3 @@ class OpenAIAssistantClientAdapter implements AIAssistantClientInterface
         ];
     }
 }
-

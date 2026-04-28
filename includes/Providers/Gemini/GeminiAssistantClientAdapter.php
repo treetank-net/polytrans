@@ -4,6 +4,7 @@ namespace PolyTrans\Providers\Gemini;
 
 use PolyTrans\Providers\AIAssistantClientInterface;
 use PolyTrans\PostProcessing\JsonResponseParser;
+use PolyTrans\Core\LogsManager;
 
 /**
  * Gemini Assistant Client Adapter
@@ -38,7 +39,7 @@ class GeminiAssistantClientAdapter implements AIAssistantClientInterface
     
     public function execute_assistant($assistant_id, $content, $source_lang, $target_lang)
     {
-        \PolyTrans_Logs_Manager::log("Gemini Agent: executing $assistant_id ($source_lang -> $target_lang)", "info");
+        LogsManager::log("Gemini Agent: executing $assistant_id ($source_lang -> $target_lang)", "info");
         
         // Prepare the content for translation as JSON
         $content_to_translate = [
@@ -151,4 +152,3 @@ class GeminiAssistantClientAdapter implements AIAssistantClientInterface
         ];
     }
 }
-
