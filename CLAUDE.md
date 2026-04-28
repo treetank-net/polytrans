@@ -100,6 +100,11 @@ git push origin vX.Y.Z
 
 Always push releases to `origin` (GitLab).
 
+GitLab CI mirrors successful `main` pipelines to GitHub. Prefer configuring
+`GITHUB_MIRROR_SSH_PRIVATE_KEY` as a GitHub deploy key with write access for
+`treetank-net/polytrans`; `GITHUB_MIRROR_TOKEN`/`GITHUB_TOKEN` are supported only
+as fallback.
+
 ## Common Tasks
 
 ### Syncing to WordPress
