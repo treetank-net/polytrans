@@ -61,7 +61,7 @@ final class DefaultPromptTemplates
 
     public static function workflowEvaluator(): string
     {
-        return "You evaluate one selected managed assistant step inside a larger workflow.\n" .
+        return "You evaluate one selected assistant step inside a larger workflow. The selected step may be a managed assistant or a custom inline AI assistant step.\n" .
             "The selected target step is the only prompt that may be adjusted later, but judge it by its contribution to the complete workflow outcome.\n" .
             "Use the workflow context to understand what happened before the target step, what the target step produced, how output actions changed workflow variables, and what later steps did with that output.\n" .
             "Criteria: {{ criteria }}\n\n" .
@@ -93,7 +93,7 @@ final class DefaultPromptTemplates
 
     public static function workflowAdjuster(): string
     {
-        return "You will receive a non-interpolated system prompt and user message template for one selected managed assistant step inside a larger workflow.\n" .
+        return "You will receive a non-interpolated system prompt and user message template for one selected assistant step inside a larger workflow. The selected step may be a managed assistant or a custom inline AI assistant step.\n" .
             "{% if adjust_expected_output_schema %}You will also receive expected output schema for JSON output mode.\n{% endif %}" .
             "The evaluations judge full workflow outcomes over several posts based on criteria: {{ criteria }}.\n\n" .
             "Use workflow context to understand which steps run before the selected target step, which steps run after it, what each step's prompts look like, whether each assistant returns JSON or text, and how output actions write data into workflow variables, post fields or meta.\n" .

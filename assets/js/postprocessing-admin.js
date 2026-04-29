@@ -631,7 +631,7 @@
                 <label for="step-${index}-type">Step Type</label>
                 <select id="step-${index}-type" name="steps[${index}][type]" required>
                     <option value="ai_assistant" ${step.type === 'ai_assistant' ? 'selected' : ''}>🤖 AI Assistant (Custom) - Configure your own system prompt and settings</option>
-                    <option value="predefined_assistant" ${step.type === 'predefined_assistant' ? 'selected' : ''}>⚙️ Predefined AI Assistant - Use OpenAI assistant with pre-configured settings</option>
+                    <option value="predefined_assistant" ${step.type === 'predefined_assistant' ? 'selected' : ''}>⚙️ Predefined AI Assistant (Deprecated) - Legacy external assistant step</option>
                     <option value="managed_assistant" ${step.type === 'managed_assistant' ? 'selected' : ''}>✨ Managed AI Assistant - Use centrally managed assistant with Twig templates</option>
                 </select>
                 <small>Choose the type of AI processing for this step</small>
@@ -778,7 +778,7 @@
                 <select id="step-${index}-assistant-id" name="steps[${index}][assistant_id]" required data-step-index="${index}">
                     <option value="">Loading assistants...</option>
                 </select>
-                <small>⚙️ Choose a predefined AI assistant from any enabled provider. The assistant's system prompt, temperature, and other settings are already configured.</small>
+                <small><strong>Deprecated:</strong> this legacy step type is kept for existing workflows and will be decommissioned. Prefer Managed AI Assistant or AI Assistant (Custom).</small>
             </div>
             <div class="workflow-step-field workflow-field-with-variables">
                 <label for="step-${index}-user-message">User Message Template</label>
@@ -1629,9 +1629,9 @@
     }
 
     /**
-     * Get managed assistant steps that can be refined inside a workflow.
+     * Get assistant steps that can be refined inside a workflow.
      */
-    function getWorkflowManagedAssistantSteps(workflow) {
+    function getWorkflowRefinableAssistantSteps(workflow) {
         const steps = Array.isArray(workflow?.steps) ? workflow.steps : [];
         return steps
             .map((step, index) => ({
@@ -1639,9 +1639,22 @@
                 name: step.name || `Step ${index + 1}`,
                 type: step.type || '',
                 enabled: step.enabled !== false,
-                assistant_id: step.assistant_id || ''
+                assistant_id: step.assistant_id || '',
+                system_prompt: step.system_prompt || '',
+                user_message: step.user_message || ''
             }))
-            .filter((step) => step.type === 'managed_assistant' && step.enabled && step.assistant_id);
+            .filter((step) => {
+                if (!step.enabled) {
+                    return false;
+                }
+                if (step.type === 'managed_assistant') {
+                    return !!step.assistant_id;
+                }
+                if (step.type === 'ai_assistant') {
+                    return !!(step.system_prompt && step.user_message);
+                }
+                return false;
+            });
     }
 
     /**
@@ -1649,21 +1662,24 @@
      */
     function renderWorkflowTester(workflow) {
         const container = $('#workflow-tester-container');
-        const managedSteps = getWorkflowManagedAssistantSteps(workflow);
+        const refinableSteps = getWorkflowRefinableAssistantSteps(workflow);
         const refinementDefaults = window.polytransWorkflowRefinementDefaults || {};
         const evaluatorTemplate = refinementDefaults.evaluatorPromptTemplate || '';
         const adjusterTemplate = refinementDefaults.adjusterPromptTemplate || '';
         const targetLanguage = workflow.language || workflow.target_language || '';
-        const managedStepOptions = managedSteps.length
-            ? managedSteps.map((step) => `<option value="${escapeHtml(step.id)}" data-assistant-id="${escapeHtml(String(step.assistant_id || ''))}">${escapeHtml(step.name)} (${escapeHtml(step.id)})</option>`).join('')
-            : '<option value="">No managed assistant steps found</option>';
+        const refinableStepOptions = refinableSteps.length
+            ? refinableSteps.map((step) => {
+                const label = step.type === 'managed_assistant' ? 'Managed' : 'Custom';
+                return `<option value="${escapeHtml(step.id)}" data-target-type="${escapeHtml(step.type)}" data-assistant-id="${escapeHtml(String(step.assistant_id || ''))}">${escapeHtml(label)}: ${escapeHtml(step.name)} (${escapeHtml(step.id)})</option>`;
+            }).join('')
+            : '<option value="">No refinable assistant steps found</option>';
 
         const html = `
             <div class="workflow-tester-container">
                 <h3>Test Workflow: ${escapeHtml(workflow.name)}</h3>
                 <div class="workflow-test-tabs">
                     <button type="button" class="button workflow-test-tab active" data-mode="test">Test Workflow</button>
-                    <button type="button" class="button workflow-test-tab" data-mode="refine" ${managedSteps.length ? '' : 'disabled'}>Prompt Refinement</button>
+                    <button type="button" class="button workflow-test-tab" data-mode="refine" ${refinableSteps.length ? '' : 'disabled'}>Prompt Refinement</button>
                 </div>
                 
                 <div id="workflow-mode-test" class="workflow-mode-panel">
@@ -1725,19 +1741,19 @@ However, the integration of AI in healthcare also raises important questions abo
                 </div>
 
                 <div id="workflow-mode-refine" class="workflow-mode-panel" style="display:none;">
-                    <p>Evaluate full workflow results while adjusting one selected managed assistant step.</p>
+                    <p>Evaluate full workflow results while adjusting one selected assistant step.</p>
                     <div class="test-post-selector">
                         <h4>Workflow Prompt Refinement</h4>
-                        ${managedSteps.length ? '' : '<div class="notice notice-warning inline"><p>This workflow has no managed assistant steps to refine.</p></div>'}
+                        ${refinableSteps.length ? '' : '<div class="notice notice-warning inline"><p>This workflow has no managed or custom AI assistant steps to refine.</p></div>'}
 
                         <table class="form-table">
                             <tr>
                                 <th scope="row"><label for="workflow-refine-target-step">Target Step</label></th>
                                 <td>
-                                    <select id="workflow-refine-target-step" class="regular-text" ${managedSteps.length ? '' : 'disabled'}>
-                                        ${managedStepOptions}
+                                    <select id="workflow-refine-target-step" class="regular-text" ${refinableSteps.length ? '' : 'disabled'}>
+                                        ${refinableStepOptions}
                                     </select>
-                                    <p class="description">Only this managed assistant prompt is adjusted. Each evaluation still runs the full workflow.</p>
+                                    <p class="description">Only this selected step prompt is adjusted. Managed targets update the assistant; custom targets update the local workflow step. Each evaluation still runs the full workflow.</p>
                                 </td>
                             </tr>
                             <tr>
@@ -1790,7 +1806,7 @@ However, the integration of AI in healthcare also raises important questions abo
                         </table>
 
                         <p>
-                            <button type="button" id="run-workflow-refinement-btn" class="button button-primary" ${managedSteps.length ? '' : 'disabled'}>Run Workflow Refinement</button>
+                            <button type="button" id="run-workflow-refinement-btn" class="button button-primary" ${refinableSteps.length ? '' : 'disabled'}>Run Workflow Refinement</button>
                             <span class="spinner"></span>
                         </p>
                     </div>
@@ -2027,6 +2043,7 @@ However, the integration of AI in healthcare also raises important questions abo
         const workflow = window.polytransWorkflowTestData;
         const targetStepId = ($('#workflow-refine-target-step').val() || '').trim();
         const $selectedOption = $('#workflow-refine-target-step option:selected');
+        const targetStepType = String($selectedOption.data('target-type') || '').trim();
         const assistantId = parseInt($selectedOption.data('assistant-id') || 0, 10);
         const sourceLanguage = ($('#workflow-refine-source-language').val() || '').trim();
         const targetLanguage = ($('#workflow-refine-target-language').val() || '').trim();
@@ -2042,6 +2059,7 @@ However, the integration of AI in healthcare also raises important questions abo
         await runWorkflowRefinementIterations({
             workflow,
             targetStepId,
+            targetStepType,
             assistantId,
             sourceLanguage,
             targetLanguage,
@@ -2079,6 +2097,7 @@ However, the integration of AI in healthcare also raises important questions abo
         await runWorkflowRefinementIterations({
             workflow: session.workflow,
             targetStepId: session.targetStepId,
+            targetStepType: session.targetStepType,
             assistantId: session.assistantId,
             sourceLanguage: session.sourceLanguage,
             targetLanguage: session.targetLanguage,
@@ -2120,6 +2139,10 @@ However, the integration of AI in healthcare also raises important questions abo
                     action: 'polytrans_apply_workflow_prompt_pack',
                     nonce: polytransWorkflows.nonce,
                     assistant_id: session.assistantId,
+                    workflow: session.workflow,
+                    target_step_id: session.targetStepId,
+                    target_step_type: session.targetStepType,
+                    base_prompt_pack: JSON.stringify(session.initialBasePromptPack || {}),
                     system_prompt: session.finalPromptPack.system_prompt || '',
                     user_message_template: session.finalPromptPack.user_message_template || '',
                     expected_output_schema: session.finalPromptPack.expected_output_schema || '{}'
@@ -2130,7 +2153,9 @@ However, the integration of AI in healthcare also raises important questions abo
                 throw new Error(response?.data?.message || 'Failed to apply prompt pack.');
             }
 
-            showNotice('success', 'Final prompt pack applied to target assistant.');
+            showNotice('success', session.targetStepType === 'ai_assistant'
+                ? 'Final prompt pack applied to workflow step.'
+                : 'Final prompt pack applied to target assistant.');
         } catch (error) {
             showNotice('error', resolveWorkflowAjaxErrorMessage(error, 'Failed to apply prompt pack.'));
         } finally {
@@ -2144,6 +2169,7 @@ However, the integration of AI in healthcare also raises important questions abo
     async function runWorkflowRefinementIterations(config, ui) {
         const workflow = config.workflow || {};
         const targetStepId = String(config.targetStepId || '').trim();
+        const targetStepType = String(config.targetStepType || '').trim();
         const assistantId = parseInt(config.assistantId || 0, 10);
         const sourceLanguage = String(config.sourceLanguage || '').trim();
         const targetLanguage = String(config.targetLanguage || '').trim();
@@ -2159,8 +2185,12 @@ However, the integration of AI in healthcare also raises important questions abo
         let currentPromptPack = config.initialPromptPack ? normalizeWorkflowPromptPack(config.initialPromptPack) : null;
         let initialBasePromptPack = config.initialBasePromptPack ? normalizeWorkflowPromptPack(config.initialBasePromptPack) : null;
 
-        if (!targetStepId || !assistantId) {
-            showNotice('error', 'Select a managed assistant step to refine.');
+        if (!targetStepId) {
+            showNotice('error', 'Select an assistant step to refine.');
+            return;
+        }
+        if (targetStepType === 'managed_assistant' && !assistantId) {
+            showNotice('error', 'Selected managed assistant step is missing assistant ID.');
             return;
         }
         if (!sourceLanguage || !targetLanguage) {
@@ -2300,6 +2330,9 @@ However, the integration of AI in healthcare also raises important questions abo
                     action: 'polytrans_adjust_workflow_prompt',
                     nonce: polytransWorkflows.nonce,
                     assistant_id: assistantId,
+                    workflow,
+                    target_step_id: targetStepId,
+                    target_step_type: targetStepType,
                     criteria,
                     adjuster_prompt_template: adjusterTemplate,
                     evaluations: JSON.stringify(evaluatedRuns)
@@ -2367,6 +2400,7 @@ However, the integration of AI in healthcare also raises important questions abo
             lastWorkflowRefinementSession = {
                 workflow,
                 targetStepId,
+                targetStepType,
                 assistantId,
                 sourceLanguage,
                 targetLanguage,

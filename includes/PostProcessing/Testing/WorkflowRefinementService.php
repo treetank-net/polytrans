@@ -7,6 +7,7 @@ namespace PolyTrans\PostProcessing\Testing;
 use PolyTrans\Assistants\AssistantManager;
 use PolyTrans\Assistants\Testing\AssistantRefinementService;
 use PolyTrans\Core\LogsManager;
+use PolyTrans\PostProcessing\Managers\WorkflowStorageManager;
 use PolyTrans\PromptRefinement\EvaluationScoreExtractor;
 use PolyTrans\PromptRefinement\PromptChatRunner;
 use PolyTrans\PromptRefinement\PromptPackNormalizer;
@@ -46,18 +47,15 @@ final class WorkflowRefinementService
             return new \WP_Error('workflow_refinement_invalid_post', __('Select a valid post for refinement.', 'polytrans'));
         }
 
-        $target_step = $this->findManagedAssistantStep($workflow, $targetStepId);
+        $target_step = $this->findRefinableStep($workflow, $targetStepId);
         if (!$target_step) {
-            return new \WP_Error('workflow_refinement_invalid_target_step', __('Selected workflow step is not a managed assistant step.', 'polytrans'));
+            return new \WP_Error('workflow_refinement_invalid_target_step', __('Selected workflow step is not a refinable assistant step.', 'polytrans'));
         }
 
-        $assistant_id = (int) ($target_step['assistant_id'] ?? 0);
-        $assistant = AssistantManager::get_assistant($assistant_id);
-        if (!$assistant) {
-            return new \WP_Error('workflow_refinement_assistant_not_found', __('Target assistant was not found.', 'polytrans'));
-        }
-        if (($assistant['status'] ?? 'active') !== 'active') {
-            return new \WP_Error('workflow_refinement_assistant_inactive', __('Target assistant is inactive.', 'polytrans'));
+        $target_type = (string) ($target_step['type'] ?? '');
+        $assistant = $this->buildPromptRunnerConfigForTargetStep($target_step);
+        if (is_wp_error($assistant)) {
+            return $assistant;
         }
 
         $context = $this->buildContextFromPost($selectedPostId, $sourceLanguage, $targetLanguage);
@@ -76,9 +74,16 @@ final class WorkflowRefinementService
             $prompt_overrides['expected_output_schema'] = (string) $overrideExpectedOutputSchema;
         }
         if (!empty($prompt_overrides)) {
-            $context['__assistant_prompt_overrides'] = [
-                $targetStepId => $prompt_overrides,
-            ];
+            if ($target_type === 'managed_assistant') {
+                $context['__assistant_prompt_overrides'] = [
+                    $targetStepId => $prompt_overrides,
+                ];
+            } elseif ($target_type === 'ai_assistant') {
+                unset($prompt_overrides['expected_output_schema']);
+                $context['__workflow_step_prompt_overrides'] = [
+                    $targetStepId => $prompt_overrides,
+                ];
+            }
         }
 
         try {
@@ -89,7 +94,18 @@ final class WorkflowRefinementService
         }
 
         $run_id = $this->generateRunId();
-        $run_payload = $this->buildRunPayload($run_id, $workflow, $target_step, $assistant, $context, $workflow_result);
+        $used_prompt_pack = $this->buildPromptPackForTargetStep($target_step, is_array($assistant) ? $assistant : []);
+        if ($overrideSystemPrompt !== null) {
+            $used_prompt_pack['system_prompt'] = (string) $overrideSystemPrompt;
+        }
+        if ($overrideUserMessageTemplate !== null) {
+            $used_prompt_pack['user_message_template'] = (string) $overrideUserMessageTemplate;
+        }
+        if ($target_type === 'managed_assistant' && $overrideExpectedOutputSchema !== null) {
+            $used_prompt_pack['expected_output_schema'] = (string) $overrideExpectedOutputSchema;
+        }
+
+        $run_payload = $this->buildRunPayload($run_id, $workflow, $target_step, $assistant, $context, $workflow_result, $used_prompt_pack);
 
         if (!$this->persistRunPayload($run_id, $run_payload)) {
             return new \WP_Error('workflow_refinement_run_persist_failed', __('Failed to persist workflow run. Please retry.', 'polytrans'));
@@ -135,6 +151,7 @@ final class WorkflowRefinementService
         return [
             'run_id' => $runId,
             'target_step_id' => (string) ($run_payload['target_step_id'] ?? ''),
+            'target_step_type' => (string) ($run_payload['target_step_type'] ?? ''),
             'assistant_id' => (int) ($run_payload['assistant_id'] ?? 0),
             'post_id' => (int) ($run_payload['post']['id'] ?? 0),
             'post_title' => (string) ($run_payload['post']['title'] ?? ''),
@@ -157,11 +174,10 @@ final class WorkflowRefinementService
         $evaluationsPayload,
         $currentSystemPrompt = null,
         $currentUserMessageTemplate = null,
-        $currentExpectedOutputSchema = null
+        $currentExpectedOutputSchema = null,
+        array $workflow = [],
+        string $targetStepId = ''
     ) {
-        if ($assistantId <= 0) {
-            return new \WP_Error('invalid_assistant_id', __('Invalid assistant ID.', 'polytrans'));
-        }
         if ($criteria === '') {
             return new \WP_Error('missing_refinement_criteria', __('Refinement criteria is required.', 'polytrans'));
         }
@@ -169,9 +185,32 @@ final class WorkflowRefinementService
             $adjusterPromptTemplate = PromptRefinementSettings::workflowAdjuster();
         }
 
-        $assistant = AssistantManager::get_assistant($assistantId);
-        if (!$assistant) {
-            return new \WP_Error('assistant_not_found', __('Assistant not found.', 'polytrans'));
+        $target_step = null;
+        if ($targetStepId !== '' && !empty($workflow)) {
+            $target_step = $this->findRefinableStep($workflow, $targetStepId);
+            if (!$target_step) {
+                return new \WP_Error('workflow_refinement_invalid_target_step', __('Selected workflow step is not a refinable assistant step.', 'polytrans'));
+            }
+        }
+
+        if ($target_step) {
+            $assistant = $this->buildPromptRunnerConfigForTargetStep($target_step);
+            if (is_wp_error($assistant)) {
+                return $assistant;
+            }
+            $current_prompt_pack = $this->buildPromptPackForTargetStep($target_step, $assistant);
+            $should_adjust_expected_output_schema = $this->shouldAdjustTargetExpectedOutputSchema($target_step, $assistant);
+        } else {
+            if ($assistantId <= 0) {
+                return new \WP_Error('invalid_assistant_id', __('Invalid assistant ID.', 'polytrans'));
+            }
+
+            $assistant = AssistantManager::get_assistant($assistantId);
+            if (!$assistant) {
+                return new \WP_Error('assistant_not_found', __('Assistant not found.', 'polytrans'));
+            }
+            $current_prompt_pack = PromptPackNormalizer::fromAssistant($assistant);
+            $should_adjust_expected_output_schema = PromptPackNormalizer::shouldAdjustExpectedOutputSchema($assistant);
         }
 
         $evaluations = $this->decodeEvaluations($evaluationsPayload);
@@ -179,7 +218,6 @@ final class WorkflowRefinementService
             return new \WP_Error('missing_evaluations', __('At least one evaluated workflow run is required.', 'polytrans'));
         }
 
-        $current_prompt_pack = PromptPackNormalizer::fromAssistant($assistant);
         if ($currentSystemPrompt !== null) {
             $current_prompt_pack['system_prompt'] = (string) $currentSystemPrompt;
         }
@@ -190,7 +228,6 @@ final class WorkflowRefinementService
             $current_prompt_pack['expected_output_schema'] = (string) $currentExpectedOutputSchema;
         }
 
-        $should_adjust_expected_output_schema = PromptPackNormalizer::shouldAdjustExpectedOutputSchema($assistant);
         $workflow_context = is_array($evaluations[0]['workflow_context'] ?? null) ? $evaluations[0]['workflow_context'] : [];
         $adjuster_context = [
             'criteria' => $criteria,
@@ -232,6 +269,9 @@ final class WorkflowRefinementService
         return [
             'assistant_id' => $assistantId,
             'assistant_name' => $assistant['name'] ?? '',
+            'target_step_id' => (string) ($target_step['id'] ?? ''),
+            'target_step_type' => (string) ($target_step['type'] ?? 'managed_assistant'),
+            'target_step_name' => (string) ($target_step['name'] ?? ''),
             'provider' => $adjustment['provider'] ?? ($assistant['provider'] ?? ''),
             'model' => $adjustment['model'] ?? ($assistant['api_parameters']['model'] ?? ''),
             'usage' => $adjustment['usage'] ?? [],
@@ -248,8 +288,30 @@ final class WorkflowRefinementService
     /**
      * @return array<string,mixed>|\WP_Error
      */
-    public function applyPromptPack(int $assistantId, string $systemPrompt, string $userMessageTemplate, $expectedOutputSchema)
-    {
+    public function applyPromptPack(
+        int $assistantId,
+        string $systemPrompt,
+        string $userMessageTemplate,
+        $expectedOutputSchema,
+        array $workflow = [],
+        string $targetStepId = '',
+        string $targetStepType = '',
+        $basePromptPack = null
+    ) {
+        if ($targetStepType === 'ai_assistant' || ($assistantId <= 0 && $targetStepId !== '')) {
+            return $this->applyPromptPackToWorkflowAiStep(
+                $workflow,
+                $targetStepId,
+                $systemPrompt,
+                $userMessageTemplate,
+                $basePromptPack
+            );
+        }
+
+        if ($targetStepType !== '' && $targetStepType !== 'managed_assistant') {
+            return new \WP_Error('workflow_refinement_unsupported_target', __('Selected workflow step type cannot be updated by prompt refinement.', 'polytrans'));
+        }
+
         return (new AssistantRefinementService())->applyPromptPack(
             $assistantId,
             $systemPrompt,
@@ -259,9 +321,87 @@ final class WorkflowRefinementService
     }
 
     /**
+     * @param array<string,mixed> $workflow
+     * @param mixed $basePromptPack
+     * @return array<string,mixed>|\WP_Error
+     */
+    private function applyPromptPackToWorkflowAiStep(
+        array $workflow,
+        string $targetStepId,
+        string $systemPrompt,
+        string $userMessageTemplate,
+        $basePromptPack
+    ) {
+        if ($targetStepId === '') {
+            return new \WP_Error('workflow_refinement_missing_target_step', __('Select a workflow step to refine.', 'polytrans'));
+        }
+        if (trim($systemPrompt) === '') {
+            return new \WP_Error('empty_system_prompt', __('System prompt cannot be empty.', 'polytrans'));
+        }
+        if (trim($userMessageTemplate) === '') {
+            return new \WP_Error('empty_user_message_template', __('User message template cannot be empty.', 'polytrans'));
+        }
+
+        $workflow_id = (string) ($workflow['id'] ?? '');
+        if ($workflow_id === '') {
+            return new \WP_Error('workflow_refinement_missing_workflow', __('Workflow data is required.', 'polytrans'));
+        }
+
+        $storage = new WorkflowStorageManager();
+        $stored_workflow = $storage->get_workflow($workflow_id);
+        if (!is_array($stored_workflow)) {
+            return new \WP_Error('workflow_refinement_workflow_not_found', __('Workflow was not found. Save the workflow before applying prompt changes.', 'polytrans'));
+        }
+
+        $step_index = $this->findStepIndexById($stored_workflow, $targetStepId);
+        if ($step_index === null || (($stored_workflow['steps'][$step_index]['type'] ?? '') !== 'ai_assistant')) {
+            return new \WP_Error('workflow_refinement_invalid_target_step', __('Selected workflow step is not a custom AI assistant step.', 'polytrans'));
+        }
+
+        $current_prompt_pack = PromptPackNormalizer::fromWorkflowAiStep($stored_workflow['steps'][$step_index]);
+        $base_prompt_pack = $this->normalizeBasePromptPack($basePromptPack);
+        if ($base_prompt_pack && !$this->promptPacksMatch($current_prompt_pack, $base_prompt_pack)) {
+            return new \WP_Error(
+                'workflow_refinement_prompt_conflict',
+                __('The target workflow step changed since refinement started. Refresh the workflow and run refinement again before applying.', 'polytrans'),
+                [
+                    'current_prompt_pack' => $current_prompt_pack,
+                    'base_prompt_pack' => $base_prompt_pack,
+                ]
+            );
+        }
+
+        $previous_prompt_pack = $current_prompt_pack;
+        $stored_workflow['steps'][$step_index]['system_prompt'] = $systemPrompt;
+        $stored_workflow['steps'][$step_index]['user_message'] = $userMessageTemplate;
+
+        $save_result = $storage->save_workflow($stored_workflow);
+        if (empty($save_result['success'])) {
+            return new \WP_Error(
+                'workflow_refinement_workflow_save_failed',
+                __('Failed to save workflow prompt changes.', 'polytrans'),
+                $save_result['errors'] ?? []
+            );
+        }
+
+        return [
+            'workflow_id' => $workflow_id,
+            'target_step_id' => $targetStepId,
+            'target_step_type' => 'ai_assistant',
+            'target_step_name' => (string) ($stored_workflow['steps'][$step_index]['name'] ?? ''),
+            'previous_prompt_pack' => $previous_prompt_pack,
+            'applied_prompt_pack' => [
+                'system_prompt' => $systemPrompt,
+                'user_message_template' => $userMessageTemplate,
+                'expected_output_schema' => $previous_prompt_pack['expected_output_schema'] ?? '{}',
+            ],
+        ];
+    }
+
+    /**
      * @return array<string,mixed>|null
      */
-    private function findManagedAssistantStep(array $workflow, string $targetStepId): ?array
+    private function findRefinableStep(array $workflow, string $targetStepId): ?array
     {
         $steps = is_array($workflow['steps'] ?? null) ? $workflow['steps'] : [];
         foreach ($steps as $index => $step) {
@@ -271,7 +411,10 @@ final class WorkflowRefinementService
             if ((string) ($step['id'] ?? '') !== $targetStepId) {
                 continue;
             }
-            if (($step['type'] ?? '') !== 'managed_assistant') {
+            if (!in_array(($step['type'] ?? ''), ['managed_assistant', 'ai_assistant'], true)) {
+                return null;
+            }
+            if (isset($step['enabled']) && empty($step['enabled'])) {
                 return null;
             }
             $step['__index'] = $index;
@@ -279,6 +422,175 @@ final class WorkflowRefinementService
         }
 
         return null;
+    }
+
+    /**
+     * @param array<string,mixed> $workflow
+     */
+    private function findStepIndexById(array $workflow, string $targetStepId): ?int
+    {
+        $steps = is_array($workflow['steps'] ?? null) ? $workflow['steps'] : [];
+        foreach ($steps as $index => $step) {
+            if (is_array($step) && (string) ($step['id'] ?? '') === $targetStepId) {
+                return (int) $index;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param array<string,mixed> $targetStep
+     * @return array<string,mixed>|\WP_Error
+     */
+    private function buildPromptRunnerConfigForTargetStep(array $targetStep)
+    {
+        $target_type = (string) ($targetStep['type'] ?? '');
+        if ($target_type === 'managed_assistant') {
+            $assistant_id = (int) ($targetStep['assistant_id'] ?? 0);
+            $assistant = AssistantManager::get_assistant($assistant_id);
+            if (!$assistant) {
+                return new \WP_Error('workflow_refinement_assistant_not_found', __('Target assistant was not found.', 'polytrans'));
+            }
+            if (($assistant['status'] ?? 'active') !== 'active') {
+                return new \WP_Error('workflow_refinement_assistant_inactive', __('Target assistant is inactive.', 'polytrans'));
+            }
+
+            return $assistant;
+        }
+
+        if ($target_type === 'ai_assistant') {
+            if (trim((string) ($targetStep['system_prompt'] ?? '')) === '' || trim((string) ($targetStep['user_message'] ?? '')) === '') {
+                return new \WP_Error('workflow_refinement_invalid_custom_step', __('Custom AI assistant steps need both system prompt and user message to be refined.', 'polytrans'));
+            }
+
+            $api_parameters = [];
+            if (!empty($targetStep['model'])) {
+                $api_parameters['model'] = (string) $targetStep['model'];
+            }
+            if (isset($targetStep['temperature'])) {
+                $api_parameters['temperature'] = (float) $targetStep['temperature'];
+            }
+
+            return [
+                'id' => 0,
+                'name' => (string) ($targetStep['name'] ?? __('Custom workflow AI step', 'polytrans')),
+                'provider' => $this->resolvePromptRunnerProvider($targetStep),
+                'status' => 'active',
+                'system_prompt' => (string) ($targetStep['system_prompt'] ?? ''),
+                'user_message_template' => (string) ($targetStep['user_message'] ?? ''),
+                'api_parameters' => $api_parameters,
+                'expected_format' => (string) ($targetStep['expected_format'] ?? 'text'),
+                'expected_output_schema' => PromptPackNormalizer::normalizeExpectedOutputSchema(
+                    PromptPackNormalizer::workflowAiStepOutputContract($targetStep)
+                ),
+            ];
+        }
+
+        return new \WP_Error('workflow_refinement_unsupported_target', __('Selected workflow step type cannot be refined.', 'polytrans'));
+    }
+
+    /**
+     * @param array<string,mixed> $targetStep
+     * @param array<string,mixed> $assistant
+     * @return array<string,string>
+     */
+    private function buildPromptPackForTargetStep(array $targetStep, array $assistant): array
+    {
+        if (($targetStep['type'] ?? '') === 'ai_assistant') {
+            return PromptPackNormalizer::fromWorkflowAiStep($targetStep);
+        }
+
+        return PromptPackNormalizer::fromAssistant($assistant);
+    }
+
+    /**
+     * @param array<string,mixed> $targetStep
+     * @param array<string,mixed> $assistant
+     */
+    private function shouldAdjustTargetExpectedOutputSchema(array $targetStep, array $assistant): bool
+    {
+        if (($targetStep['type'] ?? '') === 'ai_assistant') {
+            return false;
+        }
+
+        return PromptPackNormalizer::shouldAdjustExpectedOutputSchema($assistant);
+    }
+
+    /**
+     * @param array<string,mixed> $targetStep
+     */
+    private function resolvePromptRunnerProvider(array $targetStep): string
+    {
+        $provider = trim((string) ($targetStep['provider'] ?? ''));
+        if ($provider !== '') {
+            return $provider;
+        }
+
+        $settings = get_option('polytrans_settings', []);
+        $enabled = is_array($settings['enabled_translation_providers'] ?? null)
+            ? $settings['enabled_translation_providers']
+            : [];
+
+        foreach (['openai', 'claude', 'gemini'] as $candidate) {
+            if (!empty($enabled) && !in_array($candidate, $enabled, true)) {
+                continue;
+            }
+
+            $api_key = (string) ($settings[$candidate . '_api_key'] ?? '');
+            if ($api_key !== '') {
+                return $candidate;
+            }
+        }
+
+        return 'openai';
+    }
+
+    /**
+     * @param mixed $basePromptPack
+     * @return array<string,string>|null
+     */
+    private function normalizeBasePromptPack($basePromptPack): ?array
+    {
+        if (is_string($basePromptPack) && trim($basePromptPack) !== '') {
+            $decoded = json_decode($basePromptPack, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                $basePromptPack = $decoded;
+            }
+        }
+
+        if (!is_array($basePromptPack)) {
+            return null;
+        }
+
+        return [
+            'system_prompt' => (string) ($basePromptPack['system_prompt'] ?? ''),
+            'user_message_template' => (string) ($basePromptPack['user_message_template'] ?? ''),
+            'expected_output_schema' => PromptPackNormalizer::normalizeExpectedOutputSchema($basePromptPack['expected_output_schema'] ?? '{}'),
+        ];
+    }
+
+    /**
+     * @param array<string,string> $left
+     * @param array<string,string> $right
+     */
+    private function promptPacksMatch(array $left, array $right): bool
+    {
+        return hash_equals($this->promptPackFingerprint($left), $this->promptPackFingerprint($right));
+    }
+
+    /**
+     * @param array<string,string> $pack
+     */
+    private function promptPackFingerprint(array $pack): string
+    {
+        $normalized = [
+            'system_prompt' => (string) ($pack['system_prompt'] ?? ''),
+            'user_message_template' => (string) ($pack['user_message_template'] ?? ''),
+            'expected_output_schema' => PromptPackNormalizer::normalizeExpectedOutputSchema($pack['expected_output_schema'] ?? '{}'),
+        ];
+
+        return hash('sha256', (string) wp_json_encode($normalized));
     }
 
     /**
@@ -321,7 +633,15 @@ final class WorkflowRefinementService
      * @param array<string,mixed> $workflowResult
      * @return array<string,mixed>
      */
-    private function buildRunPayload(string $runId, array $workflow, array $targetStep, array $assistant, array $context, array $workflowResult): array
+    private function buildRunPayload(
+        string $runId,
+        array $workflow,
+        array $targetStep,
+        array $assistant,
+        array $context,
+        array $workflowResult,
+        array $usedPromptPack
+    ): array
     {
         $target_step_result = $this->findStepResultById($workflowResult, (string) ($targetStep['id'] ?? ''));
         $post_id = (int) ($context['translated_post_id'] ?? 0);
@@ -333,6 +653,7 @@ final class WorkflowRefinementService
             'workflow_name' => (string) ($workflow['name'] ?? ''),
             'target_step_id' => (string) ($targetStep['id'] ?? ''),
             'target_step_name' => (string) ($targetStep['name'] ?? ''),
+            'target_step_type' => (string) ($targetStep['type'] ?? ''),
             'target_step_index' => (int) ($targetStep['__index'] ?? 0),
             'assistant_id' => (int) ($assistant['id'] ?? 0),
             'assistant_name' => (string) ($assistant['name'] ?? ''),
@@ -348,7 +669,7 @@ final class WorkflowRefinementService
                 'title' => $post ? (string) $post->post_title : '',
                 'excerpt' => $post ? (string) wp_trim_words(wp_strip_all_tags($post->post_content), 24, '...') : '',
             ],
-            'used_prompt_pack' => PromptPackNormalizer::fromAssistant($assistant),
+            'used_prompt_pack' => $usedPromptPack,
             'workflow_context' => $this->buildContextMap($workflow, $targetStep, $workflowResult),
             'target_step_result' => $this->compactStepResult($target_step_result, true),
             'workflow_result' => [
@@ -379,6 +700,7 @@ final class WorkflowRefinementService
             'workflow_success' => !empty($runPayload['workflow_result']['success']),
             'target_step_id' => (string) ($runPayload['target_step_id'] ?? ''),
             'target_step_name' => (string) ($runPayload['target_step_name'] ?? ''),
+            'target_step_type' => (string) ($runPayload['target_step_type'] ?? ''),
             'assistant_id' => (int) ($runPayload['assistant_id'] ?? 0),
             'assistant_name' => (string) ($runPayload['assistant_name'] ?? ''),
             'post_id' => (int) ($runPayload['post']['id'] ?? 0),
@@ -420,6 +742,7 @@ final class WorkflowRefinementService
             'target_language' => (string) ($runPayload['context']['target_language'] ?? ''),
             'target_step_id' => (string) ($runPayload['target_step_id'] ?? ''),
             'target_step_name' => (string) ($runPayload['target_step_name'] ?? ''),
+            'target_step_type' => (string) ($runPayload['target_step_type'] ?? ''),
             'target_interpolated_system_prompt' => (string) ($target_step_result['interpolated_system_prompt'] ?? ''),
             'target_interpolated_user_message' => (string) ($target_step_result['interpolated_user_message'] ?? ''),
             'target_assistant_output' => (string) $assistant_output,
@@ -714,6 +1037,22 @@ final class WorkflowRefinementService
                         'has_expected_output_schema' => !empty($assistant['expected_output_schema']),
                     ]
                     : [];
+            }
+        } elseif (($step['type'] ?? '') === 'ai_assistant') {
+            $summary['provider'] = (string) ($step['provider'] ?? '');
+            $summary['model'] = (string) ($step['model'] ?? '');
+            $summary['expected_format'] = (string) ($step['expected_format'] ?? 'text');
+            $summary['output_variables'] = is_array($step['output_variables'] ?? null) ? $step['output_variables'] : [];
+            if ($isTarget) {
+                $summary['non_interpolated_prompt_pack'] = PromptPackNormalizer::fromWorkflowAiStep($step);
+                $summary['output_contract_is_adjustable'] = false;
+            } else {
+                $summary['non_interpolated_prompt_pack_summary'] = [
+                    'system_prompt_preview' => $this->truncateText($step['system_prompt'] ?? '', 1200),
+                    'user_message_template_preview' => $this->truncateText($step['user_message'] ?? '', 1200),
+                    'expected_format' => (string) ($step['expected_format'] ?? 'text'),
+                    'output_variables' => is_array($step['output_variables'] ?? null) ? $step['output_variables'] : [],
+                ];
             }
         }
 

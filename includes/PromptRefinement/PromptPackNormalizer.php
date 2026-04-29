@@ -44,6 +44,44 @@ final class PromptPackNormalizer
     }
 
     /**
+     * Extract non-interpolated prompt pack from an inline workflow AI assistant step.
+     *
+     * @param array<string,mixed> $step Workflow step configuration.
+     * @return array<string,string>
+     */
+    public static function fromWorkflowAiStep(array $step): array
+    {
+        return [
+            'system_prompt' => (string) ($step['system_prompt'] ?? ''),
+            'user_message_template' => (string) ($step['user_message'] ?? ''),
+            'expected_output_schema' => self::normalizeExpectedOutputSchema(self::workflowAiStepOutputContract($step)),
+        ];
+    }
+
+    /**
+     * Build a compact output contract summary for inline workflow AI assistant steps.
+     *
+     * @param array<string,mixed> $step Workflow step configuration.
+     * @return array<string,mixed>
+     */
+    public static function workflowAiStepOutputContract(array $step): array
+    {
+        $output_variables = $step['output_variables'] ?? [];
+        if (is_string($output_variables)) {
+            $output_variables = array_filter(array_map('trim', explode(',', $output_variables)));
+        }
+        if (!is_array($output_variables)) {
+            $output_variables = [];
+        }
+
+        return [
+            'expected_format' => (string) ($step['expected_format'] ?? 'text'),
+            'output_variables' => array_values(array_map('strval', $output_variables)),
+            'note' => 'Inline workflow step output contract. It is shown for context and is not automatically adjusted.',
+        ];
+    }
+
+    /**
      * Decide whether expected output schema should be adjusted.
      *
      * @param array<string,mixed> $assistant Assistant configuration.

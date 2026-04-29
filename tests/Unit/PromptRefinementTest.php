@@ -50,6 +50,20 @@ it('detects whether schema should be adjusted from assistant output format', fun
     expect(PromptPackNormalizer::shouldAdjustExpectedOutputSchema([]))->toBeFalse();
 });
 
+it('builds prompt packs from inline workflow ai assistant steps', function () {
+    $pack = PromptPackNormalizer::fromWorkflowAiStep([
+        'system_prompt' => 'System {{ title }}',
+        'user_message' => 'User {{ content }}',
+        'expected_format' => 'json',
+        'output_variables' => ['summary', 'score'],
+    ]);
+
+    expect($pack['system_prompt'])->toBe('System {{ title }}');
+    expect($pack['user_message_template'])->toBe('User {{ content }}');
+    expect($pack['expected_output_schema'])->toContain('summary');
+    expect($pack['expected_output_schema'])->toContain('not automatically adjusted');
+});
+
 it('extracts numeric evaluator score', function () {
     expect(EvaluationScoreExtractor::extract('Score: 82.5. Better rewrite needed.'))->toBe(82.5);
     expect(EvaluationScoreExtractor::extract('Ocena = 91'))->toBe(91.0);

@@ -1154,6 +1154,9 @@ class PostprocessingMenu
         }
 
         $assistant_id = isset($_POST['assistant_id']) ? intval($_POST['assistant_id']) : 0;
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Complex nested workflow config, executed in test mode only.
+        $workflow = isset($_POST['workflow']) ? wp_unslash($_POST['workflow']) : [];
+        $target_step_id = isset($_POST['target_step_id']) ? sanitize_text_field(wp_unslash($_POST['target_step_id'])) : '';
         $criteria = isset($_POST['criteria']) ? sanitize_textarea_field(wp_unslash($_POST['criteria'])) : '';
         $adjuster_prompt_template = isset($_POST['adjuster_prompt_template']) ? wp_unslash($_POST['adjuster_prompt_template']) : '';
         $evaluations_payload = $_POST['evaluations'] ?? '[]'; // phpcs:ignore WordPress.Security.NonceVerification.Missing -- protected by check_ajax_referer above
@@ -1174,14 +1177,16 @@ class PostprocessingMenu
             $evaluations_payload,
             $current_system_prompt,
             $current_user_message_template,
-            $current_expected_output_schema
+            $current_expected_output_schema,
+            is_array($workflow) ? $workflow : [],
+            $target_step_id
         );
 
         $this->send_workflow_refinement_result($result);
     }
 
     /**
-     * AJAX: Apply prompt pack generated from workflow refinement to the managed assistant.
+     * AJAX: Apply prompt pack generated from workflow refinement to the selected target.
      */
     public function ajax_apply_workflow_prompt_pack()
     {
@@ -1196,6 +1201,13 @@ class PostprocessingMenu
         }
 
         $assistant_id = isset($_POST['assistant_id']) ? intval($_POST['assistant_id']) : 0;
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Complex nested workflow config from trusted admin UI.
+        $workflow = isset($_POST['workflow']) ? wp_unslash($_POST['workflow']) : [];
+        $target_step_id = isset($_POST['target_step_id']) ? sanitize_text_field(wp_unslash($_POST['target_step_id'])) : '';
+        $target_step_type = isset($_POST['target_step_type']) ? sanitize_text_field(wp_unslash($_POST['target_step_type'])) : '';
+        $base_prompt_pack = array_key_exists('base_prompt_pack', $_POST)
+            ? wp_unslash($_POST['base_prompt_pack']) // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- trusted admin payload
+            : null;
         $system_prompt = array_key_exists('system_prompt', $_POST)
             ? (string) wp_unslash($_POST['system_prompt']) // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- trusted admin payload
             : '';
@@ -1210,7 +1222,11 @@ class PostprocessingMenu
             $assistant_id,
             $system_prompt,
             $user_message_template,
-            $expected_output_schema
+            $expected_output_schema,
+            is_array($workflow) ? $workflow : [],
+            $target_step_id,
+            $target_step_type,
+            $base_prompt_pack
         );
 
         $this->send_workflow_refinement_result($result);

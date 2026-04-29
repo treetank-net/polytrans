@@ -84,6 +84,100 @@ it('summarizes workflow context around the selected target step', function () {
     expect($context['following_steps'])->toBe([]);
 });
 
+it('accepts custom ai assistant steps as workflow refinement targets', function () {
+    $workflow = [
+        'steps' => [
+            [
+                'id' => 'custom_review',
+                'name' => 'Custom Review',
+                'type' => 'ai_assistant',
+                'enabled' => true,
+                'system_prompt' => 'Review the post.',
+                'user_message' => 'Content: {{ content }}',
+                'expected_format' => 'json',
+                'output_variables' => ['review'],
+            ],
+            [
+                'id' => 'legacy',
+                'name' => 'Legacy',
+                'type' => 'predefined_assistant',
+                'enabled' => true,
+            ],
+        ],
+    ];
+
+    $custom = invoke_workflow_refinement_method('findRefinableStep', $workflow, 'custom_review');
+    $legacy = invoke_workflow_refinement_method('findRefinableStep', $workflow, 'legacy');
+
+    expect($custom)->toBeArray();
+    expect($custom['type'])->toBe('ai_assistant');
+    expect($legacy)->toBeNull();
+});
+
+it('does not allow custom workflow step output contracts to be adjusted automatically', function () {
+    $step = [
+        'id' => 'custom_json',
+        'name' => 'Custom JSON',
+        'type' => 'ai_assistant',
+        'enabled' => true,
+        'system_prompt' => 'Return JSON.',
+        'user_message' => 'Content: {{ content }}',
+        'expected_format' => 'json',
+        'output_variables' => ['review'],
+    ];
+
+    $assistant = invoke_workflow_refinement_method('buildPromptRunnerConfigForTargetStep', $step);
+    $shouldAdjust = invoke_workflow_refinement_method('shouldAdjustTargetExpectedOutputSchema', $step, $assistant);
+
+    expect($assistant)->toBeArray();
+    expect($assistant['expected_format'])->toBe('json');
+    expect($shouldAdjust)->toBeFalse();
+});
+
+it('summarizes custom ai assistant target prompt packs without making output contract adjustable', function () {
+    $workflow = [
+        'id' => 'workflow_custom',
+        'name' => 'Custom workflow',
+        'steps' => [
+            [
+                'id' => 'custom_rewrite',
+                'name' => 'Custom Rewrite',
+                'type' => 'ai_assistant',
+                'enabled' => true,
+                'provider' => 'openai',
+                'model' => 'gpt-5.2',
+                'system_prompt' => 'Rewrite naturally.',
+                'user_message' => 'Content: {{ content }}',
+                'expected_format' => 'json',
+                'output_variables' => ['rewritten_content'],
+            ],
+        ],
+    ];
+
+    $context = invoke_workflow_refinement_method(
+        'buildContextMap',
+        $workflow,
+        $workflow['steps'][0],
+        [
+            'step_results' => [
+                [
+                    'step_id' => 'custom_rewrite',
+                    'success' => true,
+                    'data' => ['rewritten_content' => 'Better text.'],
+                    'interpolated_system_prompt' => 'Rewrite naturally.',
+                    'interpolated_user_message' => 'Content: Source text',
+                ],
+            ],
+        ]
+    );
+
+    expect($context['target_step']['type'])->toBe('ai_assistant');
+    expect($context['target_step']['non_interpolated_prompt_pack']['system_prompt'])->toBe('Rewrite naturally.');
+    expect($context['target_step']['non_interpolated_prompt_pack']['user_message_template'])->toBe('Content: {{ content }}');
+    expect($context['target_step']['output_contract_is_adjustable'])->toBeFalse();
+    expect($context['target_step']['non_interpolated_prompt_pack']['expected_output_schema'])->toContain('rewritten_content');
+});
+
 it('builds compact final output snapshot from workflow final context', function () {
     $snapshot = invoke_workflow_refinement_method('buildFinalOutputSnapshot', [
         'final_context' => [

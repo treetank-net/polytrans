@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.13.2] - 2026-04-29
+
+### Added
+- Workflow prompt refinement now supports custom inline `ai_assistant` steps, not only managed assistants.
+- Custom workflow refinement targets can be selected in the workflow tester and are labeled separately from managed targets.
+- Prompt-pack context for custom workflow AI steps includes their output contract for evaluator/adjuster awareness.
+
+### Changed
+- Applying a workflow refinement result now updates the selected target appropriately: managed assistants update the assistant record, while custom AI steps update the local workflow step.
+- Custom AI step refinement preserves the step output contract (`expected_format` and `output_variables`) instead of allowing the adjuster to mutate downstream workflow assumptions.
+- Workflow refinement prompts now describe the target as a selected assistant step, covering both managed and custom inline workflow steps.
+- Predefined assistant workflow steps are labeled as deprecated in the workflow editor.
+
+### Fixed
+- Custom workflow AI step prompt overrides are applied during full workflow refinement runs without mutating the stored workflow.
+- Applying a refined custom step now checks for prompt conflicts before saving, preventing silent overwrites when the workflow changed during refinement.
+
 ## [1.13.1] - 2026-04-29
 
 ### Added

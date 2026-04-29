@@ -48,6 +48,17 @@ class AiAssistantStep implements WorkflowStepInterface
         $start_time = microtime(true);
 
         try {
+            $step_id = (string) ($step_config['id'] ?? '');
+            $prompt_overrides = $this->get_prompt_overrides($context, $step_id);
+            if (!empty($prompt_overrides)) {
+                if (array_key_exists('system_prompt', $prompt_overrides)) {
+                    $step_config['system_prompt'] = (string) $prompt_overrides['system_prompt'];
+                }
+                if (array_key_exists('user_message_template', $prompt_overrides)) {
+                    $step_config['user_message'] = (string) $prompt_overrides['user_message_template'];
+                }
+            }
+
             // Get system prompt and interpolate variables
             $system_prompt = $step_config['system_prompt'] ?? '';
             if (empty($system_prompt)) {
@@ -141,6 +152,26 @@ class AiAssistantStep implements WorkflowStepInterface
                 'interpolated_user_message' => $interpolated_user_message ?? ''
             ];
         }
+    }
+
+    /**
+     * Get temporary prompt overrides for workflow tester/refinement runs.
+     *
+     * @param array $context Workflow execution context
+     * @param string $step_id Workflow step ID
+     * @return array
+     */
+    private function get_prompt_overrides($context, $step_id)
+    {
+        $overrides = is_array($context['__workflow_step_prompt_overrides'] ?? null)
+            ? $context['__workflow_step_prompt_overrides']
+            : [];
+
+        if ($step_id !== '' && isset($overrides[$step_id]) && is_array($overrides[$step_id])) {
+            return $overrides[$step_id];
+        }
+
+        return [];
     }
 
     /**
