@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.13.1] - 2026-04-29
+
+### Added
+- Workflow editor migration action for converting legacy AI assistant steps in the current workflow to managed assistants.
+- Single-workflow migration endpoint that reuses the existing managed assistant migration logic without requiring a global migration from the assistants list.
+
 ## [1.13.0] - 2026-04-29
 
 ### Added

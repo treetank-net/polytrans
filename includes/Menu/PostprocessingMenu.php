@@ -9,6 +9,7 @@
 namespace PolyTrans\Menu;
 
 use PolyTrans\Assistants\AssistantManager;
+use PolyTrans\Assistants\AssistantMigration;
 use PolyTrans\PostProcessing\Testing\WorkflowRefinementService;
 use PolyTrans\PromptRefinement\PromptRefinementSettings;
 use PolyTrans\Templating\TemplateRenderer;
@@ -45,6 +46,7 @@ class PostprocessingMenu
         add_action('wp_ajax_polytrans_toggle_workflow', [$this, 'ajax_toggle_workflow']);
         add_action('wp_ajax_polytrans_duplicate_workflow', [$this, 'ajax_duplicate_workflow']);
         add_action('wp_ajax_polytrans_get_workflow', [$this, 'ajax_get_workflow']);
+        add_action('wp_ajax_polytrans_migrate_workflow', [$this, 'ajax_migrate_workflow']);
         add_action('wp_ajax_polytrans_test_workflow', [$this, 'ajax_test_workflow']);
         add_action('wp_ajax_polytrans_search_posts', [$this, 'ajax_search_posts']);
         add_action('wp_ajax_polytrans_get_post_data', [$this, 'ajax_get_post_data']);
@@ -158,6 +160,10 @@ class PostprocessingMenu
                     'disableWorkflow' => __('Disable workflow', 'polytrans'),
                     'enabled' => __('Enabled', 'polytrans'),
                     'disabled' => __('Disabled', 'polytrans'),
+                    'confirmMigrateWorkflow' => __('This will migrate legacy AI assistant steps in this workflow to managed assistants. Unsaved editor changes will not be included. Continue?', 'polytrans'),
+                    'migrateWorkflow' => __('Migrate this workflow', 'polytrans'),
+                    'migratingWorkflow' => __('Migrating...', 'polytrans'),
+                    'migrationError' => __('Migration failed. Please check logs.', 'polytrans'),
                 ]
             ]);
 
@@ -660,6 +666,57 @@ class PostprocessingMenu
         } else {
             wp_send_json_error('Workflow not found');
         }
+    }
+
+    /**
+     * AJAX: Migrate one workflow to managed assistants.
+     */
+    public function ajax_migrate_workflow()
+    {
+        if (!check_ajax_referer('polytrans_workflows_nonce', 'nonce', false)) {
+            wp_send_json_error(['message' => __('Security check failed', 'polytrans')]);
+            return;
+        }
+
+        if (!current_user_can('edit_posts')) {
+            wp_send_json_error(['message' => __('Insufficient permissions', 'polytrans')]);
+            return;
+        }
+
+        $workflow_id = isset($_POST['workflow_id']) ? sanitize_text_field(wp_unslash($_POST['workflow_id'])) : '';
+
+        if (empty($workflow_id)) {
+            wp_send_json_error(['message' => __('No workflow ID provided', 'polytrans')]);
+            return;
+        }
+
+        $stats = AssistantMigration::migrate_workflow_to_managed_assistants($workflow_id);
+
+        if (!empty($stats['errors'])) {
+            wp_send_json_error([
+                'message' => __('Migration completed with errors.', 'polytrans'),
+                'stats' => $stats,
+            ]);
+            return;
+        }
+
+        if ((int) ($stats['steps_migrated'] ?? 0) === 0) {
+            wp_send_json_success([
+                'message' => __('No legacy AI assistant steps were found in this workflow.', 'polytrans'),
+                'stats' => $stats,
+            ]);
+            return;
+        }
+
+        wp_send_json_success([
+            'message' => sprintf(
+                /* translators: %1$d: number of steps migrated, %2$d: number of assistants created */
+                __('Migration completed successfully. Migrated %1$d steps and created %2$d assistants.', 'polytrans'),
+                $stats['steps_migrated'],
+                $stats['assistants_created']
+            ),
+            'stats' => $stats,
+        ]);
     }
 
     /**

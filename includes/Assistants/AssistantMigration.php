@@ -51,53 +51,7 @@ class AssistantMigration
             }
 
             foreach ($workflows as $workflow) {
-                $workflow_modified = false;
-                $stats['workflows_processed']++;
-
-                if (empty($workflow['steps']) || !is_array($workflow['steps'])) {
-                    continue;
-                }
-
-                foreach ($workflow['steps'] as $step_index => &$step) {
-                    $step_type = $step['type'] ?? 'unknown';
-
-                    // Only migrate ai_assistant steps
-                    if ($step_type !== 'ai_assistant') {
-                        continue;
-                    }
-
-                    try {
-                        // Create managed assistant from ai_assistant config
-                        $assistant_id = self::create_managed_assistant_from_step($step, $workflow);
-
-                        if ($assistant_id) {
-                            // Update step to use managed assistant
-                            $workflow['steps'][$step_index] = self::convert_step_to_managed($step, $assistant_id);
-                            $stats['steps_migrated']++;
-                            $stats['assistants_created']++;
-                            $workflow_modified = true;
-
-                            LogsManager::log(
-                                "Migrated workflow '{$workflow['name']}' step '{$step['name']}' to managed assistant (ID: {$assistant_id})",
-                                'info',
-                                ['workflow_id' => $workflow['id'], 'step_index' => $step_index, 'assistant_id' => $assistant_id]
-                            );
-                        } else {
-                            $error_msg = "Failed to create managed assistant for step '{$step['name']}' in workflow '{$workflow['name']}'";
-                            $stats['errors'][] = $error_msg;
-                            LogsManager::log($error_msg, 'error');
-                        }
-                    } catch (\Exception $e) {
-                        $error_msg = "Failed to migrate step '{$step['name']}' in workflow '{$workflow['name']}': {$e->getMessage()}";
-                        $stats['errors'][] = $error_msg;
-                        LogsManager::log($error_msg, 'error');
-                    }
-                }
-
-                // Save workflow if modified
-                if ($workflow_modified) {
-                    $storage_manager->save_workflow($workflow);
-                }
+                self::migrate_workflow_array($workflow, $stats, $storage_manager);
             }
 
             // Log migration summary
@@ -112,6 +66,106 @@ class AssistantMigration
         }
 
         return $stats;
+    }
+
+    /**
+     * Migrate one workflow to managed assistants.
+     *
+     * @param string $workflow_id Workflow ID.
+     * @return array Migration result with statistics.
+     */
+    public static function migrate_workflow_to_managed_assistants($workflow_id)
+    {
+        $stats = [
+            'workflows_processed' => 0,
+            'steps_migrated' => 0,
+            'assistants_created' => 0,
+            'errors' => []
+        ];
+
+        LogsManager::log("Starting single workflow migration to managed assistants", 'info', ['workflow_id' => $workflow_id]);
+
+        try {
+            $storage_manager = new WorkflowStorageManager();
+            $workflow = $storage_manager->get_workflow($workflow_id);
+
+            if (!$workflow) {
+                $stats['errors'][] = __('Workflow not found.', 'polytrans');
+                return $stats;
+            }
+
+            self::migrate_workflow_array($workflow, $stats, $storage_manager);
+
+            LogsManager::log(
+                "Single workflow migration completed: {$stats['workflows_processed']} workflows processed, {$stats['steps_migrated']} steps migrated, {$stats['assistants_created']} assistants created",
+                'info',
+                $stats
+            );
+        } catch (\Exception $e) {
+            $stats['errors'][] = "Migration failed: {$e->getMessage()}";
+            LogsManager::log("Single workflow migration failed: {$e->getMessage()}", 'error', ['workflow_id' => $workflow_id]);
+        }
+
+        return $stats;
+    }
+
+    /**
+     * Migrate legacy AI assistant steps in a workflow array.
+     *
+     * @param array $workflow Workflow data.
+     * @param array $stats Migration statistics, updated by reference.
+     * @param WorkflowStorageManager $storage_manager Workflow storage manager.
+     * @return void
+     */
+    private static function migrate_workflow_array($workflow, &$stats, $storage_manager)
+    {
+        $workflow_modified = false;
+        $stats['workflows_processed']++;
+
+        if (empty($workflow['steps']) || !is_array($workflow['steps'])) {
+            return;
+        }
+
+        foreach ($workflow['steps'] as $step_index => &$step) {
+            $step_type = $step['type'] ?? 'unknown';
+
+            // Only migrate ai_assistant steps
+            if ($step_type !== 'ai_assistant') {
+                continue;
+            }
+
+            try {
+                // Create managed assistant from ai_assistant config
+                $assistant_id = self::create_managed_assistant_from_step($step, $workflow);
+
+                if ($assistant_id) {
+                    // Update step to use managed assistant
+                    $workflow['steps'][$step_index] = self::convert_step_to_managed($step, $assistant_id);
+                    $stats['steps_migrated']++;
+                    $stats['assistants_created']++;
+                    $workflow_modified = true;
+
+                    LogsManager::log(
+                        "Migrated workflow '{$workflow['name']}' step '{$step['name']}' to managed assistant (ID: {$assistant_id})",
+                        'info',
+                        ['workflow_id' => $workflow['id'], 'step_index' => $step_index, 'assistant_id' => $assistant_id]
+                    );
+                } else {
+                    $error_msg = "Failed to create managed assistant for step '{$step['name']}' in workflow '{$workflow['name']}'";
+                    $stats['errors'][] = $error_msg;
+                    LogsManager::log($error_msg, 'error');
+                }
+            } catch (\Exception $e) {
+                $error_msg = "Failed to migrate step '{$step['name']}' in workflow '{$workflow['name']}': {$e->getMessage()}";
+                $stats['errors'][] = $error_msg;
+                LogsManager::log($error_msg, 'error');
+            }
+        }
+        unset($step);
+
+        if ($workflow_modified) {
+            $storage_manager->save_workflow($workflow);
+        }
     }
 
     /**

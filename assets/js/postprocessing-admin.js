@@ -473,6 +473,8 @@
                 </div>
             </div>
 
+            ${renderWorkflowMigrationNotice()}
+
             <div class="workflow-trigger-settings">
                 <h3>Trigger Settings</h3>
                 <div class="inside">
@@ -503,6 +505,35 @@
         `;
 
         container.html(html);
+    }
+
+    /**
+     * Render migration notice for workflows with legacy AI assistant steps.
+     */
+    function renderWorkflowMigrationNotice() {
+        const legacySteps = (workflowData.steps || []).filter((step) => (step.type || 'ai_assistant') === 'ai_assistant');
+
+        if (!legacySteps.length) {
+            return '';
+        }
+
+        const stepLabel = legacySteps.length === 1 ? 'step' : 'steps';
+        const buttonLabel = (polytransWorkflows.strings && polytransWorkflows.strings.migrateWorkflow) || 'Migrate this workflow';
+
+        return `
+            <div class="notice notice-warning inline workflow-migration-notice">
+                <p>
+                    <strong>Migration Available:</strong>
+                    Found ${legacySteps.length} legacy AI assistant ${stepLabel} in this workflow that can be migrated to managed assistants.
+                </p>
+                <p>
+                    <button type="button" id="migrate-current-workflow-btn" class="button button-primary">
+                        ${escapeHtml(buttonLabel)}
+                    </button>
+                    <span class="spinner" style="float: none; margin: 0 10px;"></span>
+                </p>
+            </div>
+        `;
     }
 
     /**
@@ -968,6 +999,11 @@
         // Add step button
         $(document).on('click', '#add-step-btn', function () {
             addWorkflowStep();
+        });
+
+        $(document).on('click', '#migrate-current-workflow-btn', function (e) {
+            e.preventDefault();
+            migrateCurrentWorkflow($(this));
         });
 
         // Step toggle
@@ -1481,6 +1517,55 @@
             },
             complete: function () {
                 form.removeClass('workflow-loading');
+            }
+        });
+    }
+
+    /**
+     * Migrate the currently edited workflow's saved legacy steps.
+     */
+    function migrateCurrentWorkflow($button) {
+        const workflowId = $('input[name="workflow_id"]').val();
+        const confirmMessage = (polytransWorkflows.strings && polytransWorkflows.strings.confirmMigrateWorkflow)
+            || 'This will migrate legacy AI assistant steps in this workflow to managed assistants. Unsaved editor changes will not be included. Continue?';
+
+        if (!workflowId || !confirm(confirmMessage)) {
+            return;
+        }
+
+        const $spinner = $button.siblings('.spinner');
+        const originalText = $button.text();
+        const migratingText = (polytransWorkflows.strings && polytransWorkflows.strings.migratingWorkflow) || 'Migrating...';
+
+        $button.prop('disabled', true).text(migratingText);
+        $spinner.addClass('is-active');
+
+        $.ajax({
+            url: polytransWorkflows.ajaxUrl,
+            type: 'POST',
+            data: {
+                action: 'polytrans_migrate_workflow',
+                nonce: polytransWorkflows.nonce,
+                workflow_id: workflowId
+            },
+            success: function (response) {
+                const data = response.data || {};
+                if (response.success) {
+                    showNotice('success', data.message || 'Migration completed successfully.');
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1200);
+                    return;
+                }
+
+                showNotice('error', data.message || ((polytransWorkflows.strings && polytransWorkflows.strings.migrationError) || 'Migration failed. Please check logs.'));
+            },
+            error: function () {
+                showNotice('error', (polytransWorkflows.strings && polytransWorkflows.strings.migrationError) || 'Migration failed. Please check logs.');
+            },
+            complete: function () {
+                $button.prop('disabled', false).text(originalText);
+                $spinner.removeClass('is-active');
             }
         });
     }
