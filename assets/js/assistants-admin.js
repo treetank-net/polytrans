@@ -750,7 +750,9 @@
             const sourceLanguage = ($('#assistant-refine-source-language').val() || '').trim();
             const targetLanguage = ($('#assistant-refine-target-language').val() || '').trim();
             const criteria = ($('#assistant-refine-criteria').val() || '').trim();
+            const evaluatorSystemPrompt = ($('#assistant-refine-evaluator-system-prompt').val() || '').trim();
             const evaluatorTemplate = ($('#assistant-refine-evaluator-template').val() || '').trim();
+            const adjusterSystemPrompt = ($('#assistant-refine-adjuster-system-prompt').val() || '').trim();
             const adjusterTemplate = ($('#assistant-refine-adjuster-template').val() || '').trim();
             const configuredIterations = parseInt($('#assistant-refine-iterations').val() || '1', 10);
             const totalIterations = Number.isFinite(configuredIterations)
@@ -763,7 +765,9 @@
                 sourceLanguage,
                 targetLanguage,
                 criteria,
+                evaluatorSystemPrompt,
                 evaluatorTemplate,
+                adjusterSystemPrompt,
                 adjusterTemplate,
                 totalIterations,
                 selectedPosts,
@@ -801,7 +805,9 @@
                 sourceLanguage: session.sourceLanguage,
                 targetLanguage: session.targetLanguage,
                 criteria: session.criteria,
+                evaluatorSystemPrompt: session.evaluatorSystemPrompt,
                 evaluatorTemplate: session.evaluatorTemplate,
+                adjusterSystemPrompt: session.adjusterSystemPrompt,
                 adjusterTemplate: session.adjusterTemplate,
                 totalIterations,
                 selectedPosts: session.selectedPosts,
@@ -868,7 +874,9 @@
             const sourceLanguage = String(config.sourceLanguage || '').trim();
             const targetLanguage = String(config.targetLanguage || '').trim();
             const criteria = String(config.criteria || '').trim();
+            const evaluatorSystemPrompt = String(config.evaluatorSystemPrompt || '').trim();
             const evaluatorTemplate = String(config.evaluatorTemplate || '').trim();
+            const adjusterSystemPrompt = String(config.adjusterSystemPrompt || '').trim();
             const adjusterTemplate = String(config.adjusterTemplate || '').trim();
             const totalIterations = Number.isFinite(config.totalIterations)
                 ? Math.max(1, Math.min(parseInt(config.totalIterations, 10), 10))
@@ -1000,6 +1008,7 @@
                             assistant_id: assistantId,
                             run_id: runId,
                             criteria: criteria,
+                            evaluator_system_prompt: evaluatorSystemPrompt,
                             evaluator_prompt_template: evaluatorTemplate
                         };
 
@@ -1040,6 +1049,7 @@
                         nonce: polytransAssistants.nonce,
                         assistant_id: assistantId,
                         criteria: criteria,
+                        adjuster_system_prompt: adjusterSystemPrompt,
                         adjuster_prompt_template: adjusterTemplate,
                         evaluations: JSON.stringify(evaluatedRuns)
                     };
@@ -1110,7 +1120,9 @@
                     sourceLanguage,
                     targetLanguage,
                     criteria,
+                    evaluatorSystemPrompt,
                     evaluatorTemplate,
+                    adjusterSystemPrompt,
                     adjusterTemplate,
                     selectedPosts,
                     iterations: iterationResults,
@@ -1283,6 +1295,7 @@
                 const runsHtml = runs.map((run, idx) => {
                     const score = run?.evaluation?.score;
                     const feedback = run?.evaluation?.feedback || '';
+                    const evaluatorSystemPrompt = run?.evaluation?.rendered_system_prompt || '';
                     const evaluatorPrompt = run?.evaluation?.rendered_prompt || '';
                     const runId = String(run?.run_id || '').trim();
                     const assistantOutput = typeof run?.assistant_output === 'string'
@@ -1297,8 +1310,16 @@
                             ${runId ? `<h5>Run ID</h5><pre><code>${this.escapeHtml(runId)}</code></pre>` : ''}
                             <h5>Evaluator Feedback</h5>
                             <pre><code>${this.escapeHtml(feedback)}</code></pre>
-                            <h5>Rendered Evaluator Prompt</h5>
-                            <pre><code>${this.escapeHtml(evaluatorPrompt)}</code></pre>
+                            <div class="assistant-refinement-rendered-prompt-grid">
+                                <div>
+                                    <h5>Rendered Evaluator System Prompt</h5>
+                                    <pre><code>${this.escapeHtml(evaluatorSystemPrompt)}</code></pre>
+                                </div>
+                                <div>
+                                    <h5>Rendered Evaluator User Message</h5>
+                                    <pre><code>${this.escapeHtml(evaluatorPrompt)}</code></pre>
+                                </div>
+                            </div>
                             <h5>Assistant Output</h5>
                             <pre><code>${this.escapeHtml(assistantOutput)}</code></pre>
                             ${finalPostCandidateText ? `<h5>Final Post Candidate</h5><pre><code>${this.escapeHtml(finalPostCandidateText)}</code></pre>` : ''}
@@ -1436,7 +1457,9 @@
                     </details>
 
                     <details class="assistant-test-details">
-                        <summary>Final Adjuster Prompt</summary>
+                        <summary>Final Adjuster Prompts</summary>
+                        ${finalAdjustment.adjuster_system_prompt_rendered ? `<h5>Rendered Adjuster System Prompt</h5><pre><code>${this.escapeHtml(finalAdjustment.adjuster_system_prompt_rendered)}</code></pre>` : ''}
+                        <h5>Rendered Adjuster User Message</h5>
                         <pre><code>${this.escapeHtml(finalAdjustment.adjuster_prompt_rendered || '')}</code></pre>
                     </details>
 

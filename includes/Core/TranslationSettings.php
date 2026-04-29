@@ -2,6 +2,7 @@
 
 namespace PolyTrans\Core;
 
+use PolyTrans\PromptRefinement\PromptRefinementSettings;
 use PolyTrans\Templating\TemplateRenderer;
 
 /**
@@ -223,6 +224,22 @@ class TranslationSettings
         // Field whitelist for dirty check (one pattern per line)
         $settings['dirty_check_field_whitelist'] = sanitize_textarea_field(wp_unslash($_POST['dirty_check_field_whitelist'] ?? ''));
 
+        $prompt_template_keys = [
+            PromptRefinementSettings::ASSISTANT_EVALUATOR_SYSTEM_KEY,
+            PromptRefinementSettings::ASSISTANT_EVALUATOR_KEY,
+            PromptRefinementSettings::ASSISTANT_ADJUSTER_SYSTEM_KEY,
+            PromptRefinementSettings::ASSISTANT_ADJUSTER_KEY,
+            PromptRefinementSettings::WORKFLOW_EVALUATOR_SYSTEM_KEY,
+            PromptRefinementSettings::WORKFLOW_EVALUATOR_KEY,
+            PromptRefinementSettings::WORKFLOW_ADJUSTER_SYSTEM_KEY,
+            PromptRefinementSettings::WORKFLOW_ADJUSTER_KEY,
+        ];
+        foreach ($prompt_template_keys as $prompt_template_key) {
+            $settings[$prompt_template_key] = array_key_exists($prompt_template_key, $_POST)
+                ? (string) wp_unslash($_POST[$prompt_template_key]) // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Admin-authored prompt templates must preserve Twig/JSON syntax.
+                : '';
+        }
+
         // Handle provider-specific settings
         // IMPORTANT: Save settings for ALL providers with settings UI, not just the selected provider
         // This allows users to configure multiple providers (e.g., OpenAI for assistants, Google for default translation)
@@ -408,6 +425,8 @@ class TranslationSettings
             'author_email_title' => $author_email_title,
             'translation_endpoint' => $translation_endpoint,
             'translation_receiver_endpoint' => $translation_receiver_endpoint,
+            'prompt_refinement_templates' => PromptRefinementSettings::current($settings),
+            'prompt_refinement_default_templates' => PromptRefinementSettings::defaults(),
             'settings' => $settings,
         ];
         

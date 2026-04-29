@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.13.0] - 2026-04-29
+
+### Added
+- Dedicated `Refinement Prompts` settings tab for configuring assistant and workflow refinement prompts.
+- Configurable system prompts and user-message prompt templates for assistant evaluator, assistant adjuster, workflow evaluator, and workflow adjuster roles.
+- Built-in fallback prompt previews and variable references for assistant and workflow refinement prompt templates.
+- Assistant refinement UI now exposes evaluator and adjuster system prompts next to their user-message templates and sends both through AJAX.
+- Rendered evaluator and adjuster system prompts are now visible in assistant refinement results.
+- Shared prompt refinement helpers for prompt defaults, settings lookup, prompt-pack normalization/parsing, prompt rendering, score extraction, and chat execution.
+- Unit coverage for prompt refinement settings, literal Twig examples, assistant refinement candidates, workflow refinement context snapshots, and post test contexts.
+
+### Changed
+- Assistant and workflow refinement system prompts now render with the same Twig context as their corresponding user-message templates.
+- Prompt refinement logic was moved out of admin menu controllers into dedicated assistant and workflow refinement services.
+- Assistant test context and recent-post loading are now shared through dedicated testing helpers.
+- Admin menu architecture tests now prevent prompt refinement execution logic from drifting back into menu controllers.
+- GitLab CI now mirrors `main` to the `treetank-net/polytrans` GitHub repository after successful pushes.
+
+### Fixed
+- Default adjuster system prompt now protects the literal `{{ content }}` Twig example with `{% verbatim %}` so it is not interpolated during system-prompt rendering.
+
 ## [1.12.0] - 2026-04-28
 
 ### Added

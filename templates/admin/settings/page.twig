@@ -11,6 +11,7 @@
         <a href="#language-paths-settings" class="nav-tab" id="language-paths-tab">{{ __('Language Paths', 'polytrans') }}</a>
         <a href="#tag-settings" class="nav-tab" id="tag-tab">{{ __('Tag Settings', 'polytrans') }}</a>
         <a href="#email-settings" class="nav-tab" id="email-tab">{{ __('Email Settings', 'polytrans') }}</a>
+        <a href="#prompt-refinement-settings" class="nav-tab" id="prompt-refinement-tab">{{ __('Refinement Prompts', 'polytrans') }}</a>
         {% for provider_id, settings_provider in settings_providers %}
             <a href="#{{ provider_id|esc_attr }}-settings" class="nav-tab provider-settings-tab" id="{{ provider_id|esc_attr }}-tab">
                 {{ settings_provider.get_tab_label()|esc_html }}
@@ -76,6 +77,15 @@
             }) }}
         </div>
 
+        <!-- Refinement Prompts Settings Tab -->
+        <div id="prompt-refinement-settings" class="tab-content" style="display:none;">
+            {{ include('admin/settings/tabs/prompt-refinement-settings.twig', {
+                'prompt_refinement_templates': prompt_refinement_templates,
+                'prompt_refinement_default_templates': prompt_refinement_default_templates,
+                'settings': settings
+            }) }}
+        </div>
+
         <!-- Dynamic Provider Settings Tabs -->
         {% for provider_id, settings_provider in settings_providers %}
             <div id="{{ provider_id|esc_attr }}-settings" class="tab-content provider-settings-content" style="display:none;">
@@ -105,4 +115,3 @@
         <p><input type="submit" class="button button-primary" value="{{ __('Save Settings', 'polytrans')|esc_attr }}"></p>
     </form>
 </div>
-

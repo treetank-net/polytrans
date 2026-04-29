@@ -1,0 +1,126 @@
+<h1>{{ __('Refinement Prompts', 'polytrans') }}</h1>
+<div class="prompt-refinement-template-settings">
+    <p>
+        <small>
+            {{ __('These prompts are sent to the assistant and workflow refinement UIs as editable defaults. System prompts and prompt templates are rendered with the same Twig variables for their role. Leave a field empty to use the built-in prompt. Twig variables must be preserved exactly.', 'polytrans') }}
+        </small>
+    </p>
+
+    <h2>{{ __('AI Assistant Refiner', 'polytrans') }}</h2>
+    <details style="max-width:900px;margin:0 0 16px;">
+        <summary>{{ __('Available assistant refiner variables', 'polytrans') }}</summary>
+        <div style="display:grid;grid-template-columns:minmax(220px,1fr) 2fr;gap:6px 16px;margin-top:10px;">
+            <code>{{ '{{ criteria }}' }}</code><span>{{ __('Evaluation/refinement criteria entered by the user.', 'polytrans') }}</span>
+            <code>{{ '{{ source_language }}' }}</code><span>{{ __('Source language code.', 'polytrans') }}</span>
+            <code>{{ '{{ target_language }}' }}</code><span>{{ __('Target language code.', 'polytrans') }}</span>
+            <code>{{ '{{ include_expected_output_schema }}' }}</code><span>{{ __('Boolean flag telling whether schema should be included/adjusted.', 'polytrans') }}</span>
+            <code>{{ '{{ interpolated_system_prompt }}' }}</code><span>{{ __('Rendered system prompt used by the tested assistant.', 'polytrans') }}</span>
+            <code>{{ '{{ interpolated_user_message }}' }}</code><span>{{ __('Rendered user message used by the tested assistant.', 'polytrans') }}</span>
+            <code>{{ '{{ assistant_output }}' }}</code><span>{{ __('Assistant output being evaluated.', 'polytrans') }}</span>
+            <code>{{ '{{ expected_output_schema }}' }}</code><span>{{ __('Expected output schema for JSON-output assistants.', 'polytrans') }}</span>
+            <code>{{ '{{ non_interpolated_system_prompt }}' }}</code><span>{{ __('Current editable system prompt for the prompt adjuster.', 'polytrans') }}</span>
+            <code>{{ '{{ non_interpolated_user_message_template }}' }}</code><span>{{ __('Current editable user message template for the prompt adjuster.', 'polytrans') }}</span>
+            <code>{{ '{{ non_interpolated_expected_output_schema }}' }}</code><span>{{ __('Current expected output schema for JSON prompt adjustment.', 'polytrans') }}</span>
+            <code>{{ '{{ adjust_expected_output_schema }}' }}</code><span>{{ __('Boolean flag telling whether the adjuster may change output schema.', 'polytrans') }}</span>
+            <code>{{ '{{ evaluations }}' }}</code><span>{{ __('Array of normalized evaluation items.', 'polytrans') }}</span>
+            <code>{{ '{{ evaluations_json }}' }}</code><span>{{ __('Pretty JSON string with normalized evaluation items.', 'polytrans') }}</span>
+        </div>
+    </details>
+    <p>
+        <label for="prompt-refinement-assistant-evaluator-system"><strong>{{ __('Evaluator System Prompt', 'polytrans') }}</strong></label><br>
+        <textarea name="prompt_refinement_assistant_evaluator_system_prompt" id="prompt-refinement-assistant-evaluator-system" rows="4" style="width:100%;max-width:900px;font-family:monospace;">{{ settings.prompt_refinement_assistant_evaluator_system_prompt|default('')|esc_textarea }}</textarea>
+    </p>
+    <details style="max-width:900px;margin:-8px 0 16px;">
+        <summary>{{ __('Show built-in fallback', 'polytrans') }}</summary>
+        <pre style="white-space:pre-wrap;max-height:260px;overflow:auto;background:#f6f7f7;border:1px solid #dcdcde;padding:10px;">{{ prompt_refinement_default_templates.prompt_refinement_assistant_evaluator_system_prompt|default('')|esc_html }}</pre>
+    </details>
+    <p>
+        <label for="prompt-refinement-assistant-evaluator"><strong>{{ __('Evaluator Prompt Template', 'polytrans') }}</strong></label><br>
+        <textarea name="prompt_refinement_assistant_evaluator_template" id="prompt-refinement-assistant-evaluator" rows="12" style="width:100%;max-width:900px;font-family:monospace;">{{ settings.prompt_refinement_assistant_evaluator_template|default('')|esc_textarea }}</textarea>
+    </p>
+    <details style="max-width:900px;margin:-8px 0 16px;">
+        <summary>{{ __('Show built-in fallback', 'polytrans') }}</summary>
+        <pre style="white-space:pre-wrap;max-height:260px;overflow:auto;background:#f6f7f7;border:1px solid #dcdcde;padding:10px;">{{ prompt_refinement_default_templates.prompt_refinement_assistant_evaluator_template|default('')|esc_html }}</pre>
+    </details>
+    <p>
+        <label for="prompt-refinement-assistant-adjuster-system"><strong>{{ __('Adjuster System Prompt', 'polytrans') }}</strong></label><br>
+        <textarea name="prompt_refinement_assistant_adjuster_system_prompt" id="prompt-refinement-assistant-adjuster-system" rows="5" style="width:100%;max-width:900px;font-family:monospace;">{{ settings.prompt_refinement_assistant_adjuster_system_prompt|default('')|esc_textarea }}</textarea>
+    </p>
+    <details style="max-width:900px;margin:-8px 0 16px;">
+        <summary>{{ __('Show built-in fallback', 'polytrans') }}</summary>
+        <pre style="white-space:pre-wrap;max-height:260px;overflow:auto;background:#f6f7f7;border:1px solid #dcdcde;padding:10px;">{{ prompt_refinement_default_templates.prompt_refinement_assistant_adjuster_system_prompt|default('')|esc_html }}</pre>
+    </details>
+    <p>
+        <label for="prompt-refinement-assistant-adjuster"><strong>{{ __('Adjuster Prompt Template', 'polytrans') }}</strong></label><br>
+        <textarea name="prompt_refinement_assistant_adjuster_template" id="prompt-refinement-assistant-adjuster" rows="14" style="width:100%;max-width:900px;font-family:monospace;">{{ settings.prompt_refinement_assistant_adjuster_template|default('')|esc_textarea }}</textarea>
+    </p>
+    <details style="max-width:900px;margin:-8px 0 16px;">
+        <summary>{{ __('Show built-in fallback', 'polytrans') }}</summary>
+        <pre style="white-space:pre-wrap;max-height:260px;overflow:auto;background:#f6f7f7;border:1px solid #dcdcde;padding:10px;">{{ prompt_refinement_default_templates.prompt_refinement_assistant_adjuster_template|default('')|esc_html }}</pre>
+    </details>
+
+    <h2>{{ __('Workflow Refiner', 'polytrans') }}</h2>
+    <details style="max-width:900px;margin:0 0 16px;">
+        <summary>{{ __('Available workflow refiner variables', 'polytrans') }}</summary>
+        <div style="display:grid;grid-template-columns:minmax(260px,1fr) 2fr;gap:6px 16px;margin-top:10px;">
+            <code>{{ '{{ criteria }}' }}</code><span>{{ __('Evaluation/refinement criteria entered by the user.', 'polytrans') }}</span>
+            <code>{{ '{{ workflow_name }}' }}</code><span>{{ __('Workflow name for evaluator prompts.', 'polytrans') }}</span>
+            <code>{{ '{{ workflow_id }}' }}</code><span>{{ __('Workflow ID for evaluator prompts.', 'polytrans') }}</span>
+            <code>{{ '{{ workflow_success }}' }}</code><span>{{ __('Whether the full workflow finished successfully.', 'polytrans') }}</span>
+            <code>{{ '{{ source_language }}' }}</code><span>{{ __('Source language code.', 'polytrans') }}</span>
+            <code>{{ '{{ target_language }}' }}</code><span>{{ __('Target language code.', 'polytrans') }}</span>
+            <code>{{ '{{ target_step_id }}' }}</code><span>{{ __('Selected workflow step ID.', 'polytrans') }}</span>
+            <code>{{ '{{ target_step_name }}' }}</code><span>{{ __('Selected workflow step name.', 'polytrans') }}</span>
+            <code>{{ '{{ target_interpolated_system_prompt }}' }}</code><span>{{ __('Rendered system prompt used by the selected target step.', 'polytrans') }}</span>
+            <code>{{ '{{ target_interpolated_user_message }}' }}</code><span>{{ __('Rendered user message used by the selected target step.', 'polytrans') }}</span>
+            <code>{{ '{{ target_assistant_output }}' }}</code><span>{{ __('Output produced by the selected target step.', 'polytrans') }}</span>
+            <code>{{ '{{ include_expected_output_schema }}' }}</code><span>{{ __('Boolean flag telling whether schema should be included/adjusted.', 'polytrans') }}</span>
+            <code>{{ '{{ expected_output_schema }}' }}</code><span>{{ __('Expected output schema for JSON-output target steps.', 'polytrans') }}</span>
+            <code>{{ '{{ workflow_context_json }}' }}</code><span>{{ __('Compact JSON with workflow, target step, previous steps and following steps.', 'polytrans') }}</span>
+            <code>{{ '{{ workflow_structure_json }}' }}</code><span>{{ __('Compact JSON with all workflow steps.', 'polytrans') }}</span>
+            <code>{{ '{{ target_step_context_json }}' }}</code><span>{{ __('Compact JSON with selected target step details.', 'polytrans') }}</span>
+            <code>{{ '{{ previous_steps_json }}' }}</code><span>{{ __('Compact JSON with steps before the selected target step.', 'polytrans') }}</span>
+            <code>{{ '{{ following_steps_json }}' }}</code><span>{{ __('Compact JSON with steps after the selected target step.', 'polytrans') }}</span>
+            <code>{{ '{{ final_output_json }}' }}</code><span>{{ __('Compact JSON with final workflow output.', 'polytrans') }}</span>
+            <code>{{ '{{ workflow_result_json }}' }}</code><span>{{ __('Compact JSON with workflow execution summary.', 'polytrans') }}</span>
+            <code>{{ '{{ non_interpolated_system_prompt }}' }}</code><span>{{ __('Current editable system prompt for the selected target assistant.', 'polytrans') }}</span>
+            <code>{{ '{{ non_interpolated_user_message_template }}' }}</code><span>{{ __('Current editable user message template for the selected target assistant.', 'polytrans') }}</span>
+            <code>{{ '{{ non_interpolated_expected_output_schema }}' }}</code><span>{{ __('Current expected output schema for JSON prompt adjustment.', 'polytrans') }}</span>
+            <code>{{ '{{ adjust_expected_output_schema }}' }}</code><span>{{ __('Boolean flag telling whether the adjuster may change output schema.', 'polytrans') }}</span>
+            <code>{{ '{{ evaluations }}' }}</code><span>{{ __('Array of normalized workflow evaluation items.', 'polytrans') }}</span>
+            <code>{{ '{{ evaluations_json }}' }}</code><span>{{ __('Pretty JSON string with normalized workflow evaluation items.', 'polytrans') }}</span>
+        </div>
+    </details>
+    <p>
+        <label for="prompt-refinement-workflow-evaluator-system"><strong>{{ __('Evaluator System Prompt', 'polytrans') }}</strong></label><br>
+        <textarea name="prompt_refinement_workflow_evaluator_system_prompt" id="prompt-refinement-workflow-evaluator-system" rows="4" style="width:100%;max-width:900px;font-family:monospace;">{{ settings.prompt_refinement_workflow_evaluator_system_prompt|default('')|esc_textarea }}</textarea>
+    </p>
+    <details style="max-width:900px;margin:-8px 0 16px;">
+        <summary>{{ __('Show built-in fallback', 'polytrans') }}</summary>
+        <pre style="white-space:pre-wrap;max-height:260px;overflow:auto;background:#f6f7f7;border:1px solid #dcdcde;padding:10px;">{{ prompt_refinement_default_templates.prompt_refinement_workflow_evaluator_system_prompt|default('')|esc_html }}</pre>
+    </details>
+    <p>
+        <label for="prompt-refinement-workflow-evaluator"><strong>{{ __('Evaluator Prompt Template', 'polytrans') }}</strong></label><br>
+        <textarea name="prompt_refinement_workflow_evaluator_template" id="prompt-refinement-workflow-evaluator" rows="16" style="width:100%;max-width:900px;font-family:monospace;">{{ settings.prompt_refinement_workflow_evaluator_template|default('')|esc_textarea }}</textarea>
+    </p>
+    <details style="max-width:900px;margin:-8px 0 16px;">
+        <summary>{{ __('Show built-in fallback', 'polytrans') }}</summary>
+        <pre style="white-space:pre-wrap;max-height:260px;overflow:auto;background:#f6f7f7;border:1px solid #dcdcde;padding:10px;">{{ prompt_refinement_default_templates.prompt_refinement_workflow_evaluator_template|default('')|esc_html }}</pre>
+    </details>
+    <p>
+        <label for="prompt-refinement-workflow-adjuster-system"><strong>{{ __('Adjuster System Prompt', 'polytrans') }}</strong></label><br>
+        <textarea name="prompt_refinement_workflow_adjuster_system_prompt" id="prompt-refinement-workflow-adjuster-system" rows="5" style="width:100%;max-width:900px;font-family:monospace;">{{ settings.prompt_refinement_workflow_adjuster_system_prompt|default('')|esc_textarea }}</textarea>
+    </p>
+    <details style="max-width:900px;margin:-8px 0 16px;">
+        <summary>{{ __('Show built-in fallback', 'polytrans') }}</summary>
+        <pre style="white-space:pre-wrap;max-height:260px;overflow:auto;background:#f6f7f7;border:1px solid #dcdcde;padding:10px;">{{ prompt_refinement_default_templates.prompt_refinement_workflow_adjuster_system_prompt|default('')|esc_html }}</pre>
+    </details>
+    <p>
+        <label for="prompt-refinement-workflow-adjuster"><strong>{{ __('Adjuster Prompt Template', 'polytrans') }}</strong></label><br>
+        <textarea name="prompt_refinement_workflow_adjuster_template" id="prompt-refinement-workflow-adjuster" rows="16" style="width:100%;max-width:900px;font-family:monospace;">{{ settings.prompt_refinement_workflow_adjuster_template|default('')|esc_textarea }}</textarea>
+    </p>
+    <details style="max-width:900px;margin:-8px 0 16px;">
+        <summary>{{ __('Show built-in fallback', 'polytrans') }}</summary>
+        <pre style="white-space:pre-wrap;max-height:260px;overflow:auto;background:#f6f7f7;border:1px solid #dcdcde;padding:10px;">{{ prompt_refinement_default_templates.prompt_refinement_workflow_adjuster_template|default('')|esc_html }}</pre>
+    </details>
+</div><br>
