@@ -1593,6 +1593,7 @@
         const prompts = polytransWorkflows.descriptionPrompts || {};
         const isStep = targetType === 'step';
         const targetStepId = isStep ? String($('#workflow-refine-target-step').val() || '') : '';
+        const targetSelector = isStep ? '#workflow-refine-objective' : '#workflow-refine-workflow-purpose';
 
         openWorkflowDescriptionModal({
             title: isStep ? 'Generate Target Step Purpose' : 'Generate Workflow Purpose',
@@ -1601,10 +1602,10 @@
             targetStepId,
             systemPrompt: prompts.system || '',
             promptTemplate: isStep ? (prompts.workflowStep || '') : (prompts.workflow || ''),
-            currentDescription: $('#workflow-refine-objective').val() || '',
-            applyLabel: 'Apply as Primary Purpose',
+            currentDescription: $(targetSelector).val() || '',
+            applyLabel: isStep ? 'Apply as Step Purpose' : 'Apply as Workflow Purpose',
             onApply: (description) => {
-                $('#workflow-refine-objective').val(description).trigger('change');
+                $(targetSelector).val(description).trigger('change');
             },
             onSave: (description) => saveWorkflowDescription({
                 workflowId: workflow.id || '',
@@ -2033,14 +2034,23 @@ However, the integration of AI in healthcare also raises important questions abo
                                 </td>
                             </tr>
                             <tr>
-                                <th scope="row"><label for="workflow-refine-objective">Primary Purpose</label></th>
+                                <th scope="row"><label for="workflow-refine-workflow-purpose">Workflow Purpose</label></th>
+                                <td>
+                                    <textarea id="workflow-refine-workflow-purpose" class="large-text code" rows="3" placeholder="Describe what the whole workflow must still achieve after refinement.">${escapeHtml(workflow.description || '')}</textarea>
+                                    <p>
+                                        <button type="button" id="workflow-refine-generate-workflow-description" class="button">Generate Workflow Purpose</button>
+                                    </p>
+                                    <p class="description">Loaded from workflow description. The evaluator and adjuster use this as the whole-workflow goal that must remain true while refining the selected step.</p>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th scope="row"><label for="workflow-refine-objective">Target Step Purpose</label></th>
                                 <td>
                                     <textarea id="workflow-refine-objective" class="large-text code" rows="3" placeholder="Describe what the selected workflow step must still do after refinement.">${escapeHtml(refinableSteps[0]?.description || '')}</textarea>
                                     <p>
                                         <button type="button" id="workflow-refine-generate-target-description" class="button">Generate Target Step Purpose</button>
-                                        <button type="button" id="workflow-refine-generate-workflow-description" class="button">Generate Workflow Description</button>
                                     </p>
-                                    <p class="description">Loaded from the selected step description. The evaluator and adjuster use this as the original job that must remain aligned while applying the refinement criteria.</p>
+                                    <p class="description">Loaded from the selected step description. The evaluator and adjuster use this as the selected step job that must remain aligned while applying the refinement criteria.</p>
                                 </td>
                             </tr>
                             <tr>
@@ -2320,6 +2330,7 @@ However, the integration of AI in healthcare also raises important questions abo
         const sourceLanguage = ($('#workflow-refine-source-language').val() || '').trim();
         const targetLanguage = ($('#workflow-refine-target-language').val() || '').trim();
         const criteria = ($('#workflow-refine-criteria').val() || '').trim();
+        const workflowPurpose = ($('#workflow-refine-workflow-purpose').val() || '').trim();
         const promptObjective = ($('#workflow-refine-objective').val() || '').trim();
         const evaluatorTemplate = ($('#workflow-refine-evaluator-template').val() || '').trim();
         const adjusterTemplate = ($('#workflow-refine-adjuster-template').val() || '').trim();
@@ -2337,6 +2348,7 @@ However, the integration of AI in healthcare also raises important questions abo
             sourceLanguage,
             targetLanguage,
             criteria,
+            workflowPurpose,
             promptObjective,
             evaluatorTemplate,
             adjusterTemplate,
@@ -2376,6 +2388,7 @@ However, the integration of AI in healthcare also raises important questions abo
             sourceLanguage: session.sourceLanguage,
             targetLanguage: session.targetLanguage,
             criteria: session.criteria,
+            workflowPurpose: session.workflowPurpose,
             promptObjective: session.promptObjective,
             evaluatorTemplate: session.evaluatorTemplate,
             adjusterTemplate: session.adjusterTemplate,
@@ -2454,6 +2467,7 @@ However, the integration of AI in healthcare also raises important questions abo
         const sourceLanguage = String(config.sourceLanguage || '').trim();
         const targetLanguage = String(config.targetLanguage || '').trim();
         const criteria = String(config.criteria || '').trim();
+        const workflowPurpose = String(config.workflowPurpose || '').trim();
         const promptObjective = String(config.promptObjective || '').trim();
         const evaluatorTemplate = String(config.evaluatorTemplate || '').trim();
         const adjusterTemplate = String(config.adjusterTemplate || '').trim();
@@ -2581,6 +2595,7 @@ However, the integration of AI in healthcare also raises important questions abo
                             run_id: runId,
                             target_step_id: targetStepId,
                             criteria,
+                            workflow_purpose: workflowPurpose,
                             prompt_objective: promptObjective,
                             evaluator_prompt_template: evaluatorTemplate
                         }
@@ -2616,6 +2631,7 @@ However, the integration of AI in healthcare also raises important questions abo
                     target_step_id: targetStepId,
                     target_step_type: targetStepType,
                     criteria,
+                    workflow_purpose: workflowPurpose,
                     prompt_objective: promptObjective,
                     adjuster_prompt_template: adjusterTemplate,
                     evaluations: JSON.stringify(evaluatedRuns)
@@ -2689,6 +2705,7 @@ However, the integration of AI in healthcare also raises important questions abo
                     sourceLanguage,
                     targetLanguage,
                     criteria,
+                    workflowPurpose,
                     promptObjective,
                     evaluatorTemplate,
                     selectedPosts,
@@ -2709,6 +2726,7 @@ However, the integration of AI in healthcare also raises important questions abo
                 sourceLanguage,
                 targetLanguage,
                 criteria,
+                workflowPurpose,
                 promptObjective,
                 evaluatorTemplate,
                 adjusterTemplate,
@@ -2721,6 +2739,7 @@ However, the integration of AI in healthcare also raises important questions abo
 
             renderWorkflowRefinementResults({
                 criteria,
+                workflowPurpose,
                 promptObjective,
                 iterations: iterationResults,
                 selectedPosts,
@@ -2805,6 +2824,7 @@ However, the integration of AI in healthcare also raises important questions abo
                     run_id: runId,
                     target_step_id: config.targetStepId,
                     criteria: config.criteria,
+                    workflow_purpose: config.workflowPurpose,
                     prompt_objective: config.promptObjective,
                     evaluator_prompt_template: config.evaluatorTemplate
                 }
@@ -3055,7 +3075,12 @@ However, the integration of AI in healthcare also raises important questions abo
                 </div>
 
                 <div class="workflow-refinement-panel">
-                    <h5>Primary Purpose</h5>
+                    <h5>Workflow Purpose</h5>
+                    <pre><code>${escapeHtml(data.workflowPurpose || '')}</code></pre>
+                </div>
+
+                <div class="workflow-refinement-panel">
+                    <h5>Target Step Purpose</h5>
                     <pre><code>${escapeHtml(data.promptObjective || '')}</code></pre>
                 </div>
 

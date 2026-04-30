@@ -97,14 +97,22 @@ it('keeps literal Twig examples in default rendered system prompts', function ()
 });
 
 it('includes primary prompt purpose in default refinement templates', function () {
-    $templates = [
+    $assistant_templates = [
         DefaultPromptTemplates::assistantEvaluator(),
         DefaultPromptTemplates::assistantAdjuster(),
+    ];
+    $workflow_templates = [
         DefaultPromptTemplates::workflowEvaluator(),
         DefaultPromptTemplates::workflowAdjuster(),
     ];
 
-    foreach ($templates as $template) {
+    foreach ($assistant_templates as $template) {
+        expect($template)->toContain('{{ prompt_objective }}');
+        expect($template)->toContain('{{ criteria }}');
+    }
+
+    foreach ($workflow_templates as $template) {
+        expect($template)->toContain('{{ workflow_purpose }}');
         expect($template)->toContain('{{ prompt_objective }}');
         expect($template)->toContain('{{ criteria }}');
     }

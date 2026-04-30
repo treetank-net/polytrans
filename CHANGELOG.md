@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Description generator modals now include an Apply & Save action that persists generated assistant, workflow, or workflow-step descriptions immediately.
+- Workflow prompt refinement now separates whole-workflow purpose from selected target-step purpose and exposes both to evaluator/adjuster prompts.
 
 ## [1.13.5] - 2026-04-30
 

@@ -1143,6 +1143,7 @@ class PostprocessingMenu
         $run_id = isset($_POST['run_id']) ? sanitize_text_field(wp_unslash($_POST['run_id'])) : '';
         $target_step_id = isset($_POST['target_step_id']) ? sanitize_text_field(wp_unslash($_POST['target_step_id'])) : '';
         $criteria = isset($_POST['criteria']) ? sanitize_textarea_field(wp_unslash($_POST['criteria'])) : '';
+        $workflow_purpose = isset($_POST['workflow_purpose']) ? sanitize_textarea_field(wp_unslash($_POST['workflow_purpose'])) : '';
         $prompt_objective = isset($_POST['prompt_objective']) ? sanitize_textarea_field(wp_unslash($_POST['prompt_objective'])) : '';
         $evaluator_prompt_template = isset($_POST['evaluator_prompt_template']) ? wp_unslash($_POST['evaluator_prompt_template']) : '';
 
@@ -1150,6 +1151,7 @@ class PostprocessingMenu
             $run_id,
             $target_step_id,
             $criteria,
+            $workflow_purpose,
             $prompt_objective,
             is_string($evaluator_prompt_template) ? $evaluator_prompt_template : ''
         );
@@ -1177,6 +1179,7 @@ class PostprocessingMenu
         $workflow = isset($_POST['workflow']) ? wp_unslash($_POST['workflow']) : [];
         $target_step_id = isset($_POST['target_step_id']) ? sanitize_text_field(wp_unslash($_POST['target_step_id'])) : '';
         $criteria = isset($_POST['criteria']) ? sanitize_textarea_field(wp_unslash($_POST['criteria'])) : '';
+        $workflow_purpose = isset($_POST['workflow_purpose']) ? sanitize_textarea_field(wp_unslash($_POST['workflow_purpose'])) : '';
         $prompt_objective = isset($_POST['prompt_objective']) ? sanitize_textarea_field(wp_unslash($_POST['prompt_objective'])) : '';
         $adjuster_prompt_template = isset($_POST['adjuster_prompt_template']) ? wp_unslash($_POST['adjuster_prompt_template']) : '';
         $evaluations_payload = $_POST['evaluations'] ?? '[]'; // phpcs:ignore WordPress.Security.NonceVerification.Missing -- protected by check_ajax_referer above
@@ -1193,6 +1196,7 @@ class PostprocessingMenu
         $result = (new WorkflowRefinementService())->adjustPrompt(
             $assistant_id,
             $criteria,
+            $workflow_purpose,
             $prompt_objective,
             is_string($adjuster_prompt_template) ? $adjuster_prompt_template : '',
             $evaluations_payload,

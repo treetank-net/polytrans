@@ -123,6 +123,7 @@ final class WorkflowRefinementService
         string $runId,
         string $targetStepId,
         string $criteria,
+        string $workflowPurpose = '',
         string $promptObjective = '',
         string $evaluatorPromptTemplate = ''
     )
@@ -145,7 +146,7 @@ final class WorkflowRefinementService
             return new \WP_Error('workflow_refinement_run_mismatch', __('Run ID does not belong to the selected workflow step.', 'polytrans'));
         }
 
-        $evaluation = $this->evaluateWorkflowRun($run_payload, $criteria, $promptObjective, $evaluatorPromptTemplate);
+        $evaluation = $this->evaluateWorkflowRun($run_payload, $criteria, $workflowPurpose, $promptObjective, $evaluatorPromptTemplate);
         if (is_wp_error($evaluation)) {
             return $evaluation;
         }
@@ -176,6 +177,7 @@ final class WorkflowRefinementService
     public function adjustPrompt(
         int $assistantId,
         string $criteria,
+        string $workflowPurpose,
         string $promptObjective,
         string $adjusterPromptTemplate,
         $evaluationsPayload,
@@ -220,6 +222,7 @@ final class WorkflowRefinementService
             $should_adjust_expected_output_schema = PromptPackNormalizer::shouldAdjustExpectedOutputSchema($assistant);
         }
         $promptObjective = $this->resolveWorkflowPromptObjective($promptObjective, is_array($target_step) ? $target_step : [], $assistant);
+        $workflowPurpose = $this->resolveWorkflowPurpose($workflowPurpose, $workflow);
 
         $evaluations = $this->decodeEvaluations($evaluationsPayload);
         if (empty($evaluations)) {
@@ -239,6 +242,7 @@ final class WorkflowRefinementService
         $workflow_context = is_array($evaluations[0]['workflow_context'] ?? null) ? $evaluations[0]['workflow_context'] : [];
         $adjuster_context = [
             'criteria' => $criteria,
+            'workflow_purpose' => $workflowPurpose,
             'prompt_objective' => $promptObjective,
             'adjust_expected_output_schema' => $should_adjust_expected_output_schema,
             'non_interpolated_system_prompt' => $current_prompt_pack['system_prompt'],
@@ -581,6 +585,24 @@ final class WorkflowRefinementService
     }
 
     /**
+     * @param array<string,mixed> $workflow
+     */
+    private function resolveWorkflowPurpose(string $workflowPurpose, array $workflow): string
+    {
+        $purpose = trim($workflowPurpose);
+        if ($purpose !== '') {
+            return $purpose;
+        }
+
+        $workflow_description = trim(wp_strip_all_tags((string) ($workflow['description'] ?? '')));
+        if ($workflow_description !== '') {
+            return $workflow_description;
+        }
+
+        return __('Preserve the overall workflow purpose and final output quality while applying the selected step refinement criteria.', 'polytrans');
+    }
+
+    /**
      * @param mixed $basePromptPack
      * @return array<string,string>|null
      */
@@ -685,6 +707,11 @@ final class WorkflowRefinementService
             'run_id' => $runId,
             'workflow_id' => (string) ($workflow['id'] ?? ''),
             'workflow_name' => (string) ($workflow['name'] ?? ''),
+            'workflow' => [
+                'id' => (string) ($workflow['id'] ?? ''),
+                'name' => (string) ($workflow['name'] ?? ''),
+                'description' => (string) ($workflow['description'] ?? ''),
+            ],
             'target_step_id' => (string) ($targetStep['id'] ?? ''),
             'target_step_name' => (string) ($targetStep['name'] ?? ''),
             'target_step_type' => (string) ($targetStep['type'] ?? ''),
@@ -763,6 +790,7 @@ final class WorkflowRefinementService
     private function evaluateWorkflowRun(
         array $runPayload,
         string $criteria,
+        string $workflowPurpose,
         string $promptObjective,
         string $evaluatorPromptTemplate
     )
@@ -780,6 +808,7 @@ final class WorkflowRefinementService
 
         $evaluator_context = [
             'criteria' => $criteria,
+            'workflow_purpose' => $this->resolveWorkflowPurpose($workflowPurpose, is_array($runPayload['workflow'] ?? null) ? $runPayload['workflow'] : []),
             'prompt_objective' => $this->resolveWorkflowPromptObjective(
                 $promptObjective,
                 is_array($runPayload['target_step'] ?? null) ? $runPayload['target_step'] : [],

@@ -67,12 +67,13 @@ final class DefaultPromptTemplates
         return "You evaluate one selected assistant step inside a larger workflow. The selected step may be a managed assistant or a custom inline AI assistant step.\n" .
             "The selected target step is the only prompt that may be adjusted later, but judge it by its contribution to the complete workflow outcome.\n" .
             "Use the workflow context to understand what happened before the target step, what the target step produced, how output actions changed workflow variables, and what later steps did with that output.\n" .
-            "Primary purpose that must remain satisfied: {{ prompt_objective }}\n" .
+            "Whole-workflow purpose that must remain satisfied: {{ workflow_purpose }}\n" .
+            "Selected target-step purpose that must remain satisfied: {{ prompt_objective }}\n" .
             "Refinement criteria to improve: {{ criteria }}\n\n" .
-            "Evaluate whether the full workflow still fulfills the selected step's primary purpose while also improving toward the refinement criteria. Do not reward changes that satisfy the refinement criteria by breaking the original workflow role.\n\n" .
+            "Evaluate whether the full workflow still fulfills its whole-workflow purpose and whether the selected step still fulfills its own purpose while also improving toward the refinement criteria. Do not reward changes that satisfy the refinement criteria by breaking either purpose.\n\n" .
             "Be brief and provide:\n" .
             "1) Numeric score (0-100)\n" .
-            "2) 2-4 findings that separate target-step issues from issues caused by previous or following workflow steps, including any primary-purpose regression\n" .
+            "2) 2-4 findings that separate target-step issues from issues caused by previous or following workflow steps, including any workflow-purpose or step-purpose regression\n" .
             "3) One concrete prompt-change suggestion for the target assistant step only\n\n" .
             "Workflow: {{ workflow_name }} ({{ workflow_id }})\n" .
             "Workflow success: {{ workflow_success }}\n" .
@@ -100,9 +101,10 @@ final class DefaultPromptTemplates
     {
         return "You will receive a non-interpolated system prompt and user message template for one selected assistant step inside a larger workflow. The selected step may be a managed assistant or a custom inline AI assistant step.\n" .
             "{% if adjust_expected_output_schema %}You will also receive expected output schema for JSON output mode.\n{% endif %}" .
-            "Primary purpose that must remain satisfied: {{ prompt_objective }}\n" .
+            "Whole-workflow purpose that must remain satisfied: {{ workflow_purpose }}\n" .
+            "Selected target-step purpose that must remain satisfied: {{ prompt_objective }}\n" .
             "Refinement criteria to improve: {{ criteria }}.\n" .
-            "The evaluations judge full workflow outcomes over several posts against both the primary purpose and refinement criteria.\n\n" .
+            "The evaluations judge full workflow outcomes over several posts against the whole-workflow purpose, selected-step purpose, and refinement criteria.\n\n" .
             "Use workflow context to understand which steps run before the selected target step, which steps run after it, what each step's prompts look like, whether each assistant returns JSON or text, and how output actions write data into workflow variables, post fields or meta.\n" .
             "Adjust only the selected target assistant prompt pack. Do not rewrite prompts for previous or following workflow steps. Do not narrow the selected prompt so much that it stops fulfilling its primary workflow role.\n" .
             "If a problem belongs to another workflow step, mention it indirectly only by making the target prompt produce clearer or more useful output for that later step.\n\n" .
