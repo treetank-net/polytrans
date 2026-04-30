@@ -162,6 +162,94 @@ sync-github-main:
   rules:
     - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "main" && $CI_COMMIT_MESSAGE !~ /\[skip ci\]/
 
+sync-github-tag:
+  stage: build
+  tags:
+    - vps
+  variables:
+    GIT_STRATEGY: clone
+    GIT_DEPTH: 0
+  script:
+    - |
+      if [ -z "${GITHUB_TREETANK_TOKEN:-}" ]; then
+        echo "GITHUB_TREETANK_TOKEN must be configured in GitLab CI variables." >&2
+        exit 1
+      fi
+    - git push "https://${GITHUB_TREETANK_TOKEN}@github.com/treetank-net/polytrans.git" "${CI_COMMIT_TAG}"
+    - echo "✅ Synced tag ${CI_COMMIT_TAG} to GitHub"
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/
+
+# Create GitHub Release with ZIP assets
+release-github:
+  stage: release
+  tags:
+    - vps
+  needs:
+    - job: build
+      artifacts: true
+    - job: sync-github-tag
+  script:
+    - export VERSION=${CI_COMMIT_TAG#v}
+    - |
+      if [ -z "${GITHUB_TREETANK_TOKEN:-}" ]; then
+        echo "GITHUB_TREETANK_TOKEN must be configured in GitLab CI variables." >&2
+        exit 1
+      fi
+
+    # Extract changelog for this version
+    - |
+      if [ -f CHANGELOG.md ]; then
+        CHANGELOG=$(sed -n "/## \[$VERSION\]/,/## \[/p" CHANGELOG.md | sed '$d')
+        if [ -z "$CHANGELOG" ]; then
+          CHANGELOG=$(sed -n "/## \[$VERSION\]/,\$p" CHANGELOG.md)
+        fi
+      else
+        CHANGELOG="Release v${VERSION}"
+      fi
+
+    # Create GitHub release
+    - |
+      RELEASE_RESPONSE=$(curl --fail --silent \
+        --request POST \
+        --header "Authorization: token ${GITHUB_TREETANK_TOKEN}" \
+        --header "Content-Type: application/json" \
+        --data "{
+          \"tag_name\": \"${CI_COMMIT_TAG}\",
+          \"name\": \"PolyTrans v${VERSION}\",
+          \"body\": $(echo "$CHANGELOG" | jq -Rs .)
+        }" \
+        "https://api.github.com/repos/treetank-net/polytrans/releases")
+      UPLOAD_URL=$(echo "$RELEASE_RESPONSE" | jq -r '.upload_url' | sed 's/{?name,label}//')
+      echo "Upload URL: $UPLOAD_URL"
+
+    # Upload ZIP assets
+    - |
+      for FILE in polytrans.zip polytrans-${VERSION}.zip; do
+        echo "Uploading ${FILE}..."
+        curl --fail --silent \
+          --request POST \
+          --header "Authorization: token ${GITHUB_TREETANK_TOKEN}" \
+          --header "Content-Type: application/zip" \
+          --data-binary "@release/${FILE}" \
+          "${UPLOAD_URL}?name=${FILE}"
+        echo ""
+      done
+    - |
+      for FILE in polytrans.zip.sha256 polytrans-${VERSION}.zip.sha256; do
+        echo "Uploading ${FILE}..."
+        curl --fail --silent \
+          --request POST \
+          --header "Authorization: token ${GITHUB_TREETANK_TOKEN}" \
+          --header "Content-Type: text/plain" \
+          --data-binary "@release/${FILE}" \
+          "${UPLOAD_URL}?name=${FILE}"
+        echo ""
+      done
+    - echo "✅ GitHub Release created with assets!"
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/
+
 # Create GitLab Release
 release:
   stage: release
