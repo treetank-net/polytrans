@@ -8,6 +8,10 @@ if (!defined('MINUTE_IN_SECONDS')) {
     define('MINUTE_IN_SECONDS', 60);
 }
 
+if (!defined('POLYTRANS_DISABLE_ASYNC_PROCESS_SPAWN')) {
+    define('POLYTRANS_DISABLE_ASYNC_PROCESS_SPAWN', true);
+}
+
 $GLOBALS['polytrans_async_job_store'] = [];
 $GLOBALS['polytrans_async_last_remote_post'] = null;
 $GLOBALS['polytrans_async_remote_posts'] = [];
@@ -175,6 +179,24 @@ it('marks stale pending async jobs failed when the worker never starts', functio
     expect($job['status'])->toBe('failed');
     expect($job['result']['success'])->toBeFalse();
     expect($job['result']['data']['message'])->toContain('Async worker did not start');
+});
+
+it('marks stale running async jobs failed when the worker disappears', function () {
+    set_transient('polytrans_async_job_stale-running', [
+        'status' => 'running',
+        'type' => 'workflow_run',
+        'params' => [],
+        'result' => null,
+        'created_at' => time() - 420,
+        'worker_started_at' => time() - 420,
+    ], 600);
+
+    $job = AsyncJobRunner::poll('stale-running');
+
+    expect($job)->toBeArray();
+    expect($job['status'])->toBe('failed');
+    expect($job['result']['success'])->toBeFalse();
+    expect($job['result']['data']['message'])->toContain('Async worker stopped before completion');
 });
 
 it('marks async jobs failed when loopback dispatch returns a WordPress error', function () {

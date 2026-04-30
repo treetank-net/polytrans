@@ -5,6 +5,13 @@ All notable changes to the PolyTrans plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.13.11] - 2026-04-30
+
+### Fixed
+- Async workflow-refinement jobs now also use the existing background processor spawn path, allowing hosts with CLI `exec` support to start workers without relying on HTTP loopback requests.
+- Background task startup now treats `set_time_limit()` as best-effort inside `BackgroundProcessor::process_task()`, preventing disabled runtime-limit changes from killing async jobs before they mark themselves as running.
+- Running async jobs that stop without completing are now failed by the poller with a diagnostic log indicating a possible PHP fatal error, request timeout, or OS-level OOM kill.
+
 ## [1.13.10] - 2026-04-30
 
 ### Fixed

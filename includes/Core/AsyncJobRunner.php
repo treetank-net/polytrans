@@ -74,6 +74,17 @@ final class AsyncJobRunner
             ]);
         }
 
+        $process_spawned = self::dispatchBackgroundProcessor($job_id, $job_type);
+        if ($process_spawned) {
+            $dispatched = true;
+            self::log('Async background processor worker dispatched', 'info', [
+                'job_id' => $job_id,
+                'job_type' => $job_type,
+            ]);
+        } else {
+            $dispatch_errors[] = 'background-processor: spawn returned false';
+        }
+
         if (!$dispatched) {
             self::failJob($job_id, $job, 'Async worker dispatch failed: ' . implode('; ', $dispatch_errors), [
                 'job_id' => $job_id,
@@ -108,6 +119,23 @@ final class AsyncJobRunner
                         'job_id' => $job_id,
                         'job_type' => $job['type'] ?? '',
                         'age_seconds' => time() - $created_at,
+                    ]
+                );
+            }
+        }
+
+        if (($job['status'] ?? '') === 'running') {
+            $worker_started_at = (int) ($job['worker_started_at'] ?? 0);
+            if ($worker_started_at > 0 && (time() - $worker_started_at) >= self::runningTimeout()) {
+                $job = self::failJob(
+                    $job_id,
+                    $job,
+                    'Async worker stopped before completion. This may indicate a PHP fatal error, request timeout, or OS-level OOM kill.',
+                    [
+                        'job_id' => $job_id,
+                        'job_type' => $job['type'] ?? '',
+                        'age_seconds' => time() - $worker_started_at,
+                        'memory_limit' => function_exists('ini_get') ? ini_get('memory_limit') : null,
                     ]
                 );
             }
@@ -286,6 +314,25 @@ final class AsyncJobRunner
         ]);
     }
 
+    /**
+     * Dispatch through the existing background processor, which can use CLI exec.
+     */
+    private static function dispatchBackgroundProcessor(string $job_id, string $job_type): bool
+    {
+        if (defined('POLYTRANS_DISABLE_ASYNC_PROCESS_SPAWN') && POLYTRANS_DISABLE_ASYNC_PROCESS_SPAWN) {
+            return false;
+        }
+
+        if (!class_exists(BackgroundProcessor::class)) {
+            return false;
+        }
+
+        return BackgroundProcessor::spawn([
+            'job_id' => $job_id,
+            'worker_token' => self::workerToken($job_id),
+        ], 'async_job');
+    }
+
     private static function failJob(string $job_id, array $job, string $message, array $context = []): array
     {
         $job['status'] = 'failed';
@@ -307,6 +354,16 @@ final class AsyncJobRunner
         }
 
         return max(5, $timeout);
+    }
+
+    private static function runningTimeout(): int
+    {
+        $timeout = 300;
+        if (function_exists('apply_filters')) {
+            $timeout = (int) apply_filters('polytrans_async_job_running_timeout', $timeout);
+        }
+
+        return max(60, $timeout);
     }
 
     private static function jobTtl(): int

@@ -227,9 +227,13 @@ class BackgroundProcessor
     {
         try {
             // Make sure we run for as long as needed
-            ignore_user_abort(true);
-            // phpcs:ignore Squiz.PHP.DiscouragedFunctions.Discouraged -- Required for background processing
-            set_time_limit(0);
+            if (function_exists('ignore_user_abort')) {
+                ignore_user_abort(true);
+            }
+            if (function_exists('set_time_limit')) {
+                // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, Squiz.PHP.DiscouragedFunctions.Discouraged -- Best-effort for background processing; disabled on some hosts.
+                @set_time_limit(0);
+            }
 
             // Log the start of processing
             self::log("Started background task processing: $action", "info", $args);
