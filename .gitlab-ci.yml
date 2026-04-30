@@ -137,7 +137,7 @@ build:
       - release/*.sha256
     expire_in: 30 days
   rules:
-    - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/
+    - if: $CI_COMMIT_TAG =~ /^v/
 
 # ==============================================================================
 # Sync Stage - mirrors successful main pushes to GitHub
@@ -178,7 +178,7 @@ sync-github-tag:
     - git push --force "https://${GITHUB_TREETANK_TOKEN}@github.com/treetank-net/polytrans.git" "${CI_COMMIT_TAG}"
     - echo "✅ Synced tag ${CI_COMMIT_TAG} to GitHub"
   rules:
-    - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/
+    - if: $CI_COMMIT_TAG =~ /^v/
 
 # Create GitHub Release with ZIP assets
 release-github:
@@ -237,32 +237,31 @@ release-github:
       UPLOAD_URL=$(echo "$RELEASE_RESPONSE" | jq -r '.upload_url' | sed 's/{?name,label}//')
       echo "Upload URL: $UPLOAD_URL"
 
-    # Upload ZIP assets
+    # Upload release assets
+    - ls -la release/
     - |
-      for FILE in polytrans.zip polytrans-${VERSION}.zip; do
-        echo "Uploading ${FILE}..."
+      for FILE in polytrans.zip polytrans-${VERSION}.zip polytrans.zip.sha256 polytrans-${VERSION}.zip.sha256; do
+        if [ ! -f "release/${FILE}" ]; then
+          echo "⚠️ Skipping ${FILE} (not found)"
+          continue
+        fi
+        CTYPE="application/octet-stream"
+        case "$FILE" in
+          *.zip) CTYPE="application/zip" ;;
+          *.sha256) CTYPE="text/plain" ;;
+        esac
+        echo "Uploading ${FILE} (${CTYPE})..."
         curl --fail --silent --show-error \
           --request POST \
           --header "Authorization: token ${GITHUB_TREETANK_TOKEN}" \
-          --header "Content-Type: application/zip" \
-          --data-binary "@release/${FILE}" \
-          "${UPLOAD_URL}?name=${FILE}"
-        echo ""
-      done
-    - |
-      for FILE in polytrans.zip.sha256 polytrans-${VERSION}.zip.sha256; do
-        echo "Uploading ${FILE}..."
-        curl --fail --silent --show-error \
-          --request POST \
-          --header "Authorization: token ${GITHUB_TREETANK_TOKEN}" \
-          --header "Content-Type: text/plain" \
+          --header "Content-Type: ${CTYPE}" \
           --data-binary "@release/${FILE}" \
           "${UPLOAD_URL}?name=${FILE}"
         echo ""
       done
     - echo "✅ GitHub Release created with assets!"
   rules:
-    - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/
+    - if: $CI_COMMIT_TAG =~ /^v/
 
 # Create GitLab Release
 release:
@@ -390,4 +389,4 @@ release:
         "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/releases"
     - echo "✅ GitLab Release created successfully!"
   rules:
-    - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/
+    - if: $CI_COMMIT_TAG =~ /^v/
