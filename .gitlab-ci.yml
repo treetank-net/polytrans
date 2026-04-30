@@ -175,7 +175,7 @@ sync-github-tag:
         echo "GITHUB_TREETANK_TOKEN must be configured in GitLab CI variables." >&2
         exit 1
       fi
-    - git push "https://${GITHUB_TREETANK_TOKEN}@github.com/treetank-net/polytrans.git" "${CI_COMMIT_TAG}"
+    - git push --force "https://${GITHUB_TREETANK_TOKEN}@github.com/treetank-net/polytrans.git" "${CI_COMMIT_TAG}"
     - echo "✅ Synced tag ${CI_COMMIT_TAG} to GitHub"
   rules:
     - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/
@@ -206,6 +206,20 @@ release-github:
         fi
       else
         CHANGELOG="Release v${VERSION}"
+      fi
+
+    # Delete existing GitHub release for this tag (if any)
+    - |
+      EXISTING=$(curl --silent --show-error \
+        --header "Authorization: token ${GITHUB_TREETANK_TOKEN}" \
+        "https://api.github.com/repos/treetank-net/polytrans/releases/tags/${CI_COMMIT_TAG}")
+      EXISTING_ID=$(echo "$EXISTING" | jq -r '.id // empty')
+      if [ -n "$EXISTING_ID" ]; then
+        echo "Deleting existing release $EXISTING_ID..."
+        curl --fail --silent --show-error \
+          --request DELETE \
+          --header "Authorization: token ${GITHUB_TREETANK_TOKEN}" \
+          "https://api.github.com/repos/treetank-net/polytrans/releases/${EXISTING_ID}"
       fi
 
     # Create GitHub release
