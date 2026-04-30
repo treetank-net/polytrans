@@ -67,6 +67,12 @@ it('builds prompt packs from inline workflow ai assistant steps', function () {
 it('extracts numeric evaluator score', function () {
     expect(EvaluationScoreExtractor::extract('Score: 82.5. Better rewrite needed.'))->toBe(82.5);
     expect(EvaluationScoreExtractor::extract('Ocena = 91'))->toBe(91.0);
+    expect(EvaluationScoreExtractor::extract('**Score: 62/100**'))->toBe(62.0);
+    expect(EvaluationScoreExtractor::extract('1) **Score:** 78/100'))->toBe(78.0);
+    expect(EvaluationScoreExtractor::extract('1) **Score: 82/100**'))->toBe(82.0);
+    expect(EvaluationScoreExtractor::extract('{"score": "79.5", "feedback": "ok"}'))->toBe(79.5);
+    expect(EvaluationScoreExtractor::extract("```json\n{\"evaluation\":{\"score\":88}}\n```"))->toBe(88.0);
+    expect(EvaluationScoreExtractor::extract('1) Missing details 2) Needs work'))->toBeNull();
     expect(EvaluationScoreExtractor::extract('No numeric score here'))->toBeNull();
 });
 
