@@ -4,7 +4,7 @@
  * Plugin Name: PolyTrans
  * Plugin URI: https://gitlab.com/treetank/polytrans
  * Description: Advanced multilingual translation management system with AI-powered translation, scheduling, and review workflow
- * Version: 1.13.9
+ * Version: 1.13.10
  * Author: treetank
  * Author URI: https://gitlab.com/treetank
  * Text Domain: polytrans
@@ -21,7 +21,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('POLYTRANS_VERSION', '1.13.9');
+define('POLYTRANS_VERSION', '1.13.10');
 define('POLYTRANS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('POLYTRANS_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('POLYTRANS_PLUGIN_FILE', __FILE__);
@@ -35,6 +35,7 @@ require_once POLYTRANS_PLUGIN_DIR . 'includes/class-polytrans.php';
 
 // Background processor is now autoloaded via PSR-4
 // (PolyTrans\Core\BackgroundProcessor)
+add_action('polytrans_bg_process_async_job', [\PolyTrans\Core\AsyncJobRunner::class, 'executeBackgroundJob']);
 
 /**
  * Handle background process requests
@@ -61,18 +62,28 @@ function polytrans_handle_background_request()
 
             // Disable browser buffering
             if (function_exists('fastcgi_finish_request')) {
-                ignore_user_abort(true);
-                // phpcs:ignore Squiz.PHP.DiscouragedFunctions.Discouraged -- Required for background processing
-                set_time_limit(0);
-                ob_end_flush();
+                if (function_exists('ignore_user_abort')) {
+                    ignore_user_abort(true);
+                }
+                if (function_exists('set_time_limit')) {
+                    // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, Squiz.PHP.DiscouragedFunctions.Discouraged -- Best-effort for background processing; disabled on some hosts.
+                    @set_time_limit(0);
+                }
+                // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- Buffer may be absent depending on server config.
+                @ob_end_flush();
                 flush();
                 fastcgi_finish_request();
             } else {
                 // Fallback for non-FastCGI servers
-                ignore_user_abort(true);
-                // phpcs:ignore Squiz.PHP.DiscouragedFunctions.Discouraged -- Required for background processing
-                set_time_limit(0);
-                ob_end_flush();
+                if (function_exists('ignore_user_abort')) {
+                    ignore_user_abort(true);
+                }
+                if (function_exists('set_time_limit')) {
+                    // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, Squiz.PHP.DiscouragedFunctions.Discouraged -- Best-effort for background processing; disabled on some hosts.
+                    @set_time_limit(0);
+                }
+                // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- Buffer may be absent depending on server config.
+                @ob_end_flush();
                 flush();
             }
 

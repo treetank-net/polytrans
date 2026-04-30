@@ -10,6 +10,7 @@ if (!defined('MINUTE_IN_SECONDS')) {
 
 $GLOBALS['polytrans_async_job_store'] = [];
 $GLOBALS['polytrans_async_last_remote_post'] = null;
+$GLOBALS['polytrans_async_remote_posts'] = [];
 $GLOBALS['polytrans_async_remote_post_response'] = ['response' => ['code' => 200]];
 
 if (!class_exists('PolyTrans_Test_WpDie_Exception')) {
@@ -48,6 +49,27 @@ if (!function_exists('admin_url')) {
     }
 }
 
+if (!function_exists('home_url')) {
+    function home_url($path = '')
+    {
+        return 'https://example.test/' . ltrim((string) $path, '/');
+    }
+}
+
+if (!function_exists('add_query_arg')) {
+    function add_query_arg($args, $url)
+    {
+        return rtrim((string) $url, '?') . '?' . http_build_query($args);
+    }
+}
+
+if (!function_exists('wp_create_nonce')) {
+    function wp_create_nonce($action = -1)
+    {
+        return 'nonce-for-' . (string) $action;
+    }
+}
+
 if (!function_exists('wp_hash')) {
     function wp_hash($data, $scheme = 'auth')
     {
@@ -62,6 +84,7 @@ if (!function_exists('wp_remote_post')) {
             'url' => $url,
             'args' => $args,
         ];
+        $GLOBALS['polytrans_async_remote_posts'][] = $GLOBALS['polytrans_async_last_remote_post'];
 
         return $GLOBALS['polytrans_async_remote_post_response'];
     }
@@ -91,6 +114,7 @@ if (!function_exists('wp_die')) {
 beforeEach(function () {
     $GLOBALS['polytrans_async_job_store'] = [];
     $GLOBALS['polytrans_async_last_remote_post'] = null;
+    $GLOBALS['polytrans_async_remote_posts'] = [];
     $GLOBALS['polytrans_async_remote_post_response'] = ['response' => ['code' => 200]];
     $_COOKIE = [];
     $_POST = [];
@@ -107,13 +131,29 @@ it('dispatches async jobs into transient storage and starts loopback worker', fu
     expect($stored['type'])->toBe('workflow_run');
     expect($stored['params'])->toBe(['selected_post_id' => 42]);
 
-    $loopback = $GLOBALS['polytrans_async_last_remote_post'];
-    expect($loopback)->toBeArray();
-    expect($loopback['url'])->toContain('admin-ajax.php');
-    expect($loopback['args']['blocking'])->toBeFalse();
-    expect((float) $loopback['args']['timeout'])->toBe(0.1);
-    expect($loopback['args']['body']['action'])->toBe('polytrans_async_worker');
-    expect($loopback['args']['body']['job_id'])->toBe($jobId);
+    $loopbacks = $GLOBALS['polytrans_async_remote_posts'];
+    expect($loopbacks)->toHaveCount(2);
+
+    expect($loopbacks[0]['url'])->toContain('admin-ajax.php');
+    expect($loopbacks[0]['args']['blocking'])->toBeFalse();
+    expect((float) $loopbacks[0]['args']['timeout'])->toBe(0.1);
+    expect($loopbacks[0]['args']['body']['action'])->toBe('polytrans_async_worker');
+    expect($loopbacks[0]['args']['body']['job_id'])->toBe($jobId);
+
+    expect($loopbacks[1]['url'])->toContain('polytrans_bg=1');
+    expect($loopbacks[1]['url'])->toContain('action=async_job');
+    expect($loopbacks[1]['args']['blocking'])->toBeFalse();
+    expect((float) $loopbacks[1]['args']['timeout'])->toBe(0.1);
+
+    $backgroundJobs = array_filter(
+        $GLOBALS['polytrans_async_job_store'],
+        static fn ($entry, $key) => str_starts_with((string) $key, 'polytrans_bg_'),
+        ARRAY_FILTER_USE_BOTH
+    );
+    expect($backgroundJobs)->toHaveCount(1);
+    $backgroundJob = array_values($backgroundJobs)[0]['value'];
+    expect($backgroundJob['action'])->toBe('async_job');
+    expect($backgroundJob['args']['job_id'])->toBe($jobId);
 });
 
 it('returns null when polling missing async jobs', function () {
@@ -161,6 +201,21 @@ it('marks worker jobs completed and persists final status', function () {
     } catch (PolyTrans_Test_WpDie_Exception $e) {
         // wp_die() terminates requests in production. In tests we convert it to an exception.
     }
+
+    $stored = get_transient('polytrans_async_job_' . $jobId);
+    expect($stored)->toBeArray();
+    expect($stored['status'])->toBe('completed');
+    expect($stored['result'])->toBeNull();
+});
+
+it('runs jobs from the background processor endpoint', function () {
+    $jobId = AsyncJobRunner::dispatch('workflow_run', ['selected_post_id' => 42]);
+    $token = wp_hash('polytrans_async_' . $jobId);
+
+    AsyncJobRunner::executeBackgroundJob([
+        'job_id' => $jobId,
+        'worker_token' => $token,
+    ]);
 
     $stored = get_transient('polytrans_async_job_' . $jobId);
     expect($stored)->toBeArray();

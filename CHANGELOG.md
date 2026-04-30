@@ -5,6 +5,12 @@ All notable changes to the PolyTrans plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.13.10] - 2026-04-30
+
+### Fixed
+- Async workflow-refinement jobs now dispatch through both `admin-ajax.php` and the existing background processor endpoint, giving production hosts a second loopback route when AJAX loopbacks do not start.
+- Background processor requests now treat `set_time_limit()` and output-buffer flushing as best-effort operations, avoiding fatal startup failures on hosts that disable runtime limit changes.
+
 ## [1.13.9] - 2026-04-30
 
 ### Fixed
