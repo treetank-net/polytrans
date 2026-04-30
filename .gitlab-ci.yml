@@ -210,7 +210,7 @@ release-github:
 
     # Create GitHub release
     - |
-      RELEASE_RESPONSE=$(curl --fail --silent \
+      RELEASE_RESPONSE=$(curl --fail --silent --show-error \
         --request POST \
         --header "Authorization: token ${GITHUB_TREETANK_TOKEN}" \
         --header "Content-Type: application/json" \
@@ -227,7 +227,7 @@ release-github:
     - |
       for FILE in polytrans.zip polytrans-${VERSION}.zip; do
         echo "Uploading ${FILE}..."
-        curl --fail --silent \
+        curl --fail --silent --show-error \
           --request POST \
           --header "Authorization: token ${GITHUB_TREETANK_TOKEN}" \
           --header "Content-Type: application/zip" \
@@ -238,7 +238,7 @@ release-github:
     - |
       for FILE in polytrans.zip.sha256 polytrans-${VERSION}.zip.sha256; do
         echo "Uploading ${FILE}..."
-        curl --fail --silent \
+        curl --fail --silent --show-error \
           --request POST \
           --header "Authorization: token ${GITHUB_TREETANK_TOKEN}" \
           --header "Content-Type: text/plain" \
