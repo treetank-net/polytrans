@@ -236,7 +236,7 @@ class PostDataProvider implements VariableProviderInterface
         }
 
         $transient_key = 'polytrans_post_data_' . $post_id . '_' . strtotime($post->post_modified_gmt);
-        $cached = get_transient($transient_key);
+        $cached = \get_transient($transient_key);
         if (is_array($cached)) {
             self::$cache[$post_id] = $cached;
             return $cached;
@@ -322,7 +322,7 @@ class PostDataProvider implements VariableProviderInterface
         ];
 
         self::$cache[$post_id] = $data;
-        set_transient($transient_key, $data, 10 * MINUTE_IN_SECONDS);
+        \set_transient($transient_key, $data, 10 * MINUTE_IN_SECONDS);
 
         return $data;
     }

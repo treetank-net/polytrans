@@ -197,7 +197,7 @@ class PostAutocomplete
         }
 
         $cache_key = 'polytrans_recent_posts_' . md5($language . '_' . $limit);
-        $cached = get_transient($cache_key);
+        $cached = \get_transient($cache_key);
         if (is_array($cached)) {
             wp_send_json_success(['posts' => $cached]);
         }
@@ -242,7 +242,7 @@ class PostAutocomplete
             ];
         }
 
-        set_transient($cache_key, $results, 5 * MINUTE_IN_SECONDS);
+        \set_transient($cache_key, $results, 5 * MINUTE_IN_SECONDS);
 
         wp_send_json_success(['posts' => $results]);
     }
