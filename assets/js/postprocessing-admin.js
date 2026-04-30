@@ -1606,13 +1606,6 @@
             applyLabel: isStep ? 'Apply as Step Purpose' : 'Apply as Workflow Purpose',
             onApply: (description) => {
                 $(targetSelector).val(description).trigger('change');
-            },
-            onSave: (description) => saveWorkflowDescription({
-                workflowId: workflow.id || '',
-                targetType: isStep ? 'step' : 'workflow',
-                targetStepId,
-                description
-            }).then((response) => {
                 if (isStep && Array.isArray(workflow.steps)) {
                     const targetStep = workflow.steps.find((step) => String(step.id || '') === targetStepId);
                     if (targetStep) {
@@ -1621,7 +1614,12 @@
                 } else {
                     workflow.description = description;
                 }
-                return response;
+            },
+            onSave: (description) => saveWorkflowDescription({
+                workflowId: workflow.id || '',
+                targetType: isStep ? 'step' : 'workflow',
+                targetStepId,
+                description
             })
         });
     }
@@ -2142,7 +2140,15 @@ However, the integration of AI in healthcare also raises important questions abo
         });
 
         $('#workflow-refine-target-step').on('change', function () {
-            const description = String($(this).find('option:selected').data('description') || '');
+            const stepId = String($(this).val() || '');
+            const workflow = window.polytransWorkflowTestData || {};
+            const steps = Array.isArray(workflow.steps) ? workflow.steps : [];
+            const step = steps.find((s) => String(s.id || '') === stepId);
+            const managedDescriptions = window.polytransWorkflowManagedAssistantDescriptions || {};
+            let description = '';
+            if (step) {
+                description = step.description || (step.type === 'managed_assistant' ? managedDescriptions[String(step.assistant_id || '')] || '' : '');
+            }
             $('#workflow-refine-objective').val(description);
         });
 
