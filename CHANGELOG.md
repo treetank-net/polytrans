@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.13.4] - 2026-04-30
+
+### Added
+- Assistant and workflow prompt refinement now include an editable primary-purpose field, loaded from the assistant description or selected workflow step description when available.
+- Workflow steps now have an optional description field used as the default alignment goal during workflow prompt refinement.
+- Default evaluator and adjuster prompts now evaluate both the primary purpose and the refinement criteria, reducing prompt drift toward criteria-only behavior.
+- Assistant and workflow refinement now run a final verification pass after the last valid adjustment without performing another adjustment.
+- Refinement results now let admins apply the original prompt pack or the prompt pack produced by any completed iteration.
+
+### Changed
+- Refinement progress logs now include the final verification phase and its per-post run IDs and scores.
+- Prompt-refinement settings document the new `{{ prompt_objective }}` template variable for assistant and workflow refiners.
+
 ## [1.13.2] - 2026-04-29
 
 ### Added

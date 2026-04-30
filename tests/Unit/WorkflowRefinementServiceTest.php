@@ -4,6 +4,13 @@ declare(strict_types=1);
 
 use PolyTrans\PostProcessing\Testing\WorkflowRefinementService;
 
+if (!function_exists('wp_strip_all_tags')) {
+    function wp_strip_all_tags($text)
+    {
+        return strip_tags((string) $text);
+    }
+}
+
 function invoke_workflow_refinement_method(string $methodName, ...$args)
 {
     $service = new WorkflowRefinementService();
@@ -43,6 +50,7 @@ it('summarizes workflow context around the selected target step', function () {
             [
                 'id' => 'step_rewrite',
                 'name' => 'Rewrite',
+                'description' => 'Rewrite the reviewed post into natural target-language copy.',
                 'type' => 'rewrite',
                 'output_actions' => [['target' => 'translated.content']],
             ],
@@ -78,10 +86,34 @@ it('summarizes workflow context around the selected target step', function () {
 
     expect($context['workflow']['id'])->toBe('workflow_test');
     expect($context['target_step']['id'])->toBe('step_rewrite');
+    expect($context['target_step']['description'])->toBe('Rewrite the reviewed post into natural target-language copy.');
     expect($context['target_step']['run']['interpolated_system_prompt'])->toBe('System prompt');
     expect($context['previous_steps'])->toHaveCount(1);
     expect($context['previous_steps'][0]['id'])->toBe('step_review');
     expect($context['following_steps'])->toBe([]);
+});
+
+it('uses workflow target step description as default refinement primary purpose', function () {
+    expect(invoke_workflow_refinement_method(
+        'resolveWorkflowPromptObjective',
+        '',
+        ['description' => '<p>Review the translation and write actionable feedback.</p>'],
+        ['description' => 'Fallback assistant description.']
+    ))->toBe('Review the translation and write actionable feedback.');
+
+    expect(invoke_workflow_refinement_method(
+        'resolveWorkflowPromptObjective',
+        '',
+        [],
+        ['description' => '<p>Fallback assistant description.</p>']
+    ))->toBe('Fallback assistant description.');
+
+    expect(invoke_workflow_refinement_method(
+        'resolveWorkflowPromptObjective',
+        'Keep the rewrite step aligned with the full workflow.',
+        ['description' => 'Step description.'],
+        ['description' => 'Assistant description.']
+    ))->toBe('Keep the rewrite step aligned with the full workflow.');
 });
 
 it('accepts custom ai assistant steps as workflow refinement targets', function () {

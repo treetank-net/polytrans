@@ -67,6 +67,7 @@ final class AssistantRefinementService
         int $assistantId,
         string $runId,
         string $criteria,
+        string $promptObjective = '',
         string $evaluatorPromptTemplate = '',
         string $evaluatorSystemPromptTemplate = ''
     )
@@ -109,6 +110,7 @@ final class AssistantRefinementService
             $context,
             $assistant_result,
             $criteria,
+            $promptObjective,
             $evaluatorPromptTemplate,
             $evaluatorSystemPromptTemplate
         );
@@ -143,6 +145,7 @@ final class AssistantRefinementService
         string $sourceLanguage,
         string $targetLanguage,
         string $criteria,
+        string $promptObjective = '',
         string $evaluatorPromptTemplate = '',
         string $evaluatorSystemPromptTemplate = '',
         $overrideSystemPrompt = null,
@@ -181,6 +184,7 @@ final class AssistantRefinementService
             $execution['context'],
             $execution['assistant_result'],
             $criteria,
+            $promptObjective,
             $evaluatorPromptTemplate,
             $evaluatorSystemPromptTemplate
         );
@@ -208,6 +212,7 @@ final class AssistantRefinementService
     public function adjustPrompt(
         int $assistantId,
         string $criteria,
+        string $promptObjective,
         string $adjusterPromptTemplate,
         string $adjusterSystemPromptTemplate,
         $evaluationsPayload,
@@ -232,6 +237,7 @@ final class AssistantRefinementService
         if (!$assistant) {
             return new \WP_Error('assistant_not_found', __('Assistant not found.', 'polytrans'));
         }
+        $promptObjective = $this->resolvePromptObjective($promptObjective, $assistant);
 
         $evaluations = $this->decodeEvaluations($evaluationsPayload);
         if (empty($evaluations)) {
@@ -270,6 +276,7 @@ final class AssistantRefinementService
         $should_adjust_expected_output_schema = PromptPackNormalizer::shouldAdjustExpectedOutputSchema($assistant);
         $adjuster_context = [
             'criteria' => $criteria,
+            'prompt_objective' => $promptObjective,
             'adjust_expected_output_schema' => $should_adjust_expected_output_schema,
             'non_interpolated_system_prompt' => $current_prompt_pack['system_prompt'],
             'non_interpolated_user_message_template' => $current_prompt_pack['user_message_template'],
@@ -528,6 +535,7 @@ final class AssistantRefinementService
         array $context,
         array $assistantResult,
         string $criteria,
+        string $promptObjective,
         string $evaluatorPromptTemplate,
         string $evaluatorSystemPromptTemplate
     )
@@ -539,6 +547,7 @@ final class AssistantRefinementService
 
         $evaluator_context = [
             'criteria' => $criteria,
+            'prompt_objective' => $this->resolvePromptObjective($promptObjective, $assistant),
             'source_language' => $context['source_language'] ?? '',
             'target_language' => $context['target_language'] ?? '',
             'include_expected_output_schema' => PromptPackNormalizer::shouldAdjustExpectedOutputSchema($assistant),
@@ -632,6 +641,24 @@ final class AssistantRefinementService
         }
 
         return [];
+    }
+
+    /**
+     * @param array<string,mixed> $assistant
+     */
+    private function resolvePromptObjective(string $promptObjective, array $assistant): string
+    {
+        $objective = trim($promptObjective);
+        if ($objective !== '') {
+            return $objective;
+        }
+
+        $description = trim(wp_strip_all_tags((string) ($assistant['description'] ?? '')));
+        if ($description !== '') {
+            return $description;
+        }
+
+        return __('Preserve the assistant original purpose and existing behavioral contract while applying the refinement criteria.', 'polytrans');
     }
 
     private function getRunTransientKey(string $runId): string

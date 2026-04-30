@@ -374,6 +374,15 @@ class PostprocessingMenu
             'window.polytransWorkflowTestData = ' . wp_json_encode($workflow) . ';',
             'before'
         );
+        $managed_assistant_descriptions = [];
+        foreach (AssistantManager::get_all_assistants() as $assistant) {
+            $managed_assistant_descriptions[(string) ($assistant['id'] ?? '')] = (string) ($assistant['description'] ?? '');
+        }
+        wp_add_inline_script(
+            'polytrans-workflows',
+            'window.polytransWorkflowManagedAssistantDescriptions = ' . wp_json_encode($managed_assistant_descriptions) . ';',
+            'before'
+        );
         wp_add_inline_script(
             'polytrans-workflows',
             'window.polytransWorkflowRefinementDefaults = ' . wp_json_encode([
@@ -1126,12 +1135,14 @@ class PostprocessingMenu
         $run_id = isset($_POST['run_id']) ? sanitize_text_field(wp_unslash($_POST['run_id'])) : '';
         $target_step_id = isset($_POST['target_step_id']) ? sanitize_text_field(wp_unslash($_POST['target_step_id'])) : '';
         $criteria = isset($_POST['criteria']) ? sanitize_textarea_field(wp_unslash($_POST['criteria'])) : '';
+        $prompt_objective = isset($_POST['prompt_objective']) ? sanitize_textarea_field(wp_unslash($_POST['prompt_objective'])) : '';
         $evaluator_prompt_template = isset($_POST['evaluator_prompt_template']) ? wp_unslash($_POST['evaluator_prompt_template']) : '';
 
         $result = (new WorkflowRefinementService())->evaluateRun(
             $run_id,
             $target_step_id,
             $criteria,
+            $prompt_objective,
             is_string($evaluator_prompt_template) ? $evaluator_prompt_template : ''
         );
 
@@ -1158,6 +1169,7 @@ class PostprocessingMenu
         $workflow = isset($_POST['workflow']) ? wp_unslash($_POST['workflow']) : [];
         $target_step_id = isset($_POST['target_step_id']) ? sanitize_text_field(wp_unslash($_POST['target_step_id'])) : '';
         $criteria = isset($_POST['criteria']) ? sanitize_textarea_field(wp_unslash($_POST['criteria'])) : '';
+        $prompt_objective = isset($_POST['prompt_objective']) ? sanitize_textarea_field(wp_unslash($_POST['prompt_objective'])) : '';
         $adjuster_prompt_template = isset($_POST['adjuster_prompt_template']) ? wp_unslash($_POST['adjuster_prompt_template']) : '';
         $evaluations_payload = $_POST['evaluations'] ?? '[]'; // phpcs:ignore WordPress.Security.NonceVerification.Missing -- protected by check_ajax_referer above
         $current_system_prompt = array_key_exists('current_system_prompt', $_POST)
@@ -1173,6 +1185,7 @@ class PostprocessingMenu
         $result = (new WorkflowRefinementService())->adjustPrompt(
             $assistant_id,
             $criteria,
+            $prompt_objective,
             is_string($adjuster_prompt_template) ? $adjuster_prompt_template : '',
             $evaluations_payload,
             $current_system_prompt,
@@ -1318,6 +1331,7 @@ class PostprocessingMenu
             $sanitized_step = [
                 'id' => sanitize_text_field($step['id'] ?? ''),
                 'name' => sanitize_text_field($step['name'] ?? ''),
+                'description' => sanitize_textarea_field($step['description'] ?? ''),
                 'type' => sanitize_text_field($step['type'] ?? ''),
                 'enabled' => !empty($step['enabled'])
             ];

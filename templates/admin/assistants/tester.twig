@@ -102,6 +102,13 @@
                             </td>
                         </tr>
                         <tr>
+                            <th scope="row"><label for="assistant-refine-objective">{{ __('Primary Purpose', 'polytrans') }}</label></th>
+                            <td>
+                                <textarea id="assistant-refine-objective" class="large-text code" rows="3" placeholder="{{ __('Describe what this prompt must still do after refinement.', 'polytrans') }}">{{ assistant.description|default('')|e('html') }}</textarea>
+                                <p class="description">{{ __('Loaded from the assistant description. The evaluator and adjuster use this as the original job that must remain aligned while applying the refinement criteria.', 'polytrans') }}</p>
+                            </td>
+                        </tr>
+                        <tr>
                             <th scope="row"><label for="assistant-refine-iterations">{{ __('Full Re-eval Iterations', 'polytrans') }}</label></th>
                             <td>
                                 <input type="number" id="assistant-refine-iterations" class="small-text" min="1" max="10" step="1" value="2">
@@ -121,7 +128,7 @@
                                         <textarea id="assistant-refine-evaluator-template" class="large-text code" rows="10">{{ default_evaluator_prompt_template|e('html') }}</textarea>
                                     </div>
                                 </div>
-                                <p class="description">{{ __('Template variables: criteria, interpolated_system_prompt, interpolated_user_message, assistant_output, source_language, target_language, include_expected_output_schema, expected_output_schema.', 'polytrans') }}</p>
+                                <p class="description">{{ __('Template variables: criteria, prompt_objective, interpolated_system_prompt, interpolated_user_message, assistant_output, source_language, target_language, include_expected_output_schema, expected_output_schema.', 'polytrans') }}</p>
                             </td>
                         </tr>
                         <tr>
@@ -137,7 +144,7 @@
                                         <textarea id="assistant-refine-adjuster-template" class="large-text code" rows="12">{{ default_adjuster_prompt_template|e('html') }}</textarea>
                                     </div>
                                 </div>
-                                <p class="description">{{ __('Template variables: criteria, adjust_expected_output_schema, non_interpolated_system_prompt, non_interpolated_user_message_template, non_interpolated_expected_output_schema, evaluations, evaluations_json.', 'polytrans') }}</p>
+                                <p class="description">{{ __('Template variables: criteria, prompt_objective, adjust_expected_output_schema, non_interpolated_system_prompt, non_interpolated_user_message_template, non_interpolated_expected_output_schema, evaluations, evaluations_json.', 'polytrans') }}</p>
                             </td>
                         </tr>
                     </tbody>

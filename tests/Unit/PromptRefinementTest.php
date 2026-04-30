@@ -96,6 +96,20 @@ it('keeps literal Twig examples in default rendered system prompts', function ()
     expect($result)->not->toContain('This must not be injected');
 });
 
+it('includes primary prompt purpose in default refinement templates', function () {
+    $templates = [
+        DefaultPromptTemplates::assistantEvaluator(),
+        DefaultPromptTemplates::assistantAdjuster(),
+        DefaultPromptTemplates::workflowEvaluator(),
+        DefaultPromptTemplates::workflowAdjuster(),
+    ];
+
+    foreach ($templates as $template) {
+        expect($template)->toContain('{{ prompt_objective }}');
+        expect($template)->toContain('{{ criteria }}');
+    }
+});
+
 it('loads prompt refinement templates from settings with built-in fallback', function () {
     expect(PromptRefinementSettings::assistantEvaluatorSystem([]))->toBe(DefaultPromptTemplates::assistantEvaluatorSystem());
     expect(PromptRefinementSettings::assistantEvaluator([]))->toBe(DefaultPromptTemplates::assistantEvaluator());

@@ -11,6 +11,7 @@
         <summary>{{ __('Available assistant refiner variables', 'polytrans') }}</summary>
         <div style="display:grid;grid-template-columns:minmax(220px,1fr) 2fr;gap:6px 16px;margin-top:10px;">
             <code>{{ '{{ criteria }}' }}</code><span>{{ __('Evaluation/refinement criteria entered by the user.', 'polytrans') }}</span>
+            <code>{{ '{{ prompt_objective }}' }}</code><span>{{ __('Original prompt purpose/alignment goal entered by the user or loaded from assistant description.', 'polytrans') }}</span>
             <code>{{ '{{ source_language }}' }}</code><span>{{ __('Source language code.', 'polytrans') }}</span>
             <code>{{ '{{ target_language }}' }}</code><span>{{ __('Target language code.', 'polytrans') }}</span>
             <code>{{ '{{ include_expected_output_schema }}' }}</code><span>{{ __('Boolean flag telling whether schema should be included/adjusted.', 'polytrans') }}</span>
@@ -64,6 +65,7 @@
         <summary>{{ __('Available workflow refiner variables', 'polytrans') }}</summary>
         <div style="display:grid;grid-template-columns:minmax(260px,1fr) 2fr;gap:6px 16px;margin-top:10px;">
             <code>{{ '{{ criteria }}' }}</code><span>{{ __('Evaluation/refinement criteria entered by the user.', 'polytrans') }}</span>
+            <code>{{ '{{ prompt_objective }}' }}</code><span>{{ __('Original target-step purpose/alignment goal entered by the user or loaded from step/assistant description.', 'polytrans') }}</span>
             <code>{{ '{{ workflow_name }}' }}</code><span>{{ __('Workflow name for evaluator prompts.', 'polytrans') }}</span>
             <code>{{ '{{ workflow_id }}' }}</code><span>{{ __('Workflow ID for evaluator prompts.', 'polytrans') }}</span>
             <code>{{ '{{ workflow_success }}' }}</code><span>{{ __('Whether the full workflow finished successfully.', 'polytrans') }}</span>

@@ -18,10 +18,12 @@ final class DefaultPromptTemplates
     public static function assistantEvaluator(): string
     {
         return "You will receive a system prompt, user message and assistant output.\n" .
-            "Your task is to evaluate assistant response based on this criteria: {{ criteria }}\n\n" .
+            "Primary purpose that must remain satisfied: {{ prompt_objective }}\n" .
+            "Refinement criteria to improve: {{ criteria }}\n\n" .
+            "Evaluate whether the assistant still fulfills the primary purpose while also improving toward the refinement criteria. Do not reward a response that satisfies the refinement criteria by abandoning the primary purpose.\n\n" .
             "Be brief and provide:\n" .
             "1) Numeric score (0-100)\n" .
-            "2) 2-4 short findings\n" .
+            "2) 2-4 short findings, including any primary-purpose regression\n" .
             "3) One concrete suggestion\n\n" .
             "System prompt:\n{{ interpolated_system_prompt }}\n\n" .
             "User message:\n{{ interpolated_user_message }}\n\n" .
@@ -38,11 +40,12 @@ final class DefaultPromptTemplates
     {
         return "You will receive a non-interpolated system prompt and user message template.\n" .
             "{% if adjust_expected_output_schema %}You will also receive expected output schema for JSON output mode.\n{% endif %}" .
-            "You will also receive instructions evaluated over several posts based on criteria: {{ criteria }}.\n\n" .
+            "Primary purpose that must remain satisfied: {{ prompt_objective }}\n" .
+            "Refinement criteria to improve: {{ criteria }}.\n" .
+            "Adjust the prompts to improve the refinement criteria without narrowing the prompt so much that it stops fulfilling the primary purpose.\n\n" .
             "Remember, interpolation contains Twig-specific variables that relate to specific parts of the user input. Maintain syntax exactly.\n" .
             "Do not rewrite Twig tags, delimiters or whitespace within tags.\n" .
             "Variables like content may contain large text blocks. Keep variable references and do not inline or truncate their values.\n\n" .
-            "Adjust the prompts to satisfy the criteria better.\n" .
             "Return only valid JSON with these keys:\n" .
             "- system_prompt: improved system prompt string\n" .
             "- user_message_template: improved user message template string\n" .
@@ -64,10 +67,12 @@ final class DefaultPromptTemplates
         return "You evaluate one selected assistant step inside a larger workflow. The selected step may be a managed assistant or a custom inline AI assistant step.\n" .
             "The selected target step is the only prompt that may be adjusted later, but judge it by its contribution to the complete workflow outcome.\n" .
             "Use the workflow context to understand what happened before the target step, what the target step produced, how output actions changed workflow variables, and what later steps did with that output.\n" .
-            "Criteria: {{ criteria }}\n\n" .
+            "Primary purpose that must remain satisfied: {{ prompt_objective }}\n" .
+            "Refinement criteria to improve: {{ criteria }}\n\n" .
+            "Evaluate whether the full workflow still fulfills the selected step's primary purpose while also improving toward the refinement criteria. Do not reward changes that satisfy the refinement criteria by breaking the original workflow role.\n\n" .
             "Be brief and provide:\n" .
             "1) Numeric score (0-100)\n" .
-            "2) 2-4 findings that separate target-step issues from issues caused by previous or following workflow steps\n" .
+            "2) 2-4 findings that separate target-step issues from issues caused by previous or following workflow steps, including any primary-purpose regression\n" .
             "3) One concrete prompt-change suggestion for the target assistant step only\n\n" .
             "Workflow: {{ workflow_name }} ({{ workflow_id }})\n" .
             "Workflow success: {{ workflow_success }}\n" .
@@ -95,9 +100,11 @@ final class DefaultPromptTemplates
     {
         return "You will receive a non-interpolated system prompt and user message template for one selected assistant step inside a larger workflow. The selected step may be a managed assistant or a custom inline AI assistant step.\n" .
             "{% if adjust_expected_output_schema %}You will also receive expected output schema for JSON output mode.\n{% endif %}" .
-            "The evaluations judge full workflow outcomes over several posts based on criteria: {{ criteria }}.\n\n" .
+            "Primary purpose that must remain satisfied: {{ prompt_objective }}\n" .
+            "Refinement criteria to improve: {{ criteria }}.\n" .
+            "The evaluations judge full workflow outcomes over several posts against both the primary purpose and refinement criteria.\n\n" .
             "Use workflow context to understand which steps run before the selected target step, which steps run after it, what each step's prompts look like, whether each assistant returns JSON or text, and how output actions write data into workflow variables, post fields or meta.\n" .
-            "Adjust only the selected target assistant prompt pack. Do not rewrite prompts for previous or following workflow steps.\n" .
+            "Adjust only the selected target assistant prompt pack. Do not rewrite prompts for previous or following workflow steps. Do not narrow the selected prompt so much that it stops fulfilling its primary workflow role.\n" .
             "If a problem belongs to another workflow step, mention it indirectly only by making the target prompt produce clearer or more useful output for that later step.\n\n" .
             "Remember, interpolation contains Twig-specific variables that relate to specific parts of the user input. Maintain syntax exactly.\n" .
             "Do not rewrite Twig tags, delimiters or whitespace within tags.\n" .

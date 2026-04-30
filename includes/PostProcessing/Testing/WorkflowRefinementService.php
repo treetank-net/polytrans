@@ -119,7 +119,13 @@ final class WorkflowRefinementService
      *
      * @return array<string,mixed>|\WP_Error
      */
-    public function evaluateRun(string $runId, string $targetStepId, string $criteria, string $evaluatorPromptTemplate = '')
+    public function evaluateRun(
+        string $runId,
+        string $targetStepId,
+        string $criteria,
+        string $promptObjective = '',
+        string $evaluatorPromptTemplate = ''
+    )
     {
         if ($runId === '') {
             return new \WP_Error('workflow_refinement_missing_run_id', __('Run ID is required.', 'polytrans'));
@@ -139,7 +145,7 @@ final class WorkflowRefinementService
             return new \WP_Error('workflow_refinement_run_mismatch', __('Run ID does not belong to the selected workflow step.', 'polytrans'));
         }
 
-        $evaluation = $this->evaluateWorkflowRun($run_payload, $criteria, $evaluatorPromptTemplate);
+        $evaluation = $this->evaluateWorkflowRun($run_payload, $criteria, $promptObjective, $evaluatorPromptTemplate);
         if (is_wp_error($evaluation)) {
             return $evaluation;
         }
@@ -170,6 +176,7 @@ final class WorkflowRefinementService
     public function adjustPrompt(
         int $assistantId,
         string $criteria,
+        string $promptObjective,
         string $adjusterPromptTemplate,
         $evaluationsPayload,
         $currentSystemPrompt = null,
@@ -212,6 +219,7 @@ final class WorkflowRefinementService
             $current_prompt_pack = PromptPackNormalizer::fromAssistant($assistant);
             $should_adjust_expected_output_schema = PromptPackNormalizer::shouldAdjustExpectedOutputSchema($assistant);
         }
+        $promptObjective = $this->resolveWorkflowPromptObjective($promptObjective, is_array($target_step) ? $target_step : [], $assistant);
 
         $evaluations = $this->decodeEvaluations($evaluationsPayload);
         if (empty($evaluations)) {
@@ -231,6 +239,7 @@ final class WorkflowRefinementService
         $workflow_context = is_array($evaluations[0]['workflow_context'] ?? null) ? $evaluations[0]['workflow_context'] : [];
         $adjuster_context = [
             'criteria' => $criteria,
+            'prompt_objective' => $promptObjective,
             'adjust_expected_output_schema' => $should_adjust_expected_output_schema,
             'non_interpolated_system_prompt' => $current_prompt_pack['system_prompt'],
             'non_interpolated_user_message_template' => $current_prompt_pack['user_message_template'],
@@ -475,6 +484,7 @@ final class WorkflowRefinementService
             return [
                 'id' => 0,
                 'name' => (string) ($targetStep['name'] ?? __('Custom workflow AI step', 'polytrans')),
+                'description' => (string) ($targetStep['description'] ?? ''),
                 'provider' => $this->resolvePromptRunnerProvider($targetStep),
                 'status' => 'active',
                 'system_prompt' => (string) ($targetStep['system_prompt'] ?? ''),
@@ -544,6 +554,30 @@ final class WorkflowRefinementService
         }
 
         return 'openai';
+    }
+
+    /**
+     * @param array<string,mixed> $targetStep
+     * @param array<string,mixed> $assistant
+     */
+    private function resolveWorkflowPromptObjective(string $promptObjective, array $targetStep, array $assistant): string
+    {
+        $objective = trim($promptObjective);
+        if ($objective !== '') {
+            return $objective;
+        }
+
+        $step_description = trim(wp_strip_all_tags((string) ($targetStep['description'] ?? '')));
+        if ($step_description !== '') {
+            return $step_description;
+        }
+
+        $assistant_description = trim(wp_strip_all_tags((string) ($assistant['description'] ?? '')));
+        if ($assistant_description !== '') {
+            return $assistant_description;
+        }
+
+        return __('Preserve the selected workflow step original purpose and existing behavioral contract while applying the refinement criteria.', 'polytrans');
     }
 
     /**
@@ -655,6 +689,12 @@ final class WorkflowRefinementService
             'target_step_name' => (string) ($targetStep['name'] ?? ''),
             'target_step_type' => (string) ($targetStep['type'] ?? ''),
             'target_step_index' => (int) ($targetStep['__index'] ?? 0),
+            'target_step' => [
+                'id' => (string) ($targetStep['id'] ?? ''),
+                'name' => (string) ($targetStep['name'] ?? ''),
+                'description' => (string) ($targetStep['description'] ?? ''),
+                'type' => (string) ($targetStep['type'] ?? ''),
+            ],
             'assistant_id' => (int) ($assistant['id'] ?? 0),
             'assistant_name' => (string) ($assistant['name'] ?? ''),
             'assistant_config' => $this->buildAssistantConfigSnapshot($assistant),
@@ -720,7 +760,12 @@ final class WorkflowRefinementService
      * @param array<string,mixed> $runPayload
      * @return array<string,mixed>|\WP_Error
      */
-    private function evaluateWorkflowRun(array $runPayload, string $criteria, string $evaluatorPromptTemplate)
+    private function evaluateWorkflowRun(
+        array $runPayload,
+        string $criteria,
+        string $promptObjective,
+        string $evaluatorPromptTemplate
+    )
     {
         $assistant = is_array($runPayload['assistant_config'] ?? null) ? $runPayload['assistant_config'] : [];
         if (empty($assistant)) {
@@ -735,6 +780,11 @@ final class WorkflowRefinementService
 
         $evaluator_context = [
             'criteria' => $criteria,
+            'prompt_objective' => $this->resolveWorkflowPromptObjective(
+                $promptObjective,
+                is_array($runPayload['target_step'] ?? null) ? $runPayload['target_step'] : [],
+                $assistant
+            ),
             'workflow_name' => (string) ($runPayload['workflow_name'] ?? ''),
             'workflow_id' => (string) ($runPayload['workflow_id'] ?? ''),
             'workflow_success' => !empty($runPayload['workflow_result']['success']) ? 'true' : 'false',
@@ -1005,6 +1055,7 @@ final class WorkflowRefinementService
             'position' => $index + 1,
             'id' => (string) ($step['id'] ?? "step_{$index}"),
             'name' => (string) ($step['name'] ?? ('Step ' . ($index + 1))),
+            'description' => (string) ($step['description'] ?? ''),
             'type' => (string) ($step['type'] ?? ''),
             'enabled' => !isset($step['enabled']) || !empty($step['enabled']),
             'is_target' => $isTarget,

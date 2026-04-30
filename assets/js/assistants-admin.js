@@ -750,6 +750,7 @@
             const sourceLanguage = ($('#assistant-refine-source-language').val() || '').trim();
             const targetLanguage = ($('#assistant-refine-target-language').val() || '').trim();
             const criteria = ($('#assistant-refine-criteria').val() || '').trim();
+            const promptObjective = ($('#assistant-refine-objective').val() || '').trim();
             const evaluatorSystemPrompt = ($('#assistant-refine-evaluator-system-prompt').val() || '').trim();
             const evaluatorTemplate = ($('#assistant-refine-evaluator-template').val() || '').trim();
             const adjusterSystemPrompt = ($('#assistant-refine-adjuster-system-prompt').val() || '').trim();
@@ -765,6 +766,7 @@
                 sourceLanguage,
                 targetLanguage,
                 criteria,
+                promptObjective,
                 evaluatorSystemPrompt,
                 evaluatorTemplate,
                 adjusterSystemPrompt,
@@ -772,7 +774,8 @@
                 totalIterations,
                 selectedPosts,
                 initialPromptPack: null,
-                existingIterations: []
+                existingIterations: [],
+                initialBasePromptPack: null
             }, {
                 $button: $('#run-assistant-refinement-btn'),
                 runningLabel: 'Running Full Re-eval...',
@@ -805,6 +808,7 @@
                 sourceLanguage: session.sourceLanguage,
                 targetLanguage: session.targetLanguage,
                 criteria: session.criteria,
+                promptObjective: session.promptObjective,
                 evaluatorSystemPrompt: session.evaluatorSystemPrompt,
                 evaluatorTemplate: session.evaluatorTemplate,
                 adjusterSystemPrompt: session.adjusterSystemPrompt,
@@ -812,7 +816,8 @@
                 totalIterations,
                 selectedPosts: session.selectedPosts,
                 initialPromptPack: session.finalPromptPack,
-                existingIterations: session.iterations
+                existingIterations: session.iterations,
+                initialBasePromptPack: session.initialBasePromptPack
             }, {
                 $button: $('#assistant-refine-reeval-btn'),
                 runningLabel: 'Re-evaluating...',
@@ -830,13 +835,18 @@
             }
 
             const session = this.lastAssistantRefinementSession || null;
-            if (!session || !session.finalPromptPack) {
+            if (!session) {
                 this.showNotice('No final prompt pack to apply. Run refinement first.', 'error');
+                return;
+            }
+            const selectedPromptPack = this.resolveAssistantPromptPackSelection(session);
+            if (!selectedPromptPack) {
+                this.showNotice('Select a valid prompt pack version to apply.', 'error');
                 return;
             }
 
             const $button = $('#assistant-refine-apply-btn');
-            const idleLabel = $button.text() || 'Apply Final Prompt Pack';
+            const idleLabel = $button.text() || 'Apply Selected Prompt Pack';
             $button.prop('disabled', true).text('Applying...');
 
             try {
@@ -847,9 +857,9 @@
                         action: 'polytrans_apply_assistant_prompt_pack',
                         nonce: polytransAssistants.nonce,
                         assistant_id: session.assistantId,
-                        system_prompt: session.finalPromptPack.system_prompt || '',
-                        user_message_template: session.finalPromptPack.user_message_template || '',
-                        expected_output_schema: session.finalPromptPack.expected_output_schema || '{}'
+                        system_prompt: selectedPromptPack.system_prompt || '',
+                        user_message_template: selectedPromptPack.user_message_template || '',
+                        expected_output_schema: selectedPromptPack.expected_output_schema || '{}'
                     }
                 });
 
@@ -857,7 +867,7 @@
                     throw new Error(response?.data?.message || 'Failed to apply prompt pack.');
                 }
 
-                this.showNotice('Final prompt pack applied to assistant.', 'success');
+                this.showNotice('Selected prompt pack applied to assistant.', 'success');
             } catch (error) {
                 const message = this.resolveAjaxErrorMessage(error, 'Failed to apply prompt pack.');
                 this.showNotice(message, 'error');
@@ -874,6 +884,7 @@
             const sourceLanguage = String(config.sourceLanguage || '').trim();
             const targetLanguage = String(config.targetLanguage || '').trim();
             const criteria = String(config.criteria || '').trim();
+            const promptObjective = String(config.promptObjective || '').trim();
             const evaluatorSystemPrompt = String(config.evaluatorSystemPrompt || '').trim();
             const evaluatorTemplate = String(config.evaluatorTemplate || '').trim();
             const adjusterSystemPrompt = String(config.adjusterSystemPrompt || '').trim();
@@ -885,6 +896,7 @@
             const existingIterations = Array.isArray(config.existingIterations) ? config.existingIterations.slice() : [];
             const baseIterationCount = existingIterations.length;
             let currentPromptPack = config.initialPromptPack ? this.normalizePromptPack(config.initialPromptPack) : null;
+            let initialBasePromptPack = config.initialBasePromptPack ? this.normalizePromptPack(config.initialBasePromptPack) : null;
 
             if (!assistantId) {
                 this.showNotice('Assistant context is missing.', 'error');
@@ -1008,6 +1020,7 @@
                             assistant_id: assistantId,
                             run_id: runId,
                             criteria: criteria,
+                            prompt_objective: promptObjective,
                             evaluator_system_prompt: evaluatorSystemPrompt,
                             evaluator_prompt_template: evaluatorTemplate
                         };
@@ -1049,6 +1062,7 @@
                         nonce: polytransAssistants.nonce,
                         assistant_id: assistantId,
                         criteria: criteria,
+                        prompt_objective: promptObjective,
                         adjuster_system_prompt: adjusterSystemPrompt,
                         adjuster_prompt_template: adjusterTemplate,
                         evaluations: JSON.stringify(evaluatedRuns)
@@ -1079,6 +1093,10 @@
                         ? (scoredRuns.reduce((sum, run) => sum + Number(run.evaluation.score || 0), 0) / scoredRuns.length)
                         : null;
 
+                    if (!initialBasePromptPack) {
+                        initialBasePromptPack = this.normalizePromptPack(adjustment.input_prompt_pack || currentPromptPack || {});
+                    }
+
                     iterationResults.push({
                         iteration: iterationNumber,
                         runs: evaluatedRuns,
@@ -1103,37 +1121,64 @@
                     this.renderAssistantRefinementProgress(progressState);
                 }
 
-                progressState.phase = 'completed';
-                progressState.currentPost = '';
-                this.pushRefinementLog(progressState, 'Full re-eval completed.');
-                this.renderAssistantRefinementProgress(progressState);
-
                 const finalIteration = iterationResults.length ? iterationResults[iterationResults.length - 1] : null;
                 const finalAdjustment = finalIteration?.adjustment || {};
                 const finalParsed = finalAdjustment.parsed || {};
-                const finalPromptPack = finalParsed.is_valid_pack
+                const finalOutputPromptPack = finalParsed.is_valid_pack
                     ? this.normalizePromptPack(finalParsed)
-                    : (finalIteration?.output_prompt_pack || currentPromptPack || null);
+                    : (finalIteration?.output_prompt_pack || null);
+                const finalPromptPack = finalOutputPromptPack || currentPromptPack || null;
+
+                let finalEvaluationRuns = [];
+                if (finalOutputPromptPack) {
+                    progressState.phase = 'final_evaluation';
+                    progressState.currentPost = '';
+                    progressState.totalSteps += selectedPosts.length * 2;
+                    this.pushRefinementLog(progressState, 'Final verification: evaluating the selected final prompt pack.');
+                    this.renderAssistantRefinementProgress(progressState);
+                    finalEvaluationRuns = await this.runAssistantFinalVerification({
+                        assistantId,
+                        sourceLanguage,
+                        targetLanguage,
+                        criteria,
+                        promptObjective,
+                        evaluatorSystemPrompt,
+                        evaluatorTemplate,
+                        selectedPosts,
+                        promptPack: finalOutputPromptPack,
+                        progressState
+                    });
+                }
+                progressState.phase = 'completed';
+                progressState.currentPost = '';
+                this.pushRefinementLog(progressState, finalOutputPromptPack ? 'Final verification completed.' : 'Full re-eval completed. Final verification skipped because the last adjuster output was not a valid prompt pack.');
+                this.renderAssistantRefinementProgress(progressState);
 
                 this.lastAssistantRefinementSession = {
                     assistantId,
                     sourceLanguage,
                     targetLanguage,
                     criteria,
+                    promptObjective,
                     evaluatorSystemPrompt,
                     evaluatorTemplate,
                     adjusterSystemPrompt,
                     adjusterTemplate,
                     selectedPosts,
                     iterations: iterationResults,
-                    finalPromptPack
+                    finalPromptPack,
+                    initialBasePromptPack,
+                    finalEvaluationRuns
                 };
 
                 this.renderAssistantRefinementResults({
                     assistantId,
                     criteria,
+                    promptObjective,
                     iterations: iterationResults,
-                    selectedPosts: selectedPosts
+                    selectedPosts: selectedPosts,
+                    initialBasePromptPack,
+                    finalEvaluationRuns
                 });
                 this.showNotice(successMessage, 'success');
             } catch (error) {
@@ -1153,6 +1198,89 @@
                 $reevalButton.prop('disabled', false);
                 $applyButton.prop('disabled', false);
             }
+        },
+
+        /**
+         * Run one final evaluation pass for the latest prompt pack without another adjustment.
+         */
+        runAssistantFinalVerification: async function(config) {
+            const finalRuns = [];
+            const posts = Array.isArray(config.selectedPosts) ? config.selectedPosts : [];
+            const promptPack = this.normalizePromptPack(config.promptPack || {});
+            const progressState = config.progressState || null;
+
+            for (let index = 0; index < posts.length; index++) {
+                const post = posts[index];
+                if (progressState) {
+                    progressState.currentPost = post.title || `Post #${post.id}`;
+                    this.pushRefinementLog(progressState, `Final verification, post ${index + 1}/${posts.length}: assistant execution started.`);
+                    this.renderAssistantRefinementProgress(progressState);
+                }
+
+                const runResponse = await $.ajax({
+                    url: polytransAssistants.ajaxUrl,
+                    type: 'POST',
+                    data: {
+                        action: 'polytrans_run_assistant_refinement_post',
+                        nonce: polytransAssistants.nonce,
+                        assistant_id: config.assistantId,
+                        selected_post_id: post.id,
+                        source_language: config.sourceLanguage,
+                        target_language: config.targetLanguage,
+                        override_system_prompt: promptPack.system_prompt || '',
+                        override_user_message_template: promptPack.user_message_template || '',
+                        override_expected_output_schema: promptPack.expected_output_schema || ''
+                    }
+                });
+                if (!runResponse || !runResponse.success) {
+                    throw new Error(runResponse?.data?.message || `Final verification run failed for post #${post.id}.`);
+                }
+
+                const runData = runResponse.data || {};
+                const runId = String(runData.run_id || '').trim();
+                if (!runId) {
+                    throw new Error(`Final verification run for post #${post.id} did not return run_id.`);
+                }
+                if (progressState) {
+                    progressState.completedSteps += 1;
+                    this.pushRefinementLog(progressState, `Final verification, post ${index + 1}/${posts.length}: assistant done (run_id: ${runId}).`);
+                    this.renderAssistantRefinementProgress(progressState);
+                }
+
+                const evaluateResponse = await $.ajax({
+                    url: polytransAssistants.ajaxUrl,
+                    type: 'POST',
+                    data: {
+                        action: 'polytrans_evaluate_assistant_run',
+                        nonce: polytransAssistants.nonce,
+                        assistant_id: config.assistantId,
+                        run_id: runId,
+                        criteria: config.criteria,
+                        prompt_objective: config.promptObjective,
+                        evaluator_system_prompt: config.evaluatorSystemPrompt,
+                        evaluator_prompt_template: config.evaluatorTemplate
+                    }
+                });
+                if (!evaluateResponse || !evaluateResponse.success) {
+                    throw new Error(evaluateResponse?.data?.message || `Final verification evaluation failed for post #${post.id}.`);
+                }
+
+                const finalRun = Object.assign({}, runData, {
+                    run_id: String(evaluateResponse?.data?.run_id || runId),
+                    evaluation: evaluateResponse?.data?.evaluation || null,
+                    final_post_candidate: evaluateResponse?.data?.final_post_candidate || runData?.final_post_candidate || null,
+                });
+                finalRuns.push(finalRun);
+
+                if (progressState) {
+                    progressState.completedSteps += 1;
+                    const score = evaluateResponse?.data?.evaluation?.score;
+                    this.pushRefinementLog(progressState, `Final verification, post ${index + 1}/${posts.length}: evaluator done${score !== null && score !== undefined ? ` (score ${score})` : ''}.`);
+                    this.renderAssistantRefinementProgress(progressState);
+                }
+            }
+
+            return finalRuns;
         },
 
         /**
@@ -1201,6 +1329,7 @@
             const phaseLabel = {
                 execution: 'Running assistant + evaluator',
                 adjustment: 'Running prompt adjuster',
+                final_evaluation: 'Final verification',
                 completed: 'Completed',
                 failed: 'Failed'
             }[state.phase] || 'Preparing';
@@ -1267,6 +1396,17 @@
             const finalAdjustment = finalIteration?.adjustment || {};
             const finalParsed = finalAdjustment.parsed || {};
             const finalIsValidPack = !!finalParsed.is_valid_pack;
+            const finalEvaluationRuns = Array.isArray(data.finalEvaluationRuns) ? data.finalEvaluationRuns : [];
+            const finalScoredRuns = finalEvaluationRuns.filter((run) => run?.evaluation && run.evaluation.score !== null && run.evaluation.score !== undefined);
+            const finalAverageScore = finalScoredRuns.length
+                ? (finalScoredRuns.reduce((sum, run) => sum + Number(run.evaluation.score || 0), 0) / finalScoredRuns.length)
+                : null;
+            const applyVersionOptions = [
+                `<option value="initial">Before refinement</option>`,
+                ...iterations
+                    .filter((round) => round.output_prompt_pack)
+                    .map((round) => `<option value="iteration:${this.escapeHtml(String(round.iteration || 0))}" ${round === finalIteration ? 'selected' : ''}>After iteration ${this.escapeHtml(String(round.iteration || 0))}</option>`)
+            ].join('');
 
             const avgTableRows = iterations.map((round) => {
                 const avg = round.average_score === null || round.average_score === undefined
@@ -1385,6 +1525,18 @@
             const finalCombinedPack = finalIsValidPack
                 ? this.formatPromptPackArtifact(finalParsed, finalIncludeSchema)
                 : (finalAdjustment.adjuster_response || '');
+            const finalVerificationRows = finalEvaluationRuns.map((run, index) => {
+                const score = run?.evaluation?.score;
+                const runId = String(run?.run_id || '').trim();
+                return `
+                    <tr>
+                        <td>${this.escapeHtml(String(index + 1))}</td>
+                        <td>${this.escapeHtml(run.post_title || `ID ${run.post_id || 0}`)}</td>
+                        <td>${this.escapeHtml(score === null || score === undefined ? 'n/a' : String(score))}</td>
+                        <td>${this.escapeHtml(runId)}</td>
+                    </tr>
+                `;
+            }).join('');
 
             $('#assistant-refinement-results').html(`
                 <div class="test-results success">
@@ -1413,17 +1565,33 @@
                         <pre><code>${this.escapeHtml(data.criteria || '')}</code></pre>
                     </div>
 
+                    <div class="assistant-test-section">
+                        <h5>Primary Purpose</h5>
+                        <pre><code>${this.escapeHtml(data.promptObjective || '')}</code></pre>
+                    </div>
+
                     <div class="assistant-test-section assistant-refinement-actions">
                         <h5>Next Actions</h5>
                         <div class="assistant-refinement-actions-row">
                             <label for="assistant-refine-extra-iterations"><strong>Re-evaluate Again</strong></label>
                             <input type="number" id="assistant-refine-extra-iterations" class="small-text" min="1" max="10" step="1" value="1">
                             <button type="button" id="assistant-refine-reeval-btn" class="button">Re-evaluate Again</button>
-                            <button type="button" id="assistant-refine-apply-btn" class="button button-primary" ${finalIsValidPack ? '' : 'disabled'}>Apply Final Prompt Pack</button>
+                            <label for="assistant-refine-apply-version"><strong>Apply Version</strong></label>
+                            <select id="assistant-refine-apply-version">${applyVersionOptions}</select>
+                            <button type="button" id="assistant-refine-apply-btn" class="button button-primary" ${applyVersionOptions ? '' : 'disabled'}>Apply Selected Prompt Pack</button>
                         </div>
                         <p class="description">
-                            Re-evaluate runs additional full iterations on the same selected posts using the latest prompt pack. Apply saves the final prompt pack to this assistant.
+                            Re-evaluate runs additional full iterations on the same selected posts using the latest prompt pack. Apply saves the selected prompt pack version to this assistant.
                         </p>
+                    </div>
+
+                    <div class="assistant-test-section">
+                        <h5>Final Verification</h5>
+                        <p><strong>Average score after final adjustment:</strong> ${this.escapeHtml(finalAverageScore === null ? 'n/a' : finalAverageScore.toFixed(2))}</p>
+                        <table class="widefat striped">
+                            <thead><tr><th>#</th><th>Post</th><th>Score</th><th>Run ID</th></tr></thead>
+                            <tbody>${finalVerificationRows || '<tr><td colspan="4">No final verification data.</td></tr>'}</tbody>
+                        </table>
                     </div>
 
                     <div class="assistant-test-section">
@@ -1491,6 +1659,24 @@
                     ${partialInfo}
                 </div>
             `).show();
+        },
+
+        resolveAssistantPromptPackSelection: function(session) {
+            const selection = String($('#assistant-refine-apply-version').val() || 'final');
+            if (selection === 'initial') {
+                return session.initialBasePromptPack ? this.normalizePromptPack(session.initialBasePromptPack) : null;
+            }
+
+            const match = selection.match(/^iteration:(\d+)$/);
+            if (match) {
+                const iterationNumber = parseInt(match[1], 10);
+                const iteration = Array.isArray(session.iterations)
+                    ? session.iterations.find((item) => parseInt(item.iteration || 0, 10) === iterationNumber)
+                    : null;
+                return iteration?.output_prompt_pack ? this.normalizePromptPack(iteration.output_prompt_pack) : null;
+            }
+
+            return session.finalPromptPack ? this.normalizePromptPack(session.finalPromptPack) : null;
         },
 
         /**

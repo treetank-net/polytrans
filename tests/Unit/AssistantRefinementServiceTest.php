@@ -4,6 +4,13 @@ declare(strict_types=1);
 
 use PolyTrans\Assistants\Testing\AssistantRefinementService;
 
+if (!function_exists('wp_strip_all_tags')) {
+    function wp_strip_all_tags($text)
+    {
+        return strip_tags((string) $text);
+    }
+}
+
 function invoke_assistant_refinement_method(string $methodName, ...$args)
 {
     $service = new AssistantRefinementService();
@@ -67,4 +74,19 @@ it('treats text assistant output as final content candidate', function () {
         'slug' => 'existing-title',
         'meta' => ['review' => 'ok'],
     ]);
+});
+
+it('uses assistant description as default refinement primary purpose', function () {
+    $objective = invoke_assistant_refinement_method(
+        'resolvePromptObjective',
+        '',
+        ['description' => '<p>Translate WordPress posts while preserving formatting.</p>']
+    );
+
+    expect($objective)->toBe('Translate WordPress posts while preserving formatting.');
+    expect(invoke_assistant_refinement_method(
+        'resolvePromptObjective',
+        'Keep SEO rewrite behavior.',
+        ['description' => 'Translate posts.']
+    ))->toBe('Keep SEO rewrite behavior.');
 });
