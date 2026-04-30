@@ -25,6 +25,21 @@
 
                 <tr>
                     <th scope="row">
+                        <label for="assistant-description">{{ __('Description', 'polytrans') }}</label>
+                    </th>
+                    <td>
+                        <textarea id="assistant-description" name="description" class="large-text" rows="3">{{ assistant.description|default('')|e('html') }}</textarea>
+                        <p>
+                            <button type="button" id="assistant-generate-description-btn" class="button">
+                                {{ __('Generate Description', 'polytrans') }}
+                            </button>
+                        </p>
+                        <p class="description">{{ __('Short description of the assistant purpose. Prompt refinement uses this as the default primary purpose.', 'polytrans') }}</p>
+                    </td>
+                </tr>
+
+                <tr>
+                    <th scope="row">
                         <label for="assistant-provider">{{ __('Provider', 'polytrans') }} <span class="required">*</span></label>
                     </th>
                     <td>

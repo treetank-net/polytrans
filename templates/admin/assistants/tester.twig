@@ -105,6 +105,11 @@
                             <th scope="row"><label for="assistant-refine-objective">{{ __('Primary Purpose', 'polytrans') }}</label></th>
                             <td>
                                 <textarea id="assistant-refine-objective" class="large-text code" rows="3" placeholder="{{ __('Describe what this prompt must still do after refinement.', 'polytrans') }}">{{ assistant.description|default('')|e('html') }}</textarea>
+                                <p>
+                                    <button type="button" id="assistant-generate-objective-btn" class="button">
+                                        {{ __('Generate from Assistant Prompt', 'polytrans') }}
+                                    </button>
+                                </p>
                                 <p class="description">{{ __('Loaded from the assistant description. The evaluator and adjuster use this as the original job that must remain aligned while applying the refinement criteria.', 'polytrans') }}</p>
                             </td>
                         </tr>

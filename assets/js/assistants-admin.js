@@ -34,6 +34,8 @@
             
             // Refresh models button
             $('#refresh-models').on('click', this.handleRefreshModels.bind(this));
+            $('#assistant-generate-description-btn').on('click', this.handleAssistantDescriptionGeneration.bind(this));
+            $('#assistant-generate-objective-btn').on('click', this.handleAssistantObjectiveGeneration.bind(this));
 
             // Response format change - show/hide schema field
             $('#assistant-response-format').on('change', this.handleResponseFormatChange.bind(this));
@@ -424,6 +426,7 @@
                 nonce: polytransAssistants.nonce,
                 assistant_id: $form.find('input[name="assistant_id"]').val(),
                 name: name,
+                description: $('#assistant-description').val() || '',
                 provider: provider,
                 model: $('#assistant-model').val(),
                 system_prompt: systemPrompt,
@@ -456,6 +459,159 @@
                     AssistantsAdmin.showNotice(polytransAssistants.strings.saveError, 'error');
                     $submitBtn.prop('disabled', false).text(polytransAssistants.strings.save);
                 }
+            });
+        },
+
+        handleAssistantDescriptionGeneration: function(e) {
+            if (e && typeof e.preventDefault === 'function') {
+                e.preventDefault();
+            }
+
+            this.openAssistantDescriptionModal({
+                title: 'Generate Assistant Description',
+                applySelector: '#assistant-description',
+                currentDescription: $('#assistant-description').val() || '',
+                applyLabel: 'Apply to Description'
+            });
+        },
+
+        handleAssistantObjectiveGeneration: function(e) {
+            if (e && typeof e.preventDefault === 'function') {
+                e.preventDefault();
+            }
+
+            this.openAssistantDescriptionModal({
+                title: 'Generate Primary Purpose',
+                applySelector: '#assistant-refine-objective',
+                currentDescription: $('#assistant-refine-objective').val() || '',
+                applyLabel: 'Apply as Primary Purpose'
+            });
+        },
+
+        openAssistantDescriptionModal: function(config) {
+            const prompts = polytransAssistants.descriptionPrompts || {};
+            this.openDescriptionGeneratorModal({
+                title: config.title || 'Generate Description',
+                systemPrompt: prompts.system || '',
+                promptTemplate: prompts.assistant || '',
+                currentDescription: config.currentDescription || '',
+                applyLabel: config.applyLabel || 'Apply',
+                generateLabel: 'Generate Description',
+                onGenerate: (systemPrompt, promptTemplate) => {
+                    const assistantData = window.polytransAssistantData || {};
+                    return $.ajax({
+                        url: polytransAssistants.ajaxUrl,
+                        type: 'POST',
+                        data: {
+                            action: 'polytrans_generate_assistant_description',
+                            nonce: polytransAssistants.nonce,
+                            assistant_id: $('input[name="assistant_id"]').val() || assistantData.id || 0,
+                            name: $('#assistant-name').val() || assistantData.name || '',
+                            description: config.currentDescription || $('#assistant-description').val() || assistantData.description || '',
+                            provider: $('#assistant-provider').val() || assistantData.provider || 'openai',
+                            model: $('#assistant-model').val() || assistantData.model || '',
+                            system_prompt: this.systemPromptEditor ? $(this.systemPromptEditor).val() : (assistantData.system_prompt || ''),
+                            user_message_template: this.userMessageEditor ? $(this.userMessageEditor).val() : (assistantData.user_message_template || ''),
+                            response_format: $('#assistant-response-format').val() || assistantData.expected_format || 'text',
+                            expected_output_schema: $('#assistant-expected-output-schema').val() || assistantData.expected_output_schema || '',
+                            description_system_prompt: systemPrompt,
+                            description_prompt_template: promptTemplate
+                        }
+                    });
+                },
+                onApply: (description) => {
+                    const $target = $(config.applySelector);
+                    $target.val(description).trigger('change');
+                }
+            });
+        },
+
+        openDescriptionGeneratorModal: function(config) {
+            $('.polytrans-description-modal-backdrop').remove();
+
+            const modalHtml = `
+                <div class="polytrans-description-modal-backdrop">
+                    <div class="polytrans-description-modal" role="dialog" aria-modal="true">
+                        <div class="polytrans-description-modal-header">
+                            <h2>${this.escapeHtml(config.title || 'Generate Description')}</h2>
+                            <button type="button" class="button-link polytrans-description-modal-close" aria-label="Close">&times;</button>
+                        </div>
+                        <div class="polytrans-description-modal-body">
+                            <label><strong>Generated Description</strong></label>
+                            <textarea class="large-text polytrans-description-result" rows="4">${this.escapeHtml(config.currentDescription || '')}</textarea>
+                            <details class="polytrans-description-prompts" open>
+                                <summary>Generator Prompts</summary>
+                                <label><strong>System Prompt</strong></label>
+                                <textarea class="large-text code polytrans-description-system-prompt" rows="6">${this.escapeHtml(config.systemPrompt || '')}</textarea>
+                                <label><strong>User Message Template</strong></label>
+                                <textarea class="large-text code polytrans-description-prompt-template" rows="12">${this.escapeHtml(config.promptTemplate || '')}</textarea>
+                            </details>
+                            <details class="polytrans-description-rendered">
+                                <summary>Rendered Prompt and Raw Response</summary>
+                                <h4>Rendered System Prompt</h4>
+                                <pre><code class="polytrans-description-rendered-system"></code></pre>
+                                <h4>Rendered User Message</h4>
+                                <pre><code class="polytrans-description-rendered-user"></code></pre>
+                                <h4>Raw Response</h4>
+                                <pre><code class="polytrans-description-raw-response"></code></pre>
+                            </details>
+                            <div class="polytrans-description-modal-error" style="display:none;"></div>
+                        </div>
+                        <div class="polytrans-description-modal-footer">
+                            <button type="button" class="button button-primary polytrans-description-generate">${this.escapeHtml(config.generateLabel || 'Generate')}</button>
+                            <button type="button" class="button button-primary polytrans-description-apply">${this.escapeHtml(config.applyLabel || 'Apply')}</button>
+                            <button type="button" class="button polytrans-description-modal-close">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            const $modal = $(modalHtml);
+            $('body').append($modal);
+
+            const close = () => $modal.remove();
+            $modal.on('click', '.polytrans-description-modal-close', close);
+            $modal.on('click', function(event) {
+                if (event.target === $modal[0]) {
+                    close();
+                }
+            });
+
+            $modal.on('click', '.polytrans-description-generate', async () => {
+                const $button = $modal.find('.polytrans-description-generate');
+                const $error = $modal.find('.polytrans-description-modal-error');
+                $button.prop('disabled', true).text('Generating...');
+                $error.hide().text('');
+
+                try {
+                    const response = await config.onGenerate(
+                        $modal.find('.polytrans-description-system-prompt').val() || '',
+                        $modal.find('.polytrans-description-prompt-template').val() || ''
+                    );
+                    if (!response || !response.success) {
+                        throw new Error(response?.data?.message || 'Description generation failed.');
+                    }
+                    const data = response.data || {};
+                    $modal.find('.polytrans-description-result').val(data.description || '');
+                    $modal.find('.polytrans-description-rendered-system').text(data.rendered_system_prompt || '');
+                    $modal.find('.polytrans-description-rendered-user').text(data.rendered_prompt || '');
+                    $modal.find('.polytrans-description-raw-response').text(data.raw_response || '');
+                } catch (error) {
+                    const message = this.resolveAjaxErrorMessage(error, 'Description generation failed.');
+                    $error.text(message).show();
+                } finally {
+                    $button.prop('disabled', false).text(config.generateLabel || 'Generate');
+                }
+            });
+
+            $modal.on('click', '.polytrans-description-apply', () => {
+                const description = ($modal.find('.polytrans-description-result').val() || '').trim();
+                if (!description) {
+                    $modal.find('.polytrans-description-modal-error').text('Description is empty.').show();
+                    return;
+                }
+                config.onApply(description);
+                close();
             });
         },
 

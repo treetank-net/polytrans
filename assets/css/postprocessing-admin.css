@@ -4,6 +4,80 @@
     margin-bottom: 20px;
 }
 
+.polytrans-description-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 100000;
+    background: rgba(0, 0, 0, 0.42);
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 48px 20px 20px;
+    box-sizing: border-box;
+}
+
+.polytrans-description-modal {
+    width: min(980px, 100%);
+    max-height: calc(100vh - 80px);
+    overflow: auto;
+    background: #fff;
+    border: 1px solid #c3c4c7;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.28);
+}
+
+.polytrans-description-modal-header,
+.polytrans-description-modal-footer {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 18px;
+    border-bottom: 1px solid #dcdcde;
+}
+
+.polytrans-description-modal-footer {
+    border-top: 1px solid #dcdcde;
+    border-bottom: 0;
+    justify-content: flex-end;
+}
+
+.polytrans-description-modal-header h2 {
+    flex: 1;
+    margin: 0;
+    font-size: 18px;
+    line-height: 1.3;
+}
+
+.polytrans-description-modal-close {
+    font-size: 24px;
+    line-height: 1;
+    text-decoration: none;
+}
+
+.polytrans-description-modal-body {
+    padding: 18px;
+}
+
+.polytrans-description-modal-body textarea,
+.polytrans-description-modal-body pre {
+    width: 100%;
+    max-width: none;
+    box-sizing: border-box;
+}
+
+.polytrans-description-modal-body label,
+.polytrans-description-modal-body summary {
+    display: block;
+    margin: 12px 0 6px;
+}
+
+.polytrans-description-modal-error {
+    margin-top: 12px;
+    padding: 10px;
+    border-left: 4px solid #d63638;
+    background: #fcf0f1;
+    color: #8a2424;
+}
+
 .workflow-statistics .postbox {
     max-width: none;
 }

@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.13.5] - 2026-04-30
+
+### Added
+- Assistant editor now exposes and saves assistant descriptions used as the default primary purpose during refinement.
+- Assistant and workflow refinement screens can generate concise primary-purpose descriptions from the current prompt or workflow context.
+- Workflow editor can generate descriptions for the whole workflow and individual workflow steps.
+- Refinement prompt settings now include configurable system and user-message templates for assistant, workflow, and workflow-step description generators.
+- Description generation results expose editable prompts, rendered prompts, and raw model output before applying the generated description.
+- Unit coverage for description generator prompt defaults, context building, and response parsing.
+
+### Fixed
+- CI now runs Pest unit and architecture suites separately to avoid memory exhaustion in the combined run.
+
 ## [1.13.4] - 2026-04-30
 
 ### Added

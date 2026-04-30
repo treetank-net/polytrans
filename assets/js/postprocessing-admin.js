@@ -421,6 +421,11 @@
                             <th><label for="workflow-description">Description</label></th>
                             <td>
                                 <textarea id="workflow-description" name="workflow_description" rows="3" class="large-text">${escapeHtml(workflowData.description || '')}</textarea>
+                                <p>
+                                    <button type="button" class="button workflow-generate-description" data-description-target="workflow">
+                                        Generate Workflow Description
+                                    </button>
+                                </p>
                                 <p class="description">Optional description of what this workflow does</p>
                             </td>
                         </tr>
@@ -625,6 +630,11 @@
             <div class="workflow-step-field">
                 <label for="step-${index}-description">Step Description</label>
                 <textarea id="step-${index}-description" name="steps[${index}][description]" rows="2" class="large-text">${escapeHtml(stepDescription)}</textarea>
+                <p>
+                    <button type="button" class="button workflow-generate-description" data-description-target="step" data-step-index="${index}">
+                        Generate Step Description
+                    </button>
+                </p>
                 <small>Optional: describe the original purpose of this step. Workflow prompt refinement uses this as the primary alignment goal.</small>
             </div>
             <div class="workflow-step-field">
@@ -1010,6 +1020,11 @@
         $(document).on('click', '#migrate-current-workflow-btn', function (e) {
             e.preventDefault();
             migrateCurrentWorkflow($(this));
+        });
+
+        $(document).on('click', '.workflow-generate-description', function (e) {
+            e.preventDefault();
+            handleWorkflowDescriptionGeneration($(this));
         });
 
         // Step toggle
@@ -1410,13 +1425,9 @@
     }
 
     /**
-     * Save workflow
+     * Collect current workflow editor state.
      */
-    function saveWorkflow() {
-        const form = $('#workflow-editor-form');
-        const formData = new FormData(form[0]);
-
-        // Convert form data to workflow object
+    function collectWorkflowFromForm() {
         const workflow = {
             id: $('input[name="workflow_id"]').val(),
             name: $('#workflow-name').val(),
@@ -1493,6 +1504,16 @@
             workflow.steps.push(stepData);
         });
 
+        return workflow;
+    }
+
+    /**
+     * Save workflow
+     */
+    function saveWorkflow() {
+        const form = $('#workflow-editor-form');
+        const workflow = collectWorkflowFromForm();
+
         // Show loading state
         form.addClass('workflow-loading');
 
@@ -1525,6 +1546,149 @@
             complete: function () {
                 form.removeClass('workflow-loading');
             }
+        });
+    }
+
+    function handleWorkflowDescriptionGeneration($button) {
+        const targetType = String($button.data('description-target') || 'workflow');
+        const stepIndex = parseInt($button.data('step-index'), 10);
+        const workflow = collectWorkflowFromForm();
+        const prompts = polytransWorkflows.descriptionPrompts || {};
+        const isStep = targetType === 'step' && Number.isFinite(stepIndex);
+        const targetStepId = isStep ? String($(`#step-${stepIndex}-id`).val() || `step_${stepIndex}`) : '';
+        const applySelector = isStep ? `#step-${stepIndex}-description` : '#workflow-description';
+
+        openWorkflowDescriptionModal({
+            title: isStep ? 'Generate Step Description' : 'Generate Workflow Description',
+            workflow,
+            targetType: isStep ? 'step' : 'workflow',
+            targetStepId,
+            systemPrompt: prompts.system || '',
+            promptTemplate: isStep ? (prompts.workflowStep || '') : (prompts.workflow || ''),
+            currentDescription: $(applySelector).val() || '',
+            applyLabel: isStep ? 'Apply to Step Description' : 'Apply to Workflow Description',
+            onApply: (description) => {
+                $(applySelector).val(description).trigger('change');
+            }
+        });
+    }
+
+    function handleWorkflowRefinementDescriptionGeneration(targetType) {
+        const workflow = window.polytransWorkflowTestData || {};
+        const prompts = polytransWorkflows.descriptionPrompts || {};
+        const isStep = targetType === 'step';
+        const targetStepId = isStep ? String($('#workflow-refine-target-step').val() || '') : '';
+
+        openWorkflowDescriptionModal({
+            title: isStep ? 'Generate Target Step Purpose' : 'Generate Workflow Purpose',
+            workflow,
+            targetType: isStep ? 'step' : 'workflow',
+            targetStepId,
+            systemPrompt: prompts.system || '',
+            promptTemplate: isStep ? (prompts.workflowStep || '') : (prompts.workflow || ''),
+            currentDescription: $('#workflow-refine-objective').val() || '',
+            applyLabel: 'Apply as Primary Purpose',
+            onApply: (description) => {
+                $('#workflow-refine-objective').val(description).trigger('change');
+            }
+        });
+    }
+
+    function openWorkflowDescriptionModal(config) {
+        $('.polytrans-description-modal-backdrop').remove();
+
+        const modalHtml = `
+            <div class="polytrans-description-modal-backdrop">
+                <div class="polytrans-description-modal" role="dialog" aria-modal="true">
+                    <div class="polytrans-description-modal-header">
+                        <h2>${escapeHtml(config.title || 'Generate Description')}</h2>
+                        <button type="button" class="button-link polytrans-description-modal-close" aria-label="Close">&times;</button>
+                    </div>
+                    <div class="polytrans-description-modal-body">
+                        <label><strong>Generated Description</strong></label>
+                        <textarea class="large-text polytrans-description-result" rows="4">${escapeHtml(config.currentDescription || '')}</textarea>
+                        <details class="polytrans-description-prompts" open>
+                            <summary>Generator Prompts</summary>
+                            <label><strong>System Prompt</strong></label>
+                            <textarea class="large-text code polytrans-description-system-prompt" rows="6">${escapeHtml(config.systemPrompt || '')}</textarea>
+                            <label><strong>User Message Template</strong></label>
+                            <textarea class="large-text code polytrans-description-prompt-template" rows="12">${escapeHtml(config.promptTemplate || '')}</textarea>
+                        </details>
+                        <details class="polytrans-description-rendered">
+                            <summary>Rendered Prompt and Raw Response</summary>
+                            <h4>Rendered System Prompt</h4>
+                            <pre><code class="polytrans-description-rendered-system"></code></pre>
+                            <h4>Rendered User Message</h4>
+                            <pre><code class="polytrans-description-rendered-user"></code></pre>
+                            <h4>Raw Response</h4>
+                            <pre><code class="polytrans-description-raw-response"></code></pre>
+                        </details>
+                        <div class="polytrans-description-modal-error" style="display:none;"></div>
+                    </div>
+                    <div class="polytrans-description-modal-footer">
+                        <button type="button" class="button button-primary polytrans-description-generate">Generate Description</button>
+                        <button type="button" class="button button-primary polytrans-description-apply">${escapeHtml(config.applyLabel || 'Apply')}</button>
+                        <button type="button" class="button polytrans-description-modal-close">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        const $modal = $(modalHtml);
+        $('body').append($modal);
+
+        const close = () => $modal.remove();
+        $modal.on('click', '.polytrans-description-modal-close', close);
+        $modal.on('click', function(event) {
+            if (event.target === $modal[0]) {
+                close();
+            }
+        });
+
+        $modal.on('click', '.polytrans-description-generate', async function() {
+            const $generateButton = $(this);
+            const $error = $modal.find('.polytrans-description-modal-error');
+            $generateButton.prop('disabled', true).text('Generating...');
+            $error.hide().text('');
+
+            try {
+                const response = await $.ajax({
+                    url: polytransWorkflows.ajaxUrl,
+                    type: 'POST',
+                    data: {
+                        action: 'polytrans_generate_workflow_description',
+                        nonce: polytransWorkflows.nonce,
+                        workflow: config.workflow || {},
+                        target_type: config.targetType || 'workflow',
+                        target_step_id: config.targetStepId || '',
+                        description_system_prompt: $modal.find('.polytrans-description-system-prompt').val() || '',
+                        description_prompt_template: $modal.find('.polytrans-description-prompt-template').val() || ''
+                    }
+                });
+                if (!response || !response.success) {
+                    throw new Error(response?.data?.message || 'Description generation failed.');
+                }
+
+                const data = response.data || {};
+                $modal.find('.polytrans-description-result').val(data.description || '');
+                $modal.find('.polytrans-description-rendered-system').text(data.rendered_system_prompt || '');
+                $modal.find('.polytrans-description-rendered-user').text(data.rendered_prompt || '');
+                $modal.find('.polytrans-description-raw-response').text(data.raw_response || '');
+            } catch (error) {
+                $error.text(resolveWorkflowAjaxErrorMessage(error, 'Description generation failed.')).show();
+            } finally {
+                $generateButton.prop('disabled', false).text('Generate Description');
+            }
+        });
+
+        $modal.on('click', '.polytrans-description-apply', function() {
+            const description = ($modal.find('.polytrans-description-result').val() || '').trim();
+            if (!description) {
+                $modal.find('.polytrans-description-modal-error').text('Description is empty.').show();
+                return;
+            }
+            config.onApply(description);
+            close();
         });
     }
 
@@ -1797,6 +1961,10 @@ However, the integration of AI in healthcare also raises important questions abo
                                 <th scope="row"><label for="workflow-refine-objective">Primary Purpose</label></th>
                                 <td>
                                     <textarea id="workflow-refine-objective" class="large-text code" rows="3" placeholder="Describe what the selected workflow step must still do after refinement.">${escapeHtml(refinableSteps[0]?.description || '')}</textarea>
+                                    <p>
+                                        <button type="button" id="workflow-refine-generate-target-description" class="button">Generate Target Step Purpose</button>
+                                        <button type="button" id="workflow-refine-generate-workflow-description" class="button">Generate Workflow Description</button>
+                                    </p>
                                     <p class="description">Loaded from the selected step description. The evaluator and adjuster use this as the original job that must remain aligned while applying the refinement criteria.</p>
                                 </td>
                             </tr>
@@ -1896,6 +2064,14 @@ However, the integration of AI in healthcare also raises important questions abo
         $('#workflow-refine-refresh-posts').on('click', function (e) {
             e.preventDefault();
             loadWorkflowRefinementPosts();
+        });
+        $('#workflow-refine-generate-target-description').on('click', function (e) {
+            e.preventDefault();
+            handleWorkflowRefinementDescriptionGeneration('step');
+        });
+        $('#workflow-refine-generate-workflow-description').on('click', function (e) {
+            e.preventDefault();
+            handleWorkflowRefinementDescriptionGeneration('workflow');
         });
 
         $('#workflow-refine-select-all-posts').on('click', function (e) {

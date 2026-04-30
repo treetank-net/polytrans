@@ -233,6 +233,10 @@ class TranslationSettings
             PromptRefinementSettings::WORKFLOW_EVALUATOR_KEY,
             PromptRefinementSettings::WORKFLOW_ADJUSTER_SYSTEM_KEY,
             PromptRefinementSettings::WORKFLOW_ADJUSTER_KEY,
+            PromptRefinementSettings::DESCRIPTION_GENERATOR_SYSTEM_KEY,
+            PromptRefinementSettings::ASSISTANT_DESCRIPTION_GENERATOR_KEY,
+            PromptRefinementSettings::WORKFLOW_DESCRIPTION_GENERATOR_KEY,
+            PromptRefinementSettings::WORKFLOW_STEP_DESCRIPTION_GENERATOR_KEY,
         ];
         foreach ($prompt_template_keys as $prompt_template_key) {
             $settings[$prompt_template_key] = array_key_exists($prompt_template_key, $_POST)

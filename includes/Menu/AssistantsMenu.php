@@ -13,6 +13,7 @@ use PolyTrans\Assistants\AssistantManager;
 use PolyTrans\Assistants\AssistantExecutor;
 use PolyTrans\Assistants\AssistantMigration;
 use PolyTrans\Assistants\Testing\AssistantRefinementService;
+use PolyTrans\PromptRefinement\DescriptionGeneratorService;
 use PolyTrans\PromptRefinement\PromptRefinementSettings;
 use PolyTrans\Templating\TemplateRenderer;
 use PolyTrans\Providers\SettingsProviderInterface;
@@ -58,6 +59,7 @@ class AssistantsMenu
         add_action('wp_ajax_polytrans_refine_assistant_post', [$this, 'ajax_refine_assistant_post']);
         add_action('wp_ajax_polytrans_adjust_assistant_prompt', [$this, 'ajax_adjust_assistant_prompt']);
         add_action('wp_ajax_polytrans_apply_assistant_prompt_pack', [$this, 'ajax_apply_assistant_prompt_pack']);
+        add_action('wp_ajax_polytrans_generate_assistant_description', [$this, 'ajax_generate_assistant_description']);
     }
 
     /**
@@ -168,7 +170,11 @@ class AssistantsMenu
             'responseFormats' => [
                 'text' => __('Text', 'polytrans'),
                 'json' => __('JSON', 'polytrans')
-            ]
+            ],
+            'descriptionPrompts' => [
+                'system' => PromptRefinementSettings::descriptionGeneratorSystem(),
+                'assistant' => PromptRefinementSettings::assistantDescriptionGenerator(),
+            ],
         ]);
     }
 
@@ -238,7 +244,11 @@ class AssistantsMenu
             'responseFormats' => [
                 'text' => __('Text', 'polytrans'),
                 'json' => __('JSON', 'polytrans')
-            ]
+            ],
+            'descriptionPrompts' => [
+                'system' => PromptRefinementSettings::descriptionGeneratorSystem(),
+                'assistant' => PromptRefinementSettings::assistantDescriptionGenerator(),
+            ],
         ]);
 
         // Add inline script with assistant data
@@ -284,6 +294,12 @@ class AssistantsMenu
         if (!$assistant) {
             wp_die(esc_html__('Assistant not found.', 'polytrans'));
         }
+
+        wp_add_inline_script(
+            'polytrans-assistants',
+            'window.polytransAssistantData = ' . wp_json_encode($assistant) . ';',
+            'after'
+        );
 
         // phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped -- Twig templates handle escaping
         echo TemplateRenderer::render('admin/assistants/tester.twig', [
@@ -348,6 +364,7 @@ class AssistantsMenu
                 'name' => '',
                 'provider' => 'openai',
                 'model' => '',
+                'description' => '',
                 'system_prompt' => '',
                 'user_message_template' => '',
                 'response_format' => 'text',
@@ -498,6 +515,7 @@ class AssistantsMenu
         $system_prompt = isset($_POST['system_prompt']) ? sanitize_textarea_field(wp_unslash($_POST['system_prompt'])) : '';
         $user_message_template = isset($_POST['user_message_template']) ? sanitize_textarea_field(wp_unslash($_POST['user_message_template'])) : '';
         $response_format = isset($_POST['response_format']) ? sanitize_text_field(wp_unslash($_POST['response_format'])) : 'text';
+        $description = isset($_POST['description']) ? wp_kses_post(wp_unslash($_POST['description'])) : '';
         $expected_output_schema = null;
         if (isset($_POST['expected_output_schema'])) {
             $expected_output_schema = sanitize_textarea_field(wp_unslash($_POST['expected_output_schema']));
@@ -548,6 +566,7 @@ class AssistantsMenu
         // Prepare assistant data matching Assistant Manager structure
         $assistant_data = [
             'name' => $name,
+            'description' => $description,
             'provider' => $provider,
             'system_prompt' => $system_prompt,
             'user_message_template' => $user_message_template,
@@ -1097,6 +1116,55 @@ class AssistantsMenu
             $system_prompt,
             $user_message_template,
             $expected_output_schema
+        );
+
+        $this->send_assistant_refinement_result($result);
+    }
+
+    /**
+     * AJAX: Generate concise assistant description from assistant prompts.
+     */
+    public function ajax_generate_assistant_description()
+    {
+        check_ajax_referer('polytrans_assistants', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => __('Permission denied.', 'polytrans')]);
+        }
+
+        $assistant_id = isset($_POST['assistant_id']) ? intval($_POST['assistant_id']) : 0;
+        $stored_assistant = $assistant_id > 0 ? AssistantManager::get_assistant($assistant_id) : [];
+        if (!is_array($stored_assistant)) {
+            $stored_assistant = [];
+        }
+
+        $provider = isset($_POST['provider']) ? sanitize_text_field(wp_unslash($_POST['provider'])) : (string) ($stored_assistant['provider'] ?? 'openai');
+        $model = isset($_POST['model']) ? sanitize_text_field(wp_unslash($_POST['model'])) : '';
+        $api_parameters = is_array($stored_assistant['api_parameters'] ?? null) ? $stored_assistant['api_parameters'] : [];
+        if ($model !== '') {
+            $api_parameters['model'] = $model;
+        }
+        $api_parameters['temperature'] = 0.2;
+
+        $assistant = array_merge($stored_assistant, [
+            'id' => $assistant_id,
+            'name' => isset($_POST['name']) ? sanitize_text_field(wp_unslash($_POST['name'])) : (string) ($stored_assistant['name'] ?? ''),
+            'description' => isset($_POST['description']) ? wp_kses_post(wp_unslash($_POST['description'])) : (string) ($stored_assistant['description'] ?? ''),
+            'provider' => $provider,
+            'system_prompt' => isset($_POST['system_prompt']) ? (string) wp_unslash($_POST['system_prompt']) : (string) ($stored_assistant['system_prompt'] ?? ''),
+            'user_message_template' => isset($_POST['user_message_template']) ? (string) wp_unslash($_POST['user_message_template']) : (string) ($stored_assistant['user_message_template'] ?? ''),
+            'expected_format' => isset($_POST['response_format']) ? sanitize_text_field(wp_unslash($_POST['response_format'])) : (string) ($stored_assistant['expected_format'] ?? 'text'),
+            'expected_output_schema' => isset($_POST['expected_output_schema']) ? (string) wp_unslash($_POST['expected_output_schema']) : ($stored_assistant['expected_output_schema'] ?? null),
+            'api_parameters' => $api_parameters,
+        ]);
+
+        $system_prompt_template = isset($_POST['description_system_prompt']) ? (string) wp_unslash($_POST['description_system_prompt']) : '';
+        $prompt_template = isset($_POST['description_prompt_template']) ? (string) wp_unslash($_POST['description_prompt_template']) : '';
+
+        $result = (new DescriptionGeneratorService())->generateAssistantDescription(
+            $assistant,
+            $system_prompt_template,
+            $prompt_template
         );
 
         $this->send_assistant_refinement_result($result);

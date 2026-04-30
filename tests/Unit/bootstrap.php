@@ -47,6 +47,12 @@ if (!function_exists('sanitize_text_field')) {
     }
 }
 
+if (!function_exists('wp_strip_all_tags')) {
+    function wp_strip_all_tags($text) {
+        return strip_tags((string) $text);
+    }
+}
+
 if (!function_exists('get_option')) {
     function get_option($option, $default = false) {
         return $GLOBALS['polytrans_test_options'][$option] ?? $default;

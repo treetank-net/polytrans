@@ -123,3 +123,17 @@ it('loads prompt refinement templates from settings with built-in fallback', fun
         PromptRefinementSettings::ASSISTANT_ADJUSTER_KEY => '',
     ]))->toBe(DefaultPromptTemplates::assistantAdjuster());
 });
+
+it('includes description generator templates in prompt refinement settings', function () {
+    $defaults = PromptRefinementSettings::defaults();
+    $current = PromptRefinementSettings::current([]);
+
+    expect($defaults[PromptRefinementSettings::DESCRIPTION_GENERATOR_SYSTEM_KEY])->toContain('admin-facing descriptions');
+    expect($defaults[PromptRefinementSettings::ASSISTANT_DESCRIPTION_GENERATOR_KEY])->toContain('{{ assistant_name }}');
+    expect($defaults[PromptRefinementSettings::WORKFLOW_DESCRIPTION_GENERATOR_KEY])->toContain('{{ workflow_steps_json }}');
+    expect($defaults[PromptRefinementSettings::WORKFLOW_STEP_DESCRIPTION_GENERATOR_KEY])->toContain('{{ target_step_json }}');
+    expect($current[PromptRefinementSettings::DESCRIPTION_GENERATOR_SYSTEM_KEY])->toBe(DefaultPromptTemplates::descriptionGeneratorSystem());
+    expect(PromptRefinementSettings::workflowStepDescriptionGenerator([
+        PromptRefinementSettings::WORKFLOW_STEP_DESCRIPTION_GENERATOR_KEY => '',
+    ]))->toBe(DefaultPromptTemplates::workflowStepDescriptionGenerator());
+});

@@ -11,6 +11,7 @@ namespace PolyTrans\Menu;
 use PolyTrans\Assistants\AssistantManager;
 use PolyTrans\Assistants\AssistantMigration;
 use PolyTrans\PostProcessing\Testing\WorkflowRefinementService;
+use PolyTrans\PromptRefinement\DescriptionGeneratorService;
 use PolyTrans\PromptRefinement\PromptRefinementSettings;
 use PolyTrans\Templating\TemplateRenderer;
 
@@ -54,6 +55,7 @@ class PostprocessingMenu
         add_action('wp_ajax_polytrans_evaluate_workflow_refinement_run', [$this, 'ajax_evaluate_workflow_refinement_run']);
         add_action('wp_ajax_polytrans_adjust_workflow_prompt', [$this, 'ajax_adjust_workflow_prompt']);
         add_action('wp_ajax_polytrans_apply_workflow_prompt_pack', [$this, 'ajax_apply_workflow_prompt_pack']);
+        add_action('wp_ajax_polytrans_generate_workflow_description', [$this, 'ajax_generate_workflow_description']);
         // Deprecated - use polytrans_load_assistants instead
         add_action('wp_ajax_polytrans_load_openai_assistants_for_workflow', [$this, 'ajax_load_openai_assistants_for_workflow']);
         add_action('wp_ajax_polytrans_load_managed_assistants', [$this, 'ajax_load_managed_assistants']);
@@ -164,7 +166,12 @@ class PostprocessingMenu
                     'migrateWorkflow' => __('Migrate this workflow', 'polytrans'),
                     'migratingWorkflow' => __('Migrating...', 'polytrans'),
                     'migrationError' => __('Migration failed. Please check logs.', 'polytrans'),
-                ]
+                ],
+                'descriptionPrompts' => [
+                    'system' => PromptRefinementSettings::descriptionGeneratorSystem(),
+                    'workflow' => PromptRefinementSettings::workflowDescriptionGenerator(),
+                    'workflowStep' => PromptRefinementSettings::workflowStepDescriptionGenerator(),
+                ],
             ]);
 
             // Localize user autocomplete script
@@ -1241,6 +1248,52 @@ class PostprocessingMenu
             $target_step_type,
             $base_prompt_pack
         );
+
+        $this->send_workflow_refinement_result($result);
+    }
+
+    /**
+     * AJAX: Generate concise workflow or workflow-step description.
+     */
+    public function ajax_generate_workflow_description()
+    {
+        if (!check_ajax_referer('polytrans_workflows_nonce', 'nonce', false)) {
+            wp_send_json_error(['message' => __('Security check failed.', 'polytrans')]);
+            return;
+        }
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => __('Permission denied.', 'polytrans')]);
+            return;
+        }
+
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Complex nested workflow config from trusted admin UI.
+        $workflow = isset($_POST['workflow']) ? wp_unslash($_POST['workflow']) : [];
+        if (!is_array($workflow)) {
+            wp_send_json_error(['message' => __('Workflow payload is required.', 'polytrans')]);
+            return;
+        }
+
+        $target_type = isset($_POST['target_type']) ? sanitize_text_field(wp_unslash($_POST['target_type'])) : 'workflow';
+        $target_step_id = isset($_POST['target_step_id']) ? sanitize_text_field(wp_unslash($_POST['target_step_id'])) : '';
+        $system_prompt_template = isset($_POST['description_system_prompt']) ? (string) wp_unslash($_POST['description_system_prompt']) : '';
+        $prompt_template = isset($_POST['description_prompt_template']) ? (string) wp_unslash($_POST['description_prompt_template']) : '';
+
+        $service = new DescriptionGeneratorService();
+        if ($target_type === 'step') {
+            $result = $service->generateWorkflowStepDescription(
+                $workflow,
+                $target_step_id,
+                $system_prompt_template,
+                $prompt_template
+            );
+        } else {
+            $result = $service->generateWorkflowDescription(
+                $workflow,
+                $system_prompt_template,
+                $prompt_template
+            );
+        }
 
         $this->send_workflow_refinement_result($result);
     }

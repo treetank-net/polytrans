@@ -124,6 +124,56 @@ final class DefaultPromptTemplates
             "Full-workflow evaluations JSON:\n{{ evaluations_json }}";
     }
 
+    public static function descriptionGeneratorSystem(): string
+    {
+        return "You write concise admin-facing descriptions for AI prompts and workflows.\n" .
+            "Return only valid JSON with a single key: description.\n" .
+            "The description must be short, concrete, and useful as a primary-purpose alignment goal during prompt refinement.\n" .
+            "Do not use markdown fences. Do not mention implementation details that are not present in the input.";
+    }
+
+    public static function assistantDescriptionGenerator(): string
+    {
+        return "Create a concise description for this managed assistant.\n" .
+            "The description will be used as the assistant's original purpose during prompt refinement, so preserve what the assistant is mainly supposed to do.\n\n" .
+            "Assistant name: {{ assistant_name }}\n" .
+            "Current description: {{ assistant_description }}\n" .
+            "Provider: {{ assistant_provider }}\n" .
+            "Model: {{ assistant_model }}\n" .
+            "Response format: {{ response_format }}\n\n" .
+            "System prompt:\n{{ system_prompt }}\n\n" .
+            "User message template:\n{{ user_message_template }}\n\n" .
+            "{% if expected_output_schema %}Expected output schema:\n{{ expected_output_schema }}\n\n{% endif %}" .
+            "Return JSON like: {\"description\":\"One concise sentence describing the assistant's purpose.\"}";
+    }
+
+    public static function workflowDescriptionGenerator(): string
+    {
+        return "Create a concise description for this workflow as a whole.\n" .
+            "Describe what the workflow achieves, not every internal detail. Use one or two sentences.\n\n" .
+            "Workflow name: {{ workflow_name }}\n" .
+            "Current workflow description: {{ workflow_description }}\n" .
+            "Workflow target language: {{ workflow_language }}\n\n" .
+            "Workflow steps JSON:\n{{ workflow_steps_json }}\n\n" .
+            "Return JSON like: {\"description\":\"One or two concise sentences describing what this workflow does.\"}";
+    }
+
+    public static function workflowStepDescriptionGenerator(): string
+    {
+        return "Create a concise description for the selected workflow step in the context of the whole workflow.\n" .
+            "The description will be used as the step's original purpose during prompt refinement, so focus on the step's role and expected contribution.\n\n" .
+            "Workflow name: {{ workflow_name }}\n" .
+            "Workflow description: {{ workflow_description }}\n" .
+            "Selected step name: {{ target_step_name }}\n" .
+            "Selected step ID: {{ target_step_id }}\n" .
+            "Selected step type: {{ target_step_type }}\n" .
+            "Current selected step description: {{ target_step_description }}\n\n" .
+            "Previous steps JSON:\n{{ previous_steps_json }}\n\n" .
+            "Selected step JSON:\n{{ target_step_json }}\n\n" .
+            "Following steps JSON:\n{{ following_steps_json }}\n\n" .
+            "Return JSON like: {\"description\":\"One concise sentence describing what this step must do.\"}";
+    }
+
     public static function promptAdjusterSystem(): string
     {
         return "You are a prompt optimization assistant. Return only the requested JSON object.\n" .

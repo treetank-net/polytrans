@@ -18,6 +18,10 @@ final class PromptRefinementSettings
     public const WORKFLOW_EVALUATOR_SYSTEM_KEY = 'prompt_refinement_workflow_evaluator_system_prompt';
     public const WORKFLOW_ADJUSTER_KEY = 'prompt_refinement_workflow_adjuster_template';
     public const WORKFLOW_ADJUSTER_SYSTEM_KEY = 'prompt_refinement_workflow_adjuster_system_prompt';
+    public const DESCRIPTION_GENERATOR_SYSTEM_KEY = 'prompt_refinement_description_generator_system_prompt';
+    public const ASSISTANT_DESCRIPTION_GENERATOR_KEY = 'prompt_refinement_assistant_description_generator_template';
+    public const WORKFLOW_DESCRIPTION_GENERATOR_KEY = 'prompt_refinement_workflow_description_generator_template';
+    public const WORKFLOW_STEP_DESCRIPTION_GENERATOR_KEY = 'prompt_refinement_workflow_step_description_generator_template';
 
     public static function assistantEvaluatorSystem(?array $settings = null): string
     {
@@ -59,6 +63,26 @@ final class PromptRefinementSettings
         return self::getTemplate(self::WORKFLOW_ADJUSTER_KEY, DefaultPromptTemplates::workflowAdjuster(), $settings);
     }
 
+    public static function descriptionGeneratorSystem(?array $settings = null): string
+    {
+        return self::getTemplate(self::DESCRIPTION_GENERATOR_SYSTEM_KEY, DefaultPromptTemplates::descriptionGeneratorSystem(), $settings);
+    }
+
+    public static function assistantDescriptionGenerator(?array $settings = null): string
+    {
+        return self::getTemplate(self::ASSISTANT_DESCRIPTION_GENERATOR_KEY, DefaultPromptTemplates::assistantDescriptionGenerator(), $settings);
+    }
+
+    public static function workflowDescriptionGenerator(?array $settings = null): string
+    {
+        return self::getTemplate(self::WORKFLOW_DESCRIPTION_GENERATOR_KEY, DefaultPromptTemplates::workflowDescriptionGenerator(), $settings);
+    }
+
+    public static function workflowStepDescriptionGenerator(?array $settings = null): string
+    {
+        return self::getTemplate(self::WORKFLOW_STEP_DESCRIPTION_GENERATOR_KEY, DefaultPromptTemplates::workflowStepDescriptionGenerator(), $settings);
+    }
+
     /**
      * @return array<string,string>
      */
@@ -73,6 +97,10 @@ final class PromptRefinementSettings
             self::WORKFLOW_EVALUATOR_KEY => DefaultPromptTemplates::workflowEvaluator(),
             self::WORKFLOW_ADJUSTER_SYSTEM_KEY => DefaultPromptTemplates::workflowAdjusterSystem(),
             self::WORKFLOW_ADJUSTER_KEY => DefaultPromptTemplates::workflowAdjuster(),
+            self::DESCRIPTION_GENERATOR_SYSTEM_KEY => DefaultPromptTemplates::descriptionGeneratorSystem(),
+            self::ASSISTANT_DESCRIPTION_GENERATOR_KEY => DefaultPromptTemplates::assistantDescriptionGenerator(),
+            self::WORKFLOW_DESCRIPTION_GENERATOR_KEY => DefaultPromptTemplates::workflowDescriptionGenerator(),
+            self::WORKFLOW_STEP_DESCRIPTION_GENERATOR_KEY => DefaultPromptTemplates::workflowStepDescriptionGenerator(),
         ];
     }
 
@@ -90,6 +118,10 @@ final class PromptRefinementSettings
             self::WORKFLOW_EVALUATOR_KEY => self::workflowEvaluator($settings),
             self::WORKFLOW_ADJUSTER_SYSTEM_KEY => self::workflowAdjusterSystem($settings),
             self::WORKFLOW_ADJUSTER_KEY => self::workflowAdjuster($settings),
+            self::DESCRIPTION_GENERATOR_SYSTEM_KEY => self::descriptionGeneratorSystem($settings),
+            self::ASSISTANT_DESCRIPTION_GENERATOR_KEY => self::assistantDescriptionGenerator($settings),
+            self::WORKFLOW_DESCRIPTION_GENERATOR_KEY => self::workflowDescriptionGenerator($settings),
+            self::WORKFLOW_STEP_DESCRIPTION_GENERATOR_KEY => self::workflowStepDescriptionGenerator($settings),
         ];
     }
 
