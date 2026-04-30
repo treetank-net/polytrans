@@ -5,11 +5,19 @@ All notable changes to the PolyTrans plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.13.7] - 2026-04-30
+## [1.13.9] - 2026-04-30
+
+### Fixed
+- Async workflow-refinement workers now accept token-authenticated loopback requests without relying on forwarded WordPress auth cookies, improving production compatibility.
+- Async jobs that stay pending because the loopback worker never starts now fail with a diagnostic message instead of waiting until the UI timeout.
+- Async worker startup now records `running` before best-effort runtime configuration and logs dispatch, startup, worker exceptions, and fatal shutdown errors.
+
+## [1.13.8] - 2026-04-30
 
 ### Added
 - Transient-based caching for post data during workflow refinement iterations (10 min TTL), eliminating repeated DB queries for categories, tags, meta, author, and permalink across iterations.
 - Transient-based caching for recent posts list (5 min TTL), significantly speeding up post selection dropdown loading.
+- Async workflow-refinement job runner (`dispatch + poll`) with loopback worker execution to prevent 504 timeouts on long evaluator/adjuster calls.
 
 ### Changed
 - CI tag matching relaxed from strict semver to `^v` prefix, allowing retry tags like `v1.13.6.1`.

@@ -10,6 +10,7 @@ namespace PolyTrans\Menu;
 
 use PolyTrans\Assistants\AssistantManager;
 use PolyTrans\Assistants\AssistantMigration;
+use PolyTrans\Core\AsyncJobRunner;
 use PolyTrans\PostProcessing\Testing\WorkflowRefinementService;
 use PolyTrans\PromptRefinement\DescriptionGeneratorService;
 use PolyTrans\PromptRefinement\PromptRefinementSettings;
@@ -57,6 +58,13 @@ class PostprocessingMenu
         add_action('wp_ajax_polytrans_apply_workflow_prompt_pack', [$this, 'ajax_apply_workflow_prompt_pack']);
         add_action('wp_ajax_polytrans_generate_workflow_description', [$this, 'ajax_generate_workflow_description']);
         add_action('wp_ajax_polytrans_save_workflow_description', [$this, 'ajax_save_workflow_description']);
+        // Async job dispatch + poll (avoids 504 on slow AJAX endpoints)
+        add_action('wp_ajax_polytrans_async_worker', [AsyncJobRunner::class, 'executeWorker']);
+        add_action('wp_ajax_nopriv_polytrans_async_worker', [AsyncJobRunner::class, 'executeWorker']);
+        add_action('wp_ajax_polytrans_dispatch_async_job', [$this, 'ajax_dispatch_async_job']);
+        add_action('wp_ajax_polytrans_poll_async_job', [$this, 'ajax_poll_async_job']);
+        add_filter('polytrans_async_job_execute', [$this, 'handle_async_job'], 10, 3);
+
         // Deprecated - use polytrans_load_assistants instead
         add_action('wp_ajax_polytrans_load_openai_assistants_for_workflow', [$this, 'ajax_load_openai_assistants_for_workflow']);
         add_action('wp_ajax_polytrans_load_managed_assistants', [$this, 'ajax_load_managed_assistants']);
@@ -1375,6 +1383,169 @@ class PostprocessingMenu
             'target_step_id' => $target_step_id,
             'description' => $description,
         ]);
+    }
+
+    /**
+     * AJAX: Dispatch an async job (returns job_id immediately).
+     */
+    public function ajax_dispatch_async_job()
+    {
+        if (!check_ajax_referer('polytrans_workflows_nonce', 'nonce', false)) {
+            wp_send_json_error(['message' => __('Security check failed.', 'polytrans')]);
+            return;
+        }
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => __('Permission denied.', 'polytrans')]);
+            return;
+        }
+
+        $job_type = isset($_POST['job_type']) ? sanitize_text_field(wp_unslash($_POST['job_type'])) : '';
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Complex nested payload, executed in test mode only by admins.
+        $job_params = isset($_POST['job_params']) ? json_decode(wp_unslash($_POST['job_params']), true) : [];
+
+        $allowed_types = ['workflow_run', 'workflow_evaluate', 'workflow_adjust'];
+        if (!in_array($job_type, $allowed_types, true)) {
+            wp_send_json_error(['message' => __('Invalid job type.', 'polytrans')]);
+            return;
+        }
+
+        $job_id = AsyncJobRunner::dispatch($job_type, is_array($job_params) ? $job_params : []);
+        wp_send_json_success(['job_id' => $job_id]);
+    }
+
+    /**
+     * AJAX: Poll an async job for completion.
+     */
+    public function ajax_poll_async_job()
+    {
+        if (!check_ajax_referer('polytrans_workflows_nonce', 'nonce', false)) {
+            wp_send_json_error(['message' => __('Security check failed.', 'polytrans')]);
+            return;
+        }
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => __('Permission denied.', 'polytrans')]);
+            return;
+        }
+
+        $job_id = isset($_POST['job_id']) ? sanitize_text_field(wp_unslash($_POST['job_id'])) : '';
+        if ($job_id === '') {
+            wp_send_json_error(['message' => __('Missing job ID.', 'polytrans')]);
+            return;
+        }
+
+        $job = AsyncJobRunner::poll($job_id);
+        if ($job === null) {
+            wp_send_json_error(['message' => __('Job not found or expired.', 'polytrans')]);
+            return;
+        }
+
+        wp_send_json_success([
+            'status' => $job['status'],
+            'result' => $job['result'],
+        ]);
+    }
+
+    /**
+     * Filter handler: execute async jobs by type.
+     *
+     * @param mixed  $result   Unused incoming filter value.
+     * @param string $job_type Job type identifier.
+     * @param array  $params   Serialized job params.
+     * @return array The result to store.
+     */
+    public function handle_async_job($result, string $job_type, array $params)
+    {
+        switch ($job_type) {
+            case 'workflow_run':
+                return $this->execute_async_workflow_run($params);
+            case 'workflow_evaluate':
+                return $this->execute_async_workflow_evaluate($params);
+            case 'workflow_adjust':
+                return $this->execute_async_workflow_adjust($params);
+            default:
+                return ['success' => false, 'data' => ['message' => 'Unknown job type: ' . $job_type]];
+        }
+    }
+
+    /**
+     * Execute async workflow run job.
+     */
+    private function execute_async_workflow_run(array $params): array
+    {
+        $workflow = $params['workflow'] ?? [];
+        $target_step_id = $params['target_step_id'] ?? '';
+        $selected_post_id = intval($params['selected_post_id'] ?? 0);
+        $source_language = $params['source_language'] ?? '';
+        $target_language = $params['target_language'] ?? '';
+        $override_system_prompt = $params['override_system_prompt'] ?? null;
+        $override_user_message_template = $params['override_user_message_template'] ?? null;
+        $override_expected_output_schema = $params['override_expected_output_schema'] ?? null;
+
+        $result = (new WorkflowRefinementService())->runPost(
+            is_array($workflow) ? $workflow : [],
+            $target_step_id,
+            $selected_post_id,
+            $source_language,
+            $target_language,
+            $override_system_prompt,
+            $override_user_message_template,
+            $override_expected_output_schema
+        );
+
+        return $this->format_async_result($result);
+    }
+
+    /**
+     * Execute async workflow evaluate job.
+     */
+    private function execute_async_workflow_evaluate(array $params): array
+    {
+        $result = (new WorkflowRefinementService())->evaluateRun(
+            $params['run_id'] ?? '',
+            $params['target_step_id'] ?? '',
+            $params['criteria'] ?? '',
+            $params['workflow_purpose'] ?? '',
+            $params['prompt_objective'] ?? '',
+            $params['evaluator_prompt_template'] ?? ''
+        );
+
+        return $this->format_async_result($result);
+    }
+
+    /**
+     * Execute async workflow adjust job.
+     */
+    private function execute_async_workflow_adjust(array $params): array
+    {
+        $result = (new WorkflowRefinementService())->adjustPrompt(
+            intval($params['assistant_id'] ?? 0),
+            $params['criteria'] ?? '',
+            $params['workflow_purpose'] ?? '',
+            $params['prompt_objective'] ?? '',
+            $params['adjuster_prompt_template'] ?? '',
+            $params['evaluations'] ?? '[]',
+            $params['current_system_prompt'] ?? null,
+            $params['current_user_message_template'] ?? null,
+            $params['current_expected_output_schema'] ?? null,
+            is_array($params['workflow'] ?? null) ? $params['workflow'] : [],
+            $params['target_step_id'] ?? ''
+        );
+
+        return $this->format_async_result($result);
+    }
+
+    /**
+     * Format a service result for async storage.
+     *
+     * @param mixed $result WP_Error or array from a refinement service method.
+     * @return array Normalized {success, data} structure.
+     */
+    private function format_async_result($result): array
+    {
+        if (is_wp_error($result)) {
+            return ['success' => false, 'data' => ['message' => $result->get_error_message()]];
+        }
+        return ['success' => true, 'data' => $result];
     }
 
     /**

@@ -106,10 +106,10 @@
                 // Transform grouped structure to flat array for backward compatibility
                 var flattened = [];
                 var grouped = response.data;
-                
+
                 // Add providers group
                 if (grouped.providers && Array.isArray(grouped.providers)) {
-                    grouped.providers.forEach(function(provider) {
+                    grouped.providers.forEach(function (provider) {
                         flattened.push({
                             id: provider.id,
                             name: provider.name,
@@ -120,10 +120,10 @@
                         });
                     });
                 }
-                
+
                 // Add managed assistants group
                 if (grouped.managed && Array.isArray(grouped.managed)) {
-                    grouped.managed.forEach(function(assistant) {
+                    grouped.managed.forEach(function (assistant) {
                         flattened.push({
                             id: assistant.id,
                             name: assistant.name,
@@ -134,10 +134,10 @@
                         });
                     });
                 }
-                
+
                 // Add OpenAI API assistants group
                 if (grouped.openai && Array.isArray(grouped.openai)) {
-                    grouped.openai.forEach(function(assistant) {
+                    grouped.openai.forEach(function (assistant) {
                         flattened.push({
                             id: assistant.id,
                             name: assistant.name,
@@ -148,10 +148,10 @@
                         });
                     });
                 }
-                
+
                 // Add Claude assistants group (future)
                 if (grouped.claude && Array.isArray(grouped.claude)) {
-                    grouped.claude.forEach(function(assistant) {
+                    grouped.claude.forEach(function (assistant) {
                         flattened.push({
                             id: assistant.id,
                             name: assistant.name,
@@ -162,10 +162,10 @@
                         });
                     });
                 }
-                
+
                 // Add Gemini assistants group (future)
                 if (grouped.gemini && Array.isArray(grouped.gemini)) {
-                    grouped.gemini.forEach(function(assistant) {
+                    grouped.gemini.forEach(function (assistant) {
                         flattened.push({
                             id: assistant.id,
                             name: assistant.name,
@@ -176,7 +176,7 @@
                         });
                     });
                 }
-                
+
                 cachedAssistants = flattened;
                 return cachedAssistants;
             } else {
@@ -213,7 +213,7 @@
                 const group = assistant.group || 'unknown';
                 const provider = assistant.provider || 'unknown';
                 const groupKey = group + '_' + provider; // e.g., 'openai_openai', 'managed_openai'
-                
+
                 if (!grouped[groupKey]) {
                     grouped[groupKey] = {
                         group: group,
@@ -228,23 +228,23 @@
             const groupOrder = ['providers', 'managed', 'openai', 'claude', 'gemini'];
             const groupLabels = {
                 'providers': 'Translation Providers',
-                'managed': function(provider) { return 'Managed Assistants (' + provider.charAt(0).toUpperCase() + provider.slice(1) + ')'; },
+                'managed': function (provider) { return 'Managed Assistants (' + provider.charAt(0).toUpperCase() + provider.slice(1) + ')'; },
                 'openai': 'OpenAI API Assistants',
                 'claude': 'Claude Projects',
                 'gemini': 'Gemini Tuned Models'
             };
 
             // Sort groups by order
-            const sortedGroupKeys = Object.keys(grouped).sort(function(a, b) {
+            const sortedGroupKeys = Object.keys(grouped).sort(function (a, b) {
                 const groupA = grouped[a].group;
                 const groupB = grouped[b].group;
                 const indexA = groupOrder.indexOf(groupA);
                 const indexB = groupOrder.indexOf(groupB);
-                
+
                 if (indexA !== indexB) {
                     return (indexA === -1 ? 999 : indexA) - (indexB === -1 ? 999 : indexB);
                 }
-                
+
                 // If same group, sort by provider
                 return grouped[a].provider.localeCompare(grouped[b].provider);
             });
@@ -255,7 +255,7 @@
                 const groupType = groupData.group;
                 const provider = groupData.provider;
                 const providerAssistants = groupData.assistants;
-                
+
                 // Determine group label
                 let groupLabel;
                 if (typeof groupLabels[groupType] === 'function') {
@@ -265,13 +265,13 @@
                 }
 
                 const $optgroup = $('<optgroup></optgroup>').attr('label', groupLabel);
-                
+
                 providerAssistants.forEach(function (assistant) {
-                const isSelected = assistant.id === selectedAssistantId ? 'selected' : '';
+                    const isSelected = assistant.id === selectedAssistantId ? 'selected' : '';
                     const label = assistant.name + ' (' + assistant.model + ')';
                     $optgroup.append(`<option value="${assistant.id}" ${isSelected}>${label}</option>`);
                 });
-                
+
                 $select.append($optgroup);
             });
 
@@ -702,21 +702,21 @@
 
         // Generate provider options
         let providerOptions = '<option value="">' + (typeof polytransWorkflows !== 'undefined' && polytransWorkflows.strings ? polytransWorkflows.strings.noProviderSelected : 'Auto-select (random enabled provider)') + '</option>';
-        
+
         if (typeof polytransWorkflows !== 'undefined' && polytransWorkflows.chatProviders) {
             for (const [providerId, provider] of Object.entries(polytransWorkflows.chatProviders)) {
                 const selected = (selectedProvider === providerId) ? 'selected' : '';
                 providerOptions += `<option value="${providerId}" ${selected}>${escapeHtml(provider.name)}</option>`;
             }
         }
-        
+
         // Show warning if no provider selected
         const warningHtml = selectedProvider ? '' : `
             <div class="notice notice-warning inline workflow-provider-warning" style="margin: 10px 0;" data-step-index="${index}">
                 <p><strong>⚠️ ${typeof polytransWorkflows !== 'undefined' && polytransWorkflows.strings ? polytransWorkflows.strings.noProviderSelected : 'No provider selected'}</strong> - A random enabled provider with chat capability will be used automatically.</p>
             </div>
         `;
-        
+
         return `
             <div class="workflow-step-field">
                 <label for="step-${index}-provider">AI Provider</label>
@@ -1685,13 +1685,13 @@
 
         const close = () => $modal.remove();
         $modal.on('click', '.polytrans-description-modal-close', close);
-        $modal.on('click', function(event) {
+        $modal.on('click', function (event) {
             if (event.target === $modal[0]) {
                 close();
             }
         });
 
-        $modal.on('click', '.polytrans-description-generate', async function() {
+        $modal.on('click', '.polytrans-description-generate', async function () {
             const $generateButton = $(this);
             const $error = $modal.find('.polytrans-description-modal-error');
             $generateButton.prop('disabled', true).text('Generating...');
@@ -1727,7 +1727,7 @@
             }
         });
 
-        $modal.on('click', '.polytrans-description-apply', function() {
+        $modal.on('click', '.polytrans-description-apply', function () {
             const description = ($modal.find('.polytrans-description-result').val() || '').trim();
             if (!description) {
                 $modal.find('.polytrans-description-modal-error').text('Description is empty.').show();
@@ -1737,7 +1737,7 @@
             close();
         });
 
-        $modal.on('click', '.polytrans-description-save', async function() {
+        $modal.on('click', '.polytrans-description-save', async function () {
             const description = ($modal.find('.polytrans-description-result').val() || '').trim();
             const $saveButton = $(this);
             const $error = $modal.find('.polytrans-description-modal-error');
@@ -2560,8 +2560,6 @@ However, the integration of AI in healthcare also raises important questions abo
                     renderWorkflowRefinementProgress(progressState);
 
                     const runRequest = {
-                        action: 'polytrans_run_workflow_refinement_post',
-                        nonce: polytransWorkflows.nonce,
                         workflow,
                         target_step_id: targetStepId,
                         selected_post_id: post.id,
@@ -2574,10 +2572,9 @@ However, the integration of AI in healthcare also raises important questions abo
                         runRequest.override_expected_output_schema = currentPromptPack.expected_output_schema || '';
                     }
 
-                    const runResponse = await $.ajax({
-                        url: polytransWorkflows.ajaxUrl,
-                        type: 'POST',
-                        data: runRequest
+                    const runResponse = await runAsyncWorkflowJob({
+                        jobType: 'workflow_run',
+                        jobParams: runRequest
                     });
                     if (!runResponse || !runResponse.success) {
                         throw new Error(runResponse?.data?.message || `Workflow run failed for post #${post.id}.`);
@@ -2592,12 +2589,9 @@ However, the integration of AI in healthcare also raises important questions abo
                     pushWorkflowRefinementLog(progressState, `Iteration ${iterationNumber}, post ${index + 1}/${selectedPosts.length}: workflow done (run_id: ${runId}).`);
                     renderWorkflowRefinementProgress(progressState);
 
-                    const evaluateResponse = await $.ajax({
-                        url: polytransWorkflows.ajaxUrl,
-                        type: 'POST',
-                        data: {
-                            action: 'polytrans_evaluate_workflow_refinement_run',
-                            nonce: polytransWorkflows.nonce,
+                    const evaluateResponse = await runAsyncWorkflowJob({
+                        jobType: 'workflow_evaluate',
+                        jobParams: {
                             run_id: runId,
                             target_step_id: targetStepId,
                             criteria,
@@ -2630,8 +2624,6 @@ However, the integration of AI in healthcare also raises important questions abo
                 renderWorkflowRefinementProgress(progressState);
 
                 const adjustRequest = {
-                    action: 'polytrans_adjust_workflow_prompt',
-                    nonce: polytransWorkflows.nonce,
                     assistant_id: assistantId,
                     workflow,
                     target_step_id: targetStepId,
@@ -2640,7 +2632,7 @@ However, the integration of AI in healthcare also raises important questions abo
                     workflow_purpose: workflowPurpose,
                     prompt_objective: promptObjective,
                     adjuster_prompt_template: adjusterTemplate,
-                    evaluations: JSON.stringify(evaluatedRuns)
+                    evaluations: evaluatedRuns
                 };
                 if (currentPromptPack) {
                     adjustRequest.current_system_prompt = currentPromptPack.system_prompt || '';
@@ -2648,10 +2640,9 @@ However, the integration of AI in healthcare also raises important questions abo
                     adjustRequest.current_expected_output_schema = currentPromptPack.expected_output_schema || '';
                 }
 
-                const adjustResponse = await $.ajax({
-                    url: polytransWorkflows.ajaxUrl,
-                    type: 'POST',
-                    data: adjustRequest
+                const adjustResponse = await runAsyncWorkflowJob({
+                    jobType: 'workflow_adjust',
+                    jobParams: adjustRequest
                 });
                 if (!adjustResponse || !adjustResponse.success) {
                     throw new Error(adjustResponse?.data?.message || 'Prompt adjuster failed.');
@@ -2790,12 +2781,9 @@ However, the integration of AI in healthcare also raises important questions abo
                 renderWorkflowRefinementProgress(progressState);
             }
 
-            const runResponse = await $.ajax({
-                url: polytransWorkflows.ajaxUrl,
-                type: 'POST',
-                data: {
-                    action: 'polytrans_run_workflow_refinement_post',
-                    nonce: polytransWorkflows.nonce,
+            const runResponse = await runAsyncWorkflowJob({
+                jobType: 'workflow_run',
+                jobParams: {
                     workflow: config.workflow,
                     target_step_id: config.targetStepId,
                     selected_post_id: post.id,
@@ -2821,12 +2809,9 @@ However, the integration of AI in healthcare also raises important questions abo
                 renderWorkflowRefinementProgress(progressState);
             }
 
-            const evaluateResponse = await $.ajax({
-                url: polytransWorkflows.ajaxUrl,
-                type: 'POST',
-                data: {
-                    action: 'polytrans_evaluate_workflow_refinement_run',
-                    nonce: polytransWorkflows.nonce,
+            const evaluateResponse = await runAsyncWorkflowJob({
+                jobType: 'workflow_evaluate',
+                jobParams: {
                     run_id: runId,
                     target_step_id: config.targetStepId,
                     criteria: config.criteria,
@@ -2855,6 +2840,59 @@ However, the integration of AI in healthcare also raises important questions abo
         }
 
         return finalRuns;
+    }
+
+    async function runAsyncWorkflowJob({ jobType, jobParams, pollIntervalMs = 3000, timeoutMs = 5 * 60 * 1000 }) {
+        const dispatchResponse = await $.ajax({
+            url: polytransWorkflows.ajaxUrl,
+            type: 'POST',
+            data: {
+                action: 'polytrans_dispatch_async_job',
+                nonce: polytransWorkflows.nonce,
+                job_type: jobType,
+                job_params: JSON.stringify(jobParams || {})
+            }
+        });
+
+        if (!dispatchResponse || !dispatchResponse.success) {
+            throw new Error(dispatchResponse?.data?.message || 'Async dispatch failed.');
+        }
+
+        const jobId = String(dispatchResponse?.data?.job_id || '').trim();
+        if (!jobId) {
+            throw new Error('Async dispatch did not return job_id.');
+        }
+
+        const startedAt = Date.now();
+        while ((Date.now() - startedAt) < timeoutMs) {
+            await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+            const pollResponse = await $.ajax({
+                url: polytransWorkflows.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'polytrans_poll_async_job',
+                    nonce: polytransWorkflows.nonce,
+                    job_id: jobId
+                }
+            });
+
+            if (!pollResponse || !pollResponse.success) {
+                throw new Error(pollResponse?.data?.message || 'Async poll failed.');
+            }
+
+            const status = String(pollResponse?.data?.status || '');
+            if (status === 'running' || status === 'pending') {
+                continue;
+            }
+
+            if (status === 'completed' || status === 'failed') {
+                return pollResponse?.data?.result || { success: false, data: { message: 'Async job returned empty result.' } };
+            }
+
+            throw new Error(`Unknown async job status: ${status}`);
+        }
+
+        throw new Error('Async job timed out while waiting for completion.');
     }
 
     function pushWorkflowRefinementLog(state, message) {
@@ -3778,49 +3816,49 @@ However, the integration of AI in healthcare also raises important questions abo
      */
     function markdownToHtml(markdown) {
         if (!markdown) return '';
-        
+
         // Unescape newlines if they're escaped (from JSON)
         let html = markdown.replace(/\\n/g, '\n');
-        
+
         // Escape HTML to prevent XSS
         html = escapeHtml(html);
-        
+
         // Code blocks (```code```) - preserve after escaping
         html = html.replace(/```([^`]+)```/g, '<pre><code>$1</code></pre>');
-        
+
         // Headers (#### #### ### ## #) - order matters!
         html = html.replace(/^#### (.*$)/gim, '<h4>$1</h4>');
         html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>');
         html = html.replace(/^## (.*$)/gim, '<h2>$1</h2>');
         html = html.replace(/^# (.*$)/gim, '<h1>$1</h1>');
-        
+
         // Bold (**text**) - before italic to avoid conflicts
         html = html.replace(/\*\*([^\*]+)\*\*/g, '<strong>$1</strong>');
-        
+
         // Italic (*text*)
         html = html.replace(/\*([^\*]+)\*/g, '<em>$1</em>');
-        
+
         // Inline code (`code`)
         html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
-        
+
         // Links ([text](url))
         html = html.replace(/\[([^\]]+)\]\(([^\)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
-        
+
         // Unordered lists (- item)
         html = html.replace(/^\- (.*$)/gim, '<li>$1</li>');
         html = html.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>');
-        
+
         // Paragraphs (double newline = new paragraph)
         html = html.replace(/\n\n+/g, '</p><p>');
-        
+
         // Single newlines to <br>
         html = html.replace(/\n/g, '<br>');
-        
+
         // Wrap in paragraph if not already wrapped
         if (!html.startsWith('<')) {
             html = '<p>' + html + '</p>';
         }
-        
+
         return html;
     }
 
@@ -3829,7 +3867,7 @@ However, the integration of AI in healthcare also raises important questions abo
      */
     function isMarkdown(content) {
         if (!content || typeof content !== 'string') return false;
-        
+
         // Check for common markdown patterns
         const markdownPatterns = [
             /^#{1,6}\s/m,           // Headers
@@ -3840,7 +3878,7 @@ However, the integration of AI in healthcare also raises important questions abo
             /^\-\s/m,               // Lists
             /\[.+\]\(.+\)/          // Links
         ];
-        
+
         return markdownPatterns.some(pattern => pattern.test(content));
     }
 
@@ -3852,7 +3890,7 @@ However, the integration of AI in healthcare also raises important questions abo
 
         let content = '';
         let isJson = false;
-        
+
         if (typeof data === 'string') {
             content = data;
         } else if (data.ai_response) {
@@ -3889,7 +3927,7 @@ However, the integration of AI in healthcare also raises important questions abo
         // Check if we have any data to display
         const hasInputs = stepResult.inputs || stepResult.input_variables;
         const hasPrompts = stepResult.prompts || stepResult.interpolated_system_prompt || stepResult.interpolated_user_message;
-        
+
         if (!hasInputs && !hasPrompts) return '';
 
         let html = '<div class="step-inputs"><h6>📋 Step Configuration</h6>';
@@ -4106,11 +4144,11 @@ ${escapeHtml(userMessage)}
     }
 
     // Handle provider selection change - show/hide warning
-    $(document).on('change', '.workflow-provider-select', function() {
+    $(document).on('change', '.workflow-provider-select', function () {
         const $select = $(this);
         const stepIndex = $select.closest('.workflow-step').index();
         const $warning = $(`.workflow-provider-warning[data-step-index="${stepIndex}"]`);
-        
+
         if ($select.val()) {
             $warning.fadeOut();
         } else {
