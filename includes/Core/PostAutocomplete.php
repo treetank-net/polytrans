@@ -196,19 +196,21 @@ class PostAutocomplete
             ];
         }
 
+        $cache_key = 'polytrans_recent_posts_' . md5($language . '_' . $limit);
+        $cached = get_transient($cache_key);
+        if (is_array($cached)) {
+            wp_send_json_success(['posts' => $cached]);
+        }
+
         $posts = get_posts($args);
 
         $results = [];
         foreach ($posts as $post) {
-            // Get post meta for additional context
-            $post_meta = get_post_meta($post->ID);
             $excerpt = !empty($post->post_excerpt) ? $post->post_excerpt : wp_trim_words($post->post_content, 20);
 
-            // Check if this is a translated post
             $original_post_id = get_post_meta($post->ID, '_polytrans_original_post_id', true);
             $is_translation = !empty($original_post_id);
 
-            // Include some common meta fields that might be useful for testing
             $custom_fields = [];
             $common_meta_keys = [
                 '_yoast_wpseo_title',
@@ -239,6 +241,8 @@ class PostAutocomplete
                 'description' => wp_trim_words($excerpt, 15) . '...'
             ];
         }
+
+        set_transient($cache_key, $results, 5 * MINUTE_IN_SECONDS);
 
         wp_send_json_success(['posts' => $results]);
     }

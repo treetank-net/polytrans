@@ -16,6 +16,7 @@ if (!defined('ABSPATH')) {
 
 class PostDataProvider implements VariableProviderInterface
 {
+    private static array $cache = [];
     /**
      * Get the provider identifier
      * 
@@ -229,6 +230,18 @@ class PostDataProvider implements VariableProviderInterface
      */
     private function format_post_data($post)
     {
+        $post_id = $post->ID;
+        if (isset(self::$cache[$post_id])) {
+            return self::$cache[$post_id];
+        }
+
+        $transient_key = 'polytrans_post_data_' . $post_id . '_' . strtotime($post->post_modified_gmt);
+        $cached = get_transient($transient_key);
+        if (is_array($cached)) {
+            self::$cache[$post_id] = $cached;
+            return $cached;
+        }
+
         // Get author information
         $author = get_userdata($post->post_author);
 
@@ -279,7 +292,7 @@ class PostDataProvider implements VariableProviderInterface
             }
         }
 
-        return [
+        $data = [
             'id' => $post->ID,
             'title' => $post->post_title,
             'content' => $post->post_content,
@@ -307,5 +320,10 @@ class PostDataProvider implements VariableProviderInterface
             'word_count' => str_word_count(wp_strip_all_tags($post->post_content)),
             'character_count' => strlen($post->post_content)
         ];
+
+        self::$cache[$post_id] = $data;
+        set_transient($transient_key, $data, 10 * MINUTE_IN_SECONDS);
+
+        return $data;
     }
 }

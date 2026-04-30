@@ -5,6 +5,17 @@ All notable changes to the PolyTrans plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.13.7] - 2026-04-30
+
+### Added
+- Transient-based caching for post data during workflow refinement iterations (10 min TTL), eliminating repeated DB queries for categories, tags, meta, author, and permalink across iterations.
+- Transient-based caching for recent posts list (5 min TTL), significantly speeding up post selection dropdown loading.
+
+### Changed
+- CI tag matching relaxed from strict semver to `^v` prefix, allowing retry tags like `v1.13.6.1`.
+- CI now creates GitHub releases with ZIP assets alongside GitLab releases.
+- CI GitHub tag sync uses force-push and handles existing releases idempotently.
+
 ## [1.13.6] - 2026-04-30
 
 ### Added
