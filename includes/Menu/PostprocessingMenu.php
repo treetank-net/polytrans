@@ -56,6 +56,7 @@ class PostprocessingMenu
         add_action('wp_ajax_polytrans_adjust_workflow_prompt', [$this, 'ajax_adjust_workflow_prompt']);
         add_action('wp_ajax_polytrans_apply_workflow_prompt_pack', [$this, 'ajax_apply_workflow_prompt_pack']);
         add_action('wp_ajax_polytrans_generate_workflow_description', [$this, 'ajax_generate_workflow_description']);
+        add_action('wp_ajax_polytrans_save_workflow_description', [$this, 'ajax_save_workflow_description']);
         // Deprecated - use polytrans_load_assistants instead
         add_action('wp_ajax_polytrans_load_openai_assistants_for_workflow', [$this, 'ajax_load_openai_assistants_for_workflow']);
         add_action('wp_ajax_polytrans_load_managed_assistants', [$this, 'ajax_load_managed_assistants']);
@@ -1296,6 +1297,80 @@ class PostprocessingMenu
         }
 
         $this->send_workflow_refinement_result($result);
+    }
+
+    /**
+     * AJAX: Persist only workflow or workflow-step description.
+     */
+    public function ajax_save_workflow_description(): void
+    {
+        if (!check_ajax_referer('polytrans_workflows_nonce', 'nonce', false)) {
+            wp_send_json_error(['message' => __('Security check failed.', 'polytrans')]);
+            return;
+        }
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => __('Permission denied.', 'polytrans')]);
+            return;
+        }
+
+        $workflow_id = isset($_POST['workflow_id']) ? sanitize_text_field(wp_unslash($_POST['workflow_id'])) : '';
+        $target_type = isset($_POST['target_type']) ? sanitize_text_field(wp_unslash($_POST['target_type'])) : 'workflow';
+        $target_step_id = isset($_POST['target_step_id']) ? sanitize_text_field(wp_unslash($_POST['target_step_id'])) : '';
+        $description = isset($_POST['description']) ? wp_kses_post(wp_unslash($_POST['description'])) : '';
+
+        if ($workflow_id === '') {
+            wp_send_json_error(['message' => __('Workflow must be saved before its description can be updated.', 'polytrans')]);
+            return;
+        }
+
+        $workflow_manager = \PolyTrans\PostProcessing\WorkflowManager::get_instance();
+        $storage_manager = $workflow_manager->get_storage_manager();
+        $workflow = $storage_manager->get_workflow($workflow_id);
+
+        if (!$workflow) {
+            wp_send_json_error(['message' => __('Workflow not found.', 'polytrans')]);
+            return;
+        }
+
+        if ($target_type === 'step') {
+            $updated = false;
+            foreach ((array) ($workflow['steps'] ?? []) as $index => $step) {
+                if (!is_array($step)) {
+                    continue;
+                }
+                $step_id = (string) ($step['id'] ?? "step_{$index}");
+                if ($step_id === $target_step_id) {
+                    $workflow['steps'][$index]['description'] = $description;
+                    $updated = true;
+                    break;
+                }
+            }
+
+            if (!$updated) {
+                wp_send_json_error(['message' => __('Workflow step not found.', 'polytrans')]);
+                return;
+            }
+        } else {
+            $workflow['description'] = $description;
+        }
+
+        $result = $storage_manager->save_workflow($workflow);
+        if (empty($result['success'])) {
+            wp_send_json_error([
+                'message' => __('Failed to save workflow description.', 'polytrans'),
+                'errors' => $result['errors'] ?? [],
+            ]);
+            return;
+        }
+
+        wp_send_json_success([
+            'message' => __('Workflow description saved.', 'polytrans'),
+            'workflow_id' => $workflow_id,
+            'target_type' => $target_type,
+            'target_step_id' => $target_step_id,
+            'description' => $description,
+        ]);
     }
 
     /**

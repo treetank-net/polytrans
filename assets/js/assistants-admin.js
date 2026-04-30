@@ -522,6 +522,19 @@
                 onApply: (description) => {
                     const $target = $(config.applySelector);
                     $target.val(description).trigger('change');
+                },
+                onSave: (description) => {
+                    const assistantData = window.polytransAssistantData || {};
+                    return $.ajax({
+                        url: polytransAssistants.ajaxUrl,
+                        type: 'POST',
+                        data: {
+                            action: 'polytrans_save_assistant_description',
+                            nonce: polytransAssistants.nonce,
+                            assistant_id: $('input[name="assistant_id"]').val() || assistantData.id || 0,
+                            description
+                        }
+                    });
                 }
             });
         },
@@ -560,6 +573,7 @@
                         <div class="polytrans-description-modal-footer">
                             <button type="button" class="button button-primary polytrans-description-generate">${this.escapeHtml(config.generateLabel || 'Generate')}</button>
                             <button type="button" class="button button-primary polytrans-description-apply">${this.escapeHtml(config.applyLabel || 'Apply')}</button>
+                            ${config.onSave ? '<button type="button" class="button polytrans-description-save">Apply & Save</button>' : ''}
                             <button type="button" class="button polytrans-description-modal-close">Cancel</button>
                         </div>
                     </div>
@@ -612,6 +626,39 @@
                 }
                 config.onApply(description);
                 close();
+            });
+
+            $modal.on('click', '.polytrans-description-save', async () => {
+                const description = ($modal.find('.polytrans-description-result').val() || '').trim();
+                const $button = $modal.find('.polytrans-description-save');
+                const $error = $modal.find('.polytrans-description-modal-error');
+
+                if (!description) {
+                    $error.text('Description is empty.').show();
+                    return;
+                }
+
+                $button.prop('disabled', true).text('Saving...');
+                $error.hide().text('');
+
+                try {
+                    config.onApply(description);
+                    const response = await config.onSave(description);
+                    if (!response || !response.success) {
+                        throw new Error(response?.data?.message || 'Description save failed.');
+                    }
+                    window.polytransAssistantData = {
+                        ...(window.polytransAssistantData || {}),
+                        description
+                    };
+                    this.showNotice(response.data?.message || 'Description saved.', 'success');
+                    close();
+                } catch (error) {
+                    const message = this.resolveAjaxErrorMessage(error, 'Description save failed.');
+                    $error.text(message).show();
+                } finally {
+                    $button.prop('disabled', false).text('Apply & Save');
+                }
             });
         },
 

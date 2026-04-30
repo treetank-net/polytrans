@@ -60,6 +60,7 @@ class AssistantsMenu
         add_action('wp_ajax_polytrans_adjust_assistant_prompt', [$this, 'ajax_adjust_assistant_prompt']);
         add_action('wp_ajax_polytrans_apply_assistant_prompt_pack', [$this, 'ajax_apply_assistant_prompt_pack']);
         add_action('wp_ajax_polytrans_generate_assistant_description', [$this, 'ajax_generate_assistant_description']);
+        add_action('wp_ajax_polytrans_save_assistant_description', [$this, 'ajax_save_assistant_description']);
     }
 
     /**
@@ -1168,6 +1169,46 @@ class AssistantsMenu
         );
 
         $this->send_assistant_refinement_result($result);
+    }
+
+    /**
+     * AJAX: Persist only the assistant description.
+     */
+    public function ajax_save_assistant_description(): void
+    {
+        check_ajax_referer('polytrans_assistants', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => __('Permission denied.', 'polytrans')]);
+        }
+
+        $assistant_id = isset($_POST['assistant_id']) ? intval($_POST['assistant_id']) : 0;
+        $description = isset($_POST['description']) ? wp_kses_post(wp_unslash($_POST['description'])) : '';
+
+        if ($assistant_id <= 0) {
+            wp_send_json_error(['message' => __('Assistant must be saved before its description can be updated.', 'polytrans')]);
+        }
+
+        $assistant = AssistantManager::get_assistant($assistant_id);
+        if (!is_array($assistant)) {
+            wp_send_json_error(['message' => __('Assistant not found.', 'polytrans')]);
+        }
+
+        $assistant['description'] = $description;
+        $result = AssistantManager::update_assistant($assistant_id, $assistant);
+
+        if (is_wp_error($result)) {
+            wp_send_json_error([
+                'message' => $result->get_error_message(),
+                'errors' => $result->get_error_data(),
+            ]);
+        }
+
+        wp_send_json_success([
+            'message' => __('Assistant description saved.', 'polytrans'),
+            'assistant_id' => $assistant_id,
+            'description' => $description,
+        ]);
     }
 
     private function send_assistant_refinement_result($result): void

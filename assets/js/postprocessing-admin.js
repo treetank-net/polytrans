@@ -1569,7 +1569,22 @@
             applyLabel: isStep ? 'Apply to Step Description' : 'Apply to Workflow Description',
             onApply: (description) => {
                 $(applySelector).val(description).trigger('change');
-            }
+            },
+            onSave: (description) => saveWorkflowDescription({
+                workflowId: workflow.id || '',
+                targetType: isStep ? 'step' : 'workflow',
+                targetStepId,
+                description
+            }).then((response) => {
+                workflow.description = isStep ? workflow.description : description;
+                if (isStep && Array.isArray(workflow.steps)) {
+                    const targetStep = workflow.steps.find((step) => String(step.id || '') === targetStepId);
+                    if (targetStep) {
+                        targetStep.description = description;
+                    }
+                }
+                return response;
+            })
         });
     }
 
@@ -1590,6 +1605,37 @@
             applyLabel: 'Apply as Primary Purpose',
             onApply: (description) => {
                 $('#workflow-refine-objective').val(description).trigger('change');
+            },
+            onSave: (description) => saveWorkflowDescription({
+                workflowId: workflow.id || '',
+                targetType: isStep ? 'step' : 'workflow',
+                targetStepId,
+                description
+            }).then((response) => {
+                if (isStep && Array.isArray(workflow.steps)) {
+                    const targetStep = workflow.steps.find((step) => String(step.id || '') === targetStepId);
+                    if (targetStep) {
+                        targetStep.description = description;
+                    }
+                } else {
+                    workflow.description = description;
+                }
+                return response;
+            })
+        });
+    }
+
+    function saveWorkflowDescription(payload) {
+        return $.ajax({
+            url: polytransWorkflows.ajaxUrl,
+            type: 'POST',
+            data: {
+                action: 'polytrans_save_workflow_description',
+                nonce: polytransWorkflows.nonce,
+                workflow_id: payload.workflowId || '',
+                target_type: payload.targetType || 'workflow',
+                target_step_id: payload.targetStepId || '',
+                description: payload.description || ''
             }
         });
     }
@@ -1628,6 +1674,7 @@
                     <div class="polytrans-description-modal-footer">
                         <button type="button" class="button button-primary polytrans-description-generate">Generate Description</button>
                         <button type="button" class="button button-primary polytrans-description-apply">${escapeHtml(config.applyLabel || 'Apply')}</button>
+                        ${config.onSave ? '<button type="button" class="button polytrans-description-save">Apply & Save</button>' : ''}
                         <button type="button" class="button polytrans-description-modal-close">Cancel</button>
                     </div>
                 </div>
@@ -1689,6 +1736,34 @@
             }
             config.onApply(description);
             close();
+        });
+
+        $modal.on('click', '.polytrans-description-save', async function() {
+            const description = ($modal.find('.polytrans-description-result').val() || '').trim();
+            const $saveButton = $(this);
+            const $error = $modal.find('.polytrans-description-modal-error');
+
+            if (!description) {
+                $error.text('Description is empty.').show();
+                return;
+            }
+
+            $saveButton.prop('disabled', true).text('Saving...');
+            $error.hide().text('');
+
+            try {
+                config.onApply(description);
+                const response = await config.onSave(description);
+                if (!response || !response.success) {
+                    throw new Error(response?.data?.message || 'Description save failed.');
+                }
+                showNotice('success', response.data?.message || 'Description saved.');
+                close();
+            } catch (error) {
+                $error.text(resolveWorkflowAjaxErrorMessage(error, 'Description save failed.')).show();
+            } finally {
+                $saveButton.prop('disabled', false).text('Apply & Save');
+            }
         });
     }
 
