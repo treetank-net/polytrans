@@ -1,9 +1,12 @@
 name: Build and Release
 
 on:
-  push:
-    tags:
-      - 'v*.*.*'  # Triggers on version tags like v1.5.0
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version, with or without leading v (for example 1.13.9)'
+        required: true
+        type: string
 
 permissions:
   contents: write  # Required for creating releases
@@ -16,6 +19,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          ref: ${{ startsWith(inputs.version, 'v') && inputs.version || format('v{0}', inputs.version) }}
       
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
@@ -23,9 +28,13 @@ jobs:
           php-version: '8.1'
           tools: composer:v2
       
-      - name: Get version from tag
+      - name: Get version from input
         id: version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+        run: |
+          VERSION="${{ inputs.version }}"
+          VERSION="${VERSION#v}"
+          echo "VERSION=${VERSION}" >> $GITHUB_OUTPUT
+          echo "TAG=v${VERSION}" >> $GITHUB_OUTPUT
       
       - name: Extract changelog for this version
         id: changelog
@@ -33,7 +42,7 @@ jobs:
           # Extract changelog section for this version
           # For v1.5.0 (first release), include everything from [1.5.0] to end
           # For future releases, extract only the section between [X.Y.Z] and next version
-          VERSION="${GITHUB_REF#refs/tags/v}"
+          VERSION="${{ steps.version.outputs.VERSION }}"
           
           # Try to extract section for this version
           CHANGELOG=$(sed -n "/## \[$VERSION\]/,/## \[/p" CHANGELOG.md | sed '$d')
@@ -96,6 +105,7 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
+          tag_name: ${{ steps.version.outputs.TAG }}
           files: |
             release/polytrans.zip
             release/polytrans.zip.sha256
@@ -151,4 +161,3 @@ jobs:
           name: polytrans-${{ steps.version.outputs.VERSION }}
           path: release/polytrans.zip
           retention-days: 30
-
