@@ -1776,6 +1776,17 @@
                     </tr>
                 `;
             }).join('');
+            const finalScoreTableRow = finalEvaluationRuns.length
+                ? `
+                    <tr>
+                        <td>${this.escapeHtml(finalVerificationPromptLabel)}</td>
+                        <td>${this.escapeHtml(finalAverageScore === null ? 'n/a' : finalAverageScore.toFixed(2))}</td>
+                        <td>${this.escapeHtml(String(finalEvaluationRuns.length))}</td>
+                        <td>Final verification only</td>
+                    </tr>
+                `
+                : '';
+            const scoreTableRows = `${avgTableRows}${finalScoreTableRow}`;
 
             $('#assistant-refinement-results').html(`
                 <div class="test-results success">
@@ -1846,7 +1857,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                ${avgTableRows || '<tr><td colspan="4">No score data.</td></tr>'}
+                                ${scoreTableRows || '<tr><td colspan="4">No score data.</td></tr>'}
                             </tbody>
                         </table>
                     </div>

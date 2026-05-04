@@ -3234,6 +3234,17 @@ However, the integration of AI in healthcare also raises important questions abo
                 </tr>
             `;
         }).join('');
+        const finalScoreTableRow = finalEvaluationRuns.length
+            ? `
+                <tr>
+                    <td>${escapeHtml(finalVerificationPromptLabel)}</td>
+                    <td>${escapeHtml(finalAverageScore === null ? 'n/a' : finalAverageScore.toFixed(2))}</td>
+                    <td>${escapeHtml(String(finalEvaluationRuns.length))}</td>
+                    <td>Final verification only</td>
+                </tr>
+            `
+            : '';
+        const scoreTableRows = `${avgTableRows}${finalScoreTableRow}`;
 
         $('#workflow-refinement-results').html(`
             <div class="test-results success">
@@ -3297,7 +3308,7 @@ However, the integration of AI in healthcare also raises important questions abo
                     <h5>Prompt Version Score Comparison</h5>
                     <table class="widefat striped">
                         <thead><tr><th>Evaluated Prompt Version</th><th>Average Score</th><th>Posts</th><th>Adjustment Produced</th></tr></thead>
-                        <tbody>${avgTableRows || '<tr><td colspan="4">No score data.</td></tr>'}</tbody>
+                        <tbody>${scoreTableRows || '<tr><td colspan="4">No score data.</td></tr>'}</tbody>
                     </table>
                 </div>
 
