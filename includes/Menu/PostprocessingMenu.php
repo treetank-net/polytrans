@@ -1554,7 +1554,17 @@ class PostprocessingMenu
     private function format_async_result($result): array
     {
         if (is_wp_error($result)) {
-            return ['success' => false, 'data' => ['message' => $result->get_error_message()]];
+            $payload = [
+                'message' => $result->get_error_message(),
+                'error_code' => $result->get_error_code(),
+            ];
+
+            $error_data = $result->get_error_data();
+            if ($error_data !== null) {
+                $payload['errors'] = $error_data;
+            }
+
+            return ['success' => false, 'data' => $payload];
         }
         return ['success' => true, 'data' => $result];
     }

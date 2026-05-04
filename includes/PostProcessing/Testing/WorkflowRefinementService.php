@@ -250,6 +250,14 @@ final class WorkflowRefinementService
 
         $workflow_context = is_array($evaluations[0]['workflow_context'] ?? null) ? $evaluations[0]['workflow_context'] : [];
         $refinement_history = $this->decodeRefinementHistory($refinementHistoryPayload);
+        $workflow_context_json = $this->encodeJson($workflow_context, 60000);
+        $workflow_structure_json = $this->encodeJson($workflow_context['steps'] ?? [], 35000);
+        $target_step_context_json = $this->encodeJson($workflow_context['target_step'] ?? [], 35000);
+        $previous_steps_json = $this->encodeJson($workflow_context['previous_steps'] ?? [], 18000);
+        $following_steps_json = $this->encodeJson($workflow_context['following_steps'] ?? [], 18000);
+        $evaluations_for_prompt = $this->buildAdjusterEvaluationSummaries($evaluations);
+        $evaluations_json = $this->encodeJson($evaluations_for_prompt, 45000);
+        $refinement_history_json = $this->encodeJson($refinement_history, 25000);
         $adjuster_context = [
             'criteria' => $criteria,
             'workflow_purpose' => $workflowPurpose,
@@ -258,21 +266,39 @@ final class WorkflowRefinementService
             'non_interpolated_system_prompt' => $current_prompt_pack['system_prompt'],
             'non_interpolated_user_message_template' => $current_prompt_pack['user_message_template'],
             'non_interpolated_expected_output_schema' => $current_prompt_pack['expected_output_schema'],
-            'workflow_context_json' => $this->encodeJson($workflow_context, 60000),
-            'workflow_structure_json' => $this->encodeJson($workflow_context['steps'] ?? [], 35000),
-            'target_step_context_json' => $this->encodeJson($workflow_context['target_step'] ?? [], 35000),
-            'previous_steps_json' => $this->encodeJson($workflow_context['previous_steps'] ?? [], 18000),
-            'following_steps_json' => $this->encodeJson($workflow_context['following_steps'] ?? [], 18000),
-            'evaluations' => $evaluations,
-            'evaluations_json' => $this->encodeJson($evaluations, 65000),
+            'workflow_context_json' => $workflow_context_json,
+            'workflow_structure_json' => $workflow_structure_json,
+            'target_step_context_json' => $target_step_context_json,
+            'previous_steps_json' => $previous_steps_json,
+            'following_steps_json' => $following_steps_json,
+            'evaluations' => $evaluations_for_prompt,
+            'evaluations_json' => $evaluations_json,
             'refinement_history' => $refinement_history,
-            'refinement_history_json' => $this->encodeJson($refinement_history, 65000),
+            'refinement_history_json' => $refinement_history_json,
         ];
         $rendered_adjuster_system_prompt = PromptTemplateRenderer::render(
             $adjusterSystemPromptTemplate,
             $adjuster_context
         );
         $rendered_adjuster_prompt = PromptTemplateRenderer::render($adjusterPromptTemplate, $adjuster_context);
+        $prompt_diagnostics = $this->buildAdjusterPromptDiagnostics([
+            'criteria' => $criteria,
+            'workflow_purpose' => $workflowPurpose,
+            'prompt_objective' => $promptObjective,
+            'current_system_prompt' => $current_prompt_pack['system_prompt'],
+            'current_user_message_template' => $current_prompt_pack['user_message_template'],
+            'current_expected_output_schema' => $current_prompt_pack['expected_output_schema'],
+            'workflow_context_json' => $workflow_context_json,
+            'workflow_structure_json' => $workflow_structure_json,
+            'target_step_context_json' => $target_step_context_json,
+            'previous_steps_json' => $previous_steps_json,
+            'following_steps_json' => $following_steps_json,
+            'evaluations_json' => $evaluations_json,
+            'refinement_history_json' => $refinement_history_json,
+            'adjuster_system_prompt_template' => $adjusterSystemPromptTemplate,
+            'adjuster_prompt_template' => $adjusterPromptTemplate,
+        ], $rendered_adjuster_system_prompt, $rendered_adjuster_prompt);
+        LogsManager::log('Workflow refinement adjuster prompt diagnostics', 'info', $prompt_diagnostics);
 
         $adjustment = PromptChatRunner::execute(
             $assistant,
@@ -282,6 +308,11 @@ final class WorkflowRefinementService
         );
 
         if (is_wp_error($adjustment)) {
+            $adjustment->add_data([
+                'prompt_diagnostics' => $prompt_diagnostics,
+                'rendered_system_prompt_preview' => $this->buildPromptPreview($rendered_adjuster_system_prompt),
+                'rendered_user_prompt_preview' => $this->buildPromptPreview($rendered_adjuster_prompt),
+            ]);
             return $adjustment;
         }
 
@@ -1031,7 +1062,11 @@ final class WorkflowRefinementService
             return null;
         }
 
-        return $text;
+        if (strlen($text) <= $limit) {
+            return $text;
+        }
+
+        return substr($text, 0, $limit);
     }
 
     /**
@@ -1214,6 +1249,82 @@ final class WorkflowRefinementService
         }
 
         return $normalized;
+    }
+
+    /**
+     * Keep only the evaluation evidence the adjuster needs. Full workflow context is
+     * provided separately, so including it in every evaluated run duplicates large
+     * prompt and step summaries.
+     *
+     * @param array<int,array<string,mixed>> $evaluations
+     * @return array<int,array<string,mixed>>
+     */
+    private function buildAdjusterEvaluationSummaries(array $evaluations): array
+    {
+        $summaries = [];
+        foreach ($evaluations as $item) {
+            $summaries[] = [
+                'run_id' => (string) ($item['run_id'] ?? ''),
+                'post_id' => isset($item['post_id']) ? (int) $item['post_id'] : 0,
+                'post_title' => isset($item['post_title']) ? sanitize_text_field((string) $item['post_title']) : '',
+                'workflow_success' => !empty($item['workflow_success']),
+                'score' => isset($item['score']) && is_numeric($item['score']) ? (float) $item['score'] : null,
+                'feedback' => $this->truncateText((string) ($item['feedback'] ?? ''), 12000),
+                'final_output_summary' => $this->compactValue($item['final_output'] ?? [], 2, 2500),
+                'workflow_result_summary' => $this->compactValue($item['workflow_result_summary'] ?? [], 2, 2500),
+            ];
+        }
+
+        return $summaries;
+    }
+
+    /**
+     * @param array<string,string> $components
+     * @return array<string,mixed>
+     */
+    private function buildAdjusterPromptDiagnostics(array $components, string $renderedSystemPrompt, string $renderedUserPrompt): array
+    {
+        $component_lengths = [];
+        foreach ($components as $name => $value) {
+            $length = strlen((string) $value);
+            $component_lengths[$name] = [
+                'chars' => $length,
+                'estimated_tokens' => (int) ceil($length / 4),
+            ];
+        }
+
+        uasort($component_lengths, static function (array $left, array $right): int {
+            return ($right['chars'] ?? 0) <=> ($left['chars'] ?? 0);
+        });
+
+        $system_chars = strlen($renderedSystemPrompt);
+        $user_chars = strlen($renderedUserPrompt);
+        $total_chars = $system_chars + $user_chars;
+
+        return [
+            'rendered_system_prompt_chars' => $system_chars,
+            'rendered_user_prompt_chars' => $user_chars,
+            'rendered_total_chars' => $total_chars,
+            'estimated_total_tokens' => (int) ceil($total_chars / 4),
+            'component_lengths' => $component_lengths,
+        ];
+    }
+
+    /**
+     * @return array<string,mixed>
+     */
+    private function buildPromptPreview(string $prompt): array
+    {
+        $chars = strlen($prompt);
+        $head = (string) $this->truncateText($prompt, 6000);
+        $tail = $chars > 6000 ? substr($prompt, -6000) : '';
+
+        return [
+            'chars' => $chars,
+            'estimated_tokens' => (int) ceil($chars / 4),
+            'head' => $head,
+            'tail' => $tail,
+        ];
     }
 
     /**

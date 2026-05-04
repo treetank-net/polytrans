@@ -6,6 +6,7 @@ namespace PolyTrans\Assistants\Testing;
 
 use PolyTrans\Assistants\AssistantExecutor;
 use PolyTrans\Assistants\AssistantManager;
+use PolyTrans\Core\LogsManager;
 use PolyTrans\PromptRefinement\EvaluationScoreExtractor;
 use PolyTrans\PromptRefinement\PromptChatRunner;
 use PolyTrans\PromptRefinement\PromptPackNormalizer;
@@ -257,9 +258,12 @@ final class AssistantRefinementService
                 'post_id' => isset($item['post_id']) ? (int) $item['post_id'] : 0,
                 'post_title' => isset($item['post_title']) ? sanitize_text_field((string) $item['post_title']) : '',
                 'score' => $score,
-                'feedback' => isset($item['evaluation']['feedback'])
-                    ? (string) $item['evaluation']['feedback']
-                    : ((isset($item['feedback'])) ? (string) $item['feedback'] : ''),
+                'feedback' => $this->truncateText(
+                    isset($item['evaluation']['feedback'])
+                        ? (string) $item['evaluation']['feedback']
+                        : ((isset($item['feedback'])) ? (string) $item['feedback'] : ''),
+                    12000
+                ),
             ];
         }, $evaluations);
 
@@ -276,6 +280,8 @@ final class AssistantRefinementService
 
         $should_adjust_expected_output_schema = PromptPackNormalizer::shouldAdjustExpectedOutputSchema($assistant);
         $refinement_history = $this->decodeRefinementHistory($refinementHistoryPayload);
+        $evaluations_json = $this->encodeJson($normalized_evaluations, 45000);
+        $refinement_history_json = $this->encodeJson($refinement_history, 25000);
         $adjuster_context = [
             'criteria' => $criteria,
             'prompt_objective' => $promptObjective,
@@ -284,18 +290,27 @@ final class AssistantRefinementService
             'non_interpolated_user_message_template' => $current_prompt_pack['user_message_template'],
             'non_interpolated_expected_output_schema' => $current_prompt_pack['expected_output_schema'],
             'evaluations' => $normalized_evaluations,
-            'evaluations_json' => wp_json_encode(
-                $normalized_evaluations,
-                JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
-            ),
+            'evaluations_json' => $evaluations_json,
             'refinement_history' => $refinement_history,
-            'refinement_history_json' => $this->encodeJson($refinement_history),
+            'refinement_history_json' => $refinement_history_json,
         ];
         $rendered_adjuster_system_prompt = PromptTemplateRenderer::render(
             $adjusterSystemPromptTemplate,
             $adjuster_context
         );
         $rendered_adjuster_prompt = PromptTemplateRenderer::render($adjusterPromptTemplate, $adjuster_context);
+        $prompt_diagnostics = $this->buildAdjusterPromptDiagnostics([
+            'criteria' => $criteria,
+            'prompt_objective' => $promptObjective,
+            'current_system_prompt' => $current_prompt_pack['system_prompt'],
+            'current_user_message_template' => $current_prompt_pack['user_message_template'],
+            'current_expected_output_schema' => $current_prompt_pack['expected_output_schema'],
+            'evaluations_json' => $evaluations_json,
+            'refinement_history_json' => $refinement_history_json,
+            'adjuster_system_prompt_template' => $adjusterSystemPromptTemplate,
+            'adjuster_prompt_template' => $adjusterPromptTemplate,
+        ], $rendered_adjuster_system_prompt, $rendered_adjuster_prompt);
+        LogsManager::log('Assistant refinement adjuster prompt diagnostics', 'info', $prompt_diagnostics);
 
         $adjustment = PromptChatRunner::execute(
             $assistant,
@@ -305,6 +320,11 @@ final class AssistantRefinementService
         );
 
         if (is_wp_error($adjustment)) {
+            $adjustment->add_data([
+                'prompt_diagnostics' => $prompt_diagnostics,
+                'rendered_system_prompt_preview' => $this->buildPromptPreview($rendered_adjuster_system_prompt),
+                'rendered_user_prompt_preview' => $this->buildPromptPreview($rendered_adjuster_prompt),
+            ]);
             return $adjustment;
         }
 
@@ -724,16 +744,71 @@ final class AssistantRefinementService
     }
 
     /**
-     * @param mixed $value
+     * @param array<string,string> $components
+     * @return array<string,mixed>
      */
-    private function encodeJson($value): string
+    private function buildAdjusterPromptDiagnostics(array $components, string $renderedSystemPrompt, string $renderedUserPrompt): array
+    {
+        $component_lengths = [];
+        foreach ($components as $name => $value) {
+            $length = strlen((string) $value);
+            $component_lengths[$name] = [
+                'chars' => $length,
+                'estimated_tokens' => (int) ceil($length / 4),
+            ];
+        }
+
+        uasort($component_lengths, static function (array $left, array $right): int {
+            return ($right['chars'] ?? 0) <=> ($left['chars'] ?? 0);
+        });
+
+        $system_chars = strlen($renderedSystemPrompt);
+        $user_chars = strlen($renderedUserPrompt);
+        $total_chars = $system_chars + $user_chars;
+
+        return [
+            'rendered_system_prompt_chars' => $system_chars,
+            'rendered_user_prompt_chars' => $user_chars,
+            'rendered_total_chars' => $total_chars,
+            'estimated_total_tokens' => (int) ceil($total_chars / 4),
+            'component_lengths' => $component_lengths,
+        ];
+    }
+
+    /**
+     * @return array<string,mixed>
+     */
+    private function buildPromptPreview(string $prompt): array
+    {
+        $chars = strlen($prompt);
+        $head = $this->truncateText($prompt, 6000);
+        $tail = $chars > 6000 ? substr($prompt, -6000) : '';
+
+        return [
+            'chars' => $chars,
+            'estimated_tokens' => (int) ceil($chars / 4),
+            'head' => $head,
+            'tail' => $tail,
+        ];
+    }
+
+    private function truncateText(string $value, int $limit): string
+    {
+        if ($limit <= 0 || strlen($value) <= $limit) {
+            return $value;
+        }
+
+        return substr($value, 0, $limit);
+    }
+
+    private function encodeJson($value, int $limit = 60000): string
     {
         $json = wp_json_encode($value, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         if (!is_string($json)) {
             return '{}';
         }
 
-        return $json;
+        return $this->truncateText($json, $limit);
     }
 
     /**
