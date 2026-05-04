@@ -1912,7 +1912,9 @@
         const container = $('#workflow-tester-container');
         const refinableSteps = getWorkflowRefinableAssistantSteps(workflow);
         const refinementDefaults = window.polytransWorkflowRefinementDefaults || {};
+        const evaluatorSystemPrompt = refinementDefaults.evaluatorSystemPrompt || '';
         const evaluatorTemplate = refinementDefaults.evaluatorPromptTemplate || '';
+        const adjusterSystemPrompt = refinementDefaults.adjusterSystemPrompt || '';
         const adjusterTemplate = refinementDefaults.adjusterPromptTemplate || '';
         const refinableStepOptions = refinableSteps.length
             ? refinableSteps.map((step) => {
@@ -2062,15 +2064,35 @@ However, the integration of AI in healthcare also raises important questions abo
                                 </td>
                             </tr>
                             <tr>
-                                <th scope="row"><label for="workflow-refine-evaluator-template">Evaluator Prompt Template</label></th>
+                                <th scope="row">Evaluator Prompts</th>
                                 <td>
-                                    <textarea id="workflow-refine-evaluator-template" class="large-text code" rows="14">${escapeHtml(evaluatorTemplate)}</textarea>
+                                    <div class="workflow-refinement-prompt-grid">
+                                        <div class="workflow-refinement-prompt-field">
+                                            <label for="workflow-refine-evaluator-system-prompt"><strong>System Prompt</strong></label>
+                                            <textarea id="workflow-refine-evaluator-system-prompt" class="large-text code" rows="10">${escapeHtml(evaluatorSystemPrompt)}</textarea>
+                                        </div>
+                                        <div class="workflow-refinement-prompt-field">
+                                            <label for="workflow-refine-evaluator-template"><strong>User Message Template</strong></label>
+                                            <textarea id="workflow-refine-evaluator-template" class="large-text code" rows="10">${escapeHtml(evaluatorTemplate)}</textarea>
+                                        </div>
+                                    </div>
+                                    <p class="description">Template variables include workflow_purpose, prompt_objective, criteria, workflow context, target step prompts, target output, and final workflow output.</p>
                                 </td>
                             </tr>
                             <tr>
-                                <th scope="row"><label for="workflow-refine-adjuster-template">Prompt Adjuster Template</label></th>
+                                <th scope="row">Prompt Adjuster Prompts</th>
                                 <td>
-                                    <textarea id="workflow-refine-adjuster-template" class="large-text code" rows="14">${escapeHtml(adjusterTemplate)}</textarea>
+                                    <div class="workflow-refinement-prompt-grid">
+                                        <div class="workflow-refinement-prompt-field">
+                                            <label for="workflow-refine-adjuster-system-prompt"><strong>System Prompt</strong></label>
+                                            <textarea id="workflow-refine-adjuster-system-prompt" class="large-text code" rows="12">${escapeHtml(adjusterSystemPrompt)}</textarea>
+                                        </div>
+                                        <div class="workflow-refinement-prompt-field">
+                                            <label for="workflow-refine-adjuster-template"><strong>User Message Template</strong></label>
+                                            <textarea id="workflow-refine-adjuster-template" class="large-text code" rows="12">${escapeHtml(adjusterTemplate)}</textarea>
+                                        </div>
+                                    </div>
+                                    <p class="description">Template variables include workflow_purpose, prompt_objective, criteria, non-interpolated target prompt pack, workflow context, and evaluations_json.</p>
                                 </td>
                             </tr>
                         </table>
@@ -2349,7 +2371,9 @@ However, the integration of AI in healthcare also raises important questions abo
         const criteria = ($('#workflow-refine-criteria').val() || '').trim();
         const workflowPurpose = ($('#workflow-refine-workflow-purpose').val() || '').trim();
         const promptObjective = ($('#workflow-refine-objective').val() || '').trim();
+        const evaluatorSystemPrompt = ($('#workflow-refine-evaluator-system-prompt').val() || '').trim();
         const evaluatorTemplate = ($('#workflow-refine-evaluator-template').val() || '').trim();
+        const adjusterSystemPrompt = ($('#workflow-refine-adjuster-system-prompt').val() || '').trim();
         const adjusterTemplate = ($('#workflow-refine-adjuster-template').val() || '').trim();
         const configuredIterations = parseInt($('#workflow-refine-iterations').val() || '1', 10);
         const totalIterations = Number.isFinite(configuredIterations)
@@ -2367,7 +2391,9 @@ However, the integration of AI in healthcare also raises important questions abo
             criteria,
             workflowPurpose,
             promptObjective,
+            evaluatorSystemPrompt,
             evaluatorTemplate,
+            adjusterSystemPrompt,
             adjusterTemplate,
             totalIterations,
             selectedPosts,
@@ -2407,13 +2433,16 @@ However, the integration of AI in healthcare also raises important questions abo
             criteria: session.criteria,
             workflowPurpose: session.workflowPurpose,
             promptObjective: session.promptObjective,
+            evaluatorSystemPrompt: session.evaluatorSystemPrompt,
             evaluatorTemplate: session.evaluatorTemplate,
+            adjusterSystemPrompt: session.adjusterSystemPrompt,
             adjusterTemplate: session.adjusterTemplate,
             totalIterations,
             selectedPosts: session.selectedPosts,
             initialPromptPack: session.finalPromptPack,
             existingIterations: session.iterations,
-            initialBasePromptPack: session.initialBasePromptPack
+            initialBasePromptPack: session.initialBasePromptPack,
+            initialEvaluatedRuns: session.finalEvaluationRuns
         }, {
             $button: $('#workflow-refine-reeval-btn'),
             runningLabel: 'Re-evaluating...',
@@ -2486,11 +2515,15 @@ However, the integration of AI in healthcare also raises important questions abo
         const criteria = String(config.criteria || '').trim();
         const workflowPurpose = String(config.workflowPurpose || '').trim();
         const promptObjective = String(config.promptObjective || '').trim();
+        const evaluatorSystemPrompt = String(config.evaluatorSystemPrompt || '').trim();
         const evaluatorTemplate = String(config.evaluatorTemplate || '').trim();
+        const adjusterSystemPrompt = String(config.adjusterSystemPrompt || '').trim();
         const adjusterTemplate = String(config.adjusterTemplate || '').trim();
         const selectedPosts = Array.isArray(config.selectedPosts) ? config.selectedPosts : [];
         const existingIterations = Array.isArray(config.existingIterations) ? config.existingIterations.slice() : [];
+        const initialEvaluatedRuns = Array.isArray(config.initialEvaluatedRuns) ? config.initialEvaluatedRuns.slice() : [];
         const baseIterationCount = existingIterations.length;
+        const reuseInitialEvaluation = initialEvaluatedRuns.length > 0 && !!config.initialPromptPack;
         const totalIterations = Number.isFinite(config.totalIterations)
             ? Math.max(1, Math.min(parseInt(config.totalIterations, 10), 10))
             : 1;
@@ -2526,6 +2559,8 @@ However, the integration of AI in healthcare also raises important questions abo
         const $applyButton = $('#workflow-refine-apply-btn');
         const spinner = $button.next('.spinner');
         const stepsPerIteration = (selectedPosts.length * 2) + 1;
+        const finalVerificationSteps = selectedPosts.length * 2;
+        const skippedInitialEvaluationSteps = reuseInitialEvaluation ? selectedPosts.length * 2 : 0;
         const progressState = {
             totalPosts: selectedPosts.length,
             completedPosts: 0,
@@ -2533,7 +2568,7 @@ However, the integration of AI in healthcare also raises important questions abo
             currentIteration: 1,
             absoluteIteration: baseIterationCount + 1,
             phase: 'execution',
-            totalSteps: totalIterations * stepsPerIteration,
+            totalSteps: (totalIterations * stepsPerIteration) + finalVerificationSteps - skippedInitialEvaluationSteps,
             completedSteps: 0,
             currentPost: '',
             errors: [],
@@ -2542,7 +2577,12 @@ However, the integration of AI in healthcare also raises important questions abo
         const iterationResults = existingIterations.slice();
         workflowRefinementCancelRequested = false;
 
-        pushWorkflowRefinementLog(progressState, `Starting full workflow re-eval: ${totalIterations} iteration(s), ${selectedPosts.length} post(s).`);
+        pushWorkflowRefinementLog(
+            progressState,
+            reuseInitialEvaluation
+                ? `Continuing workflow refinement from final verification: ${totalIterations} adjustment iteration(s), ${selectedPosts.length} cached evaluation run(s).`
+                : `Starting full workflow re-eval: ${totalIterations} iteration(s), ${selectedPosts.length} post(s).`
+        );
         $button.prop('disabled', true).text(ui?.runningLabel || 'Running...');
         $primaryButton.prop('disabled', true);
         $reevalButton.prop('disabled', true);
@@ -2557,16 +2597,25 @@ However, the integration of AI in healthcare also raises important questions abo
         try {
             for (let iterationOffset = 1; iterationOffset <= totalIterations; iterationOffset++) {
                 const iterationNumber = baseIterationCount + iterationOffset;
+                const shouldReuseEvaluation = reuseInitialEvaluation && iterationOffset === 1;
                 progressState.currentIteration = iterationOffset;
                 progressState.absoluteIteration = iterationNumber;
                 progressState.completedPosts = 0;
-                progressState.phase = 'execution';
+                progressState.phase = shouldReuseEvaluation ? 'adjustment' : 'execution';
                 progressState.currentPost = '';
-                pushWorkflowRefinementLog(progressState, `Iteration ${iterationNumber}: running full workflow and evaluator.`);
+                pushWorkflowRefinementLog(
+                    progressState,
+                    shouldReuseEvaluation
+                        ? `Iteration ${iterationNumber}: reusing final verification results and running prompt adjuster.`
+                        : `Iteration ${iterationNumber}: running full workflow and evaluator.`
+                );
                 renderWorkflowRefinementProgress(progressState);
 
-                const evaluatedRuns = [];
-                for (let index = 0; index < selectedPosts.length; index++) {
+                const evaluatedRuns = shouldReuseEvaluation ? initialEvaluatedRuns.slice() : [];
+                if (shouldReuseEvaluation) {
+                    progressState.completedPosts = selectedPosts.length;
+                }
+                for (let index = 0; !shouldReuseEvaluation && index < selectedPosts.length; index++) {
                     const post = selectedPosts[index];
                     const postTargetLanguage = targetLanguage || String(post.language || '').trim();
                     progressState.currentPost = post.title || `Post #${post.id}`;
@@ -2615,6 +2664,7 @@ However, the integration of AI in healthcare also raises important questions abo
                             criteria,
                             workflow_purpose: workflowPurpose,
                             prompt_objective: promptObjective,
+                            evaluator_system_prompt: evaluatorSystemPrompt,
                             evaluator_prompt_template: evaluatorTemplate
                         }
                     });
@@ -2649,8 +2699,10 @@ However, the integration of AI in healthcare also raises important questions abo
                     criteria,
                     workflow_purpose: workflowPurpose,
                     prompt_objective: promptObjective,
+                    adjuster_system_prompt: adjusterSystemPrompt,
                     adjuster_prompt_template: adjusterTemplate,
-                    evaluations: evaluatedRuns
+                    evaluations: evaluatedRuns,
+                    refinement_history: buildWorkflowRefinementHistory(iterationResults)
                 };
                 if (currentPromptPack) {
                     adjustRequest.current_system_prompt = currentPromptPack.system_prompt || '';
@@ -2691,7 +2743,7 @@ However, the integration of AI in healthcare also raises important questions abo
 
                 pushWorkflowRefinementLog(progressState, `Iteration ${iterationNumber}: adjuster finished${hasValidPack ? '' : ' (invalid prompt pack format)'}.`);
                 if (!hasValidPack && iterationOffset < totalIterations) {
-                    throw new Error(`Iteration ${iterationNumber}: adjuster response is not valid prompt-pack JSON.`);
+                    throw new Error(`Iteration ${iterationNumber}: adjuster response is not a valid prompt pack.`);
                 }
                 if (nextPromptPack) {
                     currentPromptPack = nextPromptPack;
@@ -2706,7 +2758,9 @@ However, the integration of AI in healthcare also raises important questions abo
                     criteria,
                     workflowPurpose,
                     promptObjective,
+                    evaluatorSystemPrompt,
                     evaluatorTemplate,
+                    adjusterSystemPrompt,
                     adjusterTemplate,
                     selectedPosts,
                     iterations: iterationResults,
@@ -2746,11 +2800,11 @@ However, the integration of AI in healthcare also raises important questions abo
             let finalEvaluationRuns = [];
             if (workflowRefinementCancelRequested) {
                 stoppedEarly = true;
+                progressState.totalSteps = Math.max(progressState.completedSteps, progressState.totalSteps - finalVerificationSteps);
                 pushWorkflowRefinementLog(progressState, 'Stop requested. Final verification skipped.');
             } else if (finalOutputPromptPack) {
                 progressState.phase = 'final_evaluation';
                 progressState.currentPost = '';
-                progressState.totalSteps += selectedPosts.length * 2;
                 pushWorkflowRefinementLog(progressState, 'Final verification: evaluating the selected final prompt pack.');
                 renderWorkflowRefinementProgress(progressState);
                 finalEvaluationRuns = await runWorkflowFinalVerification({
@@ -2761,11 +2815,14 @@ However, the integration of AI in healthcare also raises important questions abo
                     criteria,
                     workflowPurpose,
                     promptObjective,
+                    evaluatorSystemPrompt,
                     evaluatorTemplate,
                     selectedPosts,
                     promptPack: finalOutputPromptPack,
                     progressState
                 });
+            } else {
+                progressState.totalSteps = Math.max(progressState.completedSteps, progressState.totalSteps - finalVerificationSteps);
             }
             progressState.phase = stoppedEarly ? 'stopped' : 'completed';
             progressState.currentPost = '';
@@ -2784,7 +2841,9 @@ However, the integration of AI in healthcare also raises important questions abo
                 criteria,
                 workflowPurpose,
                 promptObjective,
+                evaluatorSystemPrompt,
                 evaluatorTemplate,
+                adjusterSystemPrompt,
                 adjusterTemplate,
                 selectedPosts,
                 iterations: iterationResults,
@@ -2884,6 +2943,7 @@ However, the integration of AI in healthcare also raises important questions abo
                     criteria: config.criteria,
                     workflow_purpose: config.workflowPurpose,
                     prompt_objective: config.promptObjective,
+                    evaluator_system_prompt: config.evaluatorSystemPrompt,
                     evaluator_prompt_template: config.evaluatorTemplate
                 }
             });
@@ -3048,26 +3108,41 @@ However, the integration of AI in healthcare also raises important questions abo
             ? (finalScoredRuns.reduce((sum, run) => sum + Number(run.evaluation.score || 0), 0) / finalScoredRuns.length)
             : null;
         const applyVersionOptions = [
-            '<option value="initial">Before refinement</option>',
+            '<option value="initial">Original prompt (before refinement)</option>',
             ...iterations
                 .filter((round) => round.output_prompt_pack)
-                .map((round) => `<option value="iteration:${escapeHtml(String(round.iteration || 0))}" ${round === finalIteration ? 'selected' : ''}>After iteration ${escapeHtml(String(round.iteration || 0))}</option>`)
+                .map((round) => `<option value="iteration:${escapeHtml(String(round.iteration || 0))}" ${round === finalIteration ? 'selected' : ''}>After adjustment ${escapeHtml(String(round.iteration || 0))}</option>`)
         ].join('');
 
         const avgTableRows = iterations.map((round) => {
+            const iterationNumber = parseInt(round.iteration || 0, 10);
+            const evaluatedPromptLabel = iterationNumber <= 1
+                ? 'Original prompt (before refinement)'
+                : `After adjustment ${iterationNumber - 1}`;
+            const producedPromptLabel = round.output_prompt_pack
+                ? `After adjustment ${iterationNumber}`
+                : 'n/a';
             const avg = round.average_score === null || round.average_score === undefined
                 ? 'n/a'
                 : Number(round.average_score).toFixed(2);
             return `
                 <tr>
-                    <td>${escapeHtml(String(round.iteration || 0))}</td>
+                    <td>${escapeHtml(evaluatedPromptLabel)}</td>
                     <td>${escapeHtml(avg)}</td>
                     <td>${escapeHtml(String((round.runs || []).length))}</td>
+                    <td>${escapeHtml(producedPromptLabel)}</td>
                 </tr>
             `;
         }).join('');
 
         const roundDetailsHtml = iterations.map((round) => {
+            const iterationNumber = parseInt(round.iteration || 0, 10);
+            const evaluatedPromptLabel = iterationNumber <= 1
+                ? 'Original prompt (before refinement)'
+                : `After adjustment ${iterationNumber - 1}`;
+            const producedPromptLabel = round.output_prompt_pack
+                ? `After adjustment ${iterationNumber}`
+                : 'No valid adjusted prompt produced';
             const runs = Array.isArray(round.runs) ? round.runs : [];
             const adjustment = round.adjustment || {};
             const parsed = adjustment.parsed || {};
@@ -3120,12 +3195,12 @@ However, the integration of AI in healthcare also raises important questions abo
 
             return `
                 <details class="workflow-test-details" ${round.iteration === iterations.length ? 'open' : ''}>
-                    <summary>Iteration ${escapeHtml(String(round.iteration || 0))} | Avg score: ${escapeHtml(round.average_score === null || round.average_score === undefined ? 'n/a' : Number(round.average_score).toFixed(2))}</summary>
+                    <summary>${escapeHtml(evaluatedPromptLabel)} | Avg score: ${escapeHtml(round.average_score === null || round.average_score === undefined ? 'n/a' : Number(round.average_score).toFixed(2))} | Produced: ${escapeHtml(producedPromptLabel)}</summary>
                     ${runsHtml}
                     ${promptComparisonHtml}
                     <details class="workflow-test-details">
-                        <summary>Adjuster Output</summary>
-                        ${isValidPack ? '' : '<p style="color:#d63638;"><strong>Adjuster response is not valid prompt-pack JSON. Raw output shown below.</strong></p>'}
+                        <summary>Adjustment ${escapeHtml(String(iterationNumber))} Output: ${escapeHtml(producedPromptLabel)}</summary>
+                        ${isValidPack ? '' : '<p style="color:#d63638;"><strong>Adjuster response is not a valid prompt pack. Raw output shown below.</strong></p>'}
                         <h5>System Prompt</h5>
                         <pre><code>${escapeHtml(parsed.system_prompt || '')}</code></pre>
                         <h5>User Message Template</h5>
@@ -3141,6 +3216,9 @@ However, the integration of AI in healthcare also raises important questions abo
         const finalUsage = finalAdjustment.usage && Object.keys(finalAdjustment.usage).length
             ? JSON.stringify(finalAdjustment.usage, null, 2)
             : 'No usage data returned.';
+        const finalVerificationPromptLabel = finalIteration
+            ? `After adjustment ${parseInt(finalIteration.iteration || 0, 10)}`
+            : 'latest adjusted prompt';
         const finalCombinedPack = finalIsValidPack
             ? formatWorkflowPromptPackArtifact(finalParsed, includeSchema)
             : (finalAdjustment.adjuster_response || '');
@@ -3207,7 +3285,8 @@ However, the integration of AI in healthcare also raises important questions abo
 
                 <div class="workflow-refinement-panel">
                     <h5>Final Verification</h5>
-                    <p><strong>Average score after final adjustment:</strong> ${escapeHtml(finalAverageScore === null ? 'n/a' : finalAverageScore.toFixed(2))}</p>
+                    <p><strong>Evaluated prompt version:</strong> ${escapeHtml(finalVerificationPromptLabel)}</p>
+                    <p><strong>Average score:</strong> ${escapeHtml(finalAverageScore === null ? 'n/a' : finalAverageScore.toFixed(2))}</p>
                     <table class="widefat striped">
                         <thead><tr><th>#</th><th>Post</th><th>Score</th><th>Run ID</th></tr></thead>
                         <tbody>${finalVerificationRows || '<tr><td colspan="4">No final verification data.</td></tr>'}</tbody>
@@ -3215,10 +3294,10 @@ However, the integration of AI in healthcare also raises important questions abo
                 </div>
 
                 <div class="workflow-refinement-panel">
-                    <h5>Iteration Score Comparison</h5>
+                    <h5>Prompt Version Score Comparison</h5>
                     <table class="widefat striped">
-                        <thead><tr><th>Iteration</th><th>Average Score</th><th>Posts</th></tr></thead>
-                        <tbody>${avgTableRows || '<tr><td colspan="3">No score data.</td></tr>'}</tbody>
+                        <thead><tr><th>Evaluated Prompt Version</th><th>Average Score</th><th>Posts</th><th>Adjustment Produced</th></tr></thead>
+                        <tbody>${avgTableRows || '<tr><td colspan="4">No score data.</td></tr>'}</tbody>
                     </table>
                 </div>
 
@@ -3226,7 +3305,7 @@ However, the integration of AI in healthcare also raises important questions abo
 
                 <details class="workflow-test-details" open>
                     <summary>Final Proposed Prompt Pack (Diff vs Initial)</summary>
-                    ${finalIsValidPack ? '' : '<p style="color:#d63638;"><strong>Final adjuster response is not valid prompt-pack JSON. Showing raw output below.</strong></p>'}
+                    ${finalIsValidPack ? '' : '<p style="color:#d63638;"><strong>Final adjuster response is not a valid prompt pack. Showing raw output below.</strong></p>'}
                     ${finalIsValidPack ? `
                         ${renderWorkflowPromptComparisonBlock('System Prompt', initialPromptPack.system_prompt, finalPromptPack.system_prompt)}
                         ${renderWorkflowPromptComparisonBlock('User Message Template', initialPromptPack.user_message_template, finalPromptPack.user_message_template)}
@@ -3293,6 +3372,34 @@ However, the integration of AI in healthcare also raises important questions abo
             user_message_template: String(input.user_message_template || ''),
             expected_output_schema: String(input.expected_output_schema || '{}')
         };
+    }
+
+    function buildWorkflowRefinementHistory(iterations) {
+        if (!Array.isArray(iterations)) {
+            return [];
+        }
+
+        return iterations.map((round) => {
+            const iterationNumber = parseInt(round?.iteration || 0, 10);
+            const runs = Array.isArray(round?.runs) ? round.runs : [];
+
+            return {
+                iteration: iterationNumber,
+                evaluated_prompt_version: iterationNumber <= 1
+                    ? 'Original prompt (before refinement)'
+                    : `After adjustment ${iterationNumber - 1}`,
+                evaluated_prompt_pack: normalizeWorkflowPromptPack(round?.input_prompt_pack || {}),
+                average_score: round?.average_score ?? null,
+                post_scores: runs.map((run) => ({
+                    post_id: parseInt(run?.post_id || 0, 10),
+                    post_title: String(run?.post_title || ''),
+                    score: run?.evaluation?.score ?? null,
+                    workflow_success: !!run?.workflow_success
+                })),
+                produced_prompt_version: round?.output_prompt_pack ? `After adjustment ${iterationNumber}` : null,
+                produced_prompt_pack: round?.output_prompt_pack ? normalizeWorkflowPromptPack(round.output_prompt_pack) : null
+            };
+        });
     }
 
     function formatWorkflowPromptPackArtifact(pack, includeSchema) {

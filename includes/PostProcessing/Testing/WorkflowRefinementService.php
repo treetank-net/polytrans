@@ -125,7 +125,8 @@ final class WorkflowRefinementService
         string $criteria,
         string $workflowPurpose = '',
         string $promptObjective = '',
-        string $evaluatorPromptTemplate = ''
+        string $evaluatorPromptTemplate = '',
+        string $evaluatorSystemPromptTemplate = ''
     )
     {
         if ($runId === '') {
@@ -137,6 +138,9 @@ final class WorkflowRefinementService
         if (trim($evaluatorPromptTemplate) === '') {
             $evaluatorPromptTemplate = PromptRefinementSettings::workflowEvaluator();
         }
+        if (trim($evaluatorSystemPromptTemplate) === '') {
+            $evaluatorSystemPromptTemplate = PromptRefinementSettings::workflowEvaluatorSystem();
+        }
 
         $run_payload = get_transient($this->getRunTransientKey($runId));
         if (!is_array($run_payload)) {
@@ -146,7 +150,7 @@ final class WorkflowRefinementService
             return new \WP_Error('workflow_refinement_run_mismatch', __('Run ID does not belong to the selected workflow step.', 'polytrans'));
         }
 
-        $evaluation = $this->evaluateWorkflowRun($run_payload, $criteria, $workflowPurpose, $promptObjective, $evaluatorPromptTemplate);
+        $evaluation = $this->evaluateWorkflowRun($run_payload, $criteria, $workflowPurpose, $promptObjective, $evaluatorPromptTemplate, $evaluatorSystemPromptTemplate);
         if (is_wp_error($evaluation)) {
             return $evaluation;
         }
@@ -181,17 +185,22 @@ final class WorkflowRefinementService
         string $promptObjective,
         string $adjusterPromptTemplate,
         $evaluationsPayload,
+        string $adjusterSystemPromptTemplate = '',
         $currentSystemPrompt = null,
         $currentUserMessageTemplate = null,
         $currentExpectedOutputSchema = null,
         array $workflow = [],
-        string $targetStepId = ''
+        string $targetStepId = '',
+        $refinementHistoryPayload = '[]'
     ) {
         if ($criteria === '') {
             return new \WP_Error('missing_refinement_criteria', __('Refinement criteria is required.', 'polytrans'));
         }
         if (trim($adjusterPromptTemplate) === '') {
             $adjusterPromptTemplate = PromptRefinementSettings::workflowAdjuster();
+        }
+        if (trim($adjusterSystemPromptTemplate) === '') {
+            $adjusterSystemPromptTemplate = PromptRefinementSettings::workflowAdjusterSystem();
         }
 
         $target_step = null;
@@ -240,6 +249,7 @@ final class WorkflowRefinementService
         }
 
         $workflow_context = is_array($evaluations[0]['workflow_context'] ?? null) ? $evaluations[0]['workflow_context'] : [];
+        $refinement_history = $this->decodeRefinementHistory($refinementHistoryPayload);
         $adjuster_context = [
             'criteria' => $criteria,
             'workflow_purpose' => $workflowPurpose,
@@ -255,9 +265,11 @@ final class WorkflowRefinementService
             'following_steps_json' => $this->encodeJson($workflow_context['following_steps'] ?? [], 18000),
             'evaluations' => $evaluations,
             'evaluations_json' => $this->encodeJson($evaluations, 65000),
+            'refinement_history' => $refinement_history,
+            'refinement_history_json' => $this->encodeJson($refinement_history, 65000),
         ];
         $rendered_adjuster_system_prompt = PromptTemplateRenderer::render(
-            PromptRefinementSettings::workflowAdjusterSystem(),
+            $adjusterSystemPromptTemplate,
             $adjuster_context
         );
         $rendered_adjuster_prompt = PromptTemplateRenderer::render($adjusterPromptTemplate, $adjuster_context);
@@ -792,7 +804,8 @@ final class WorkflowRefinementService
         string $criteria,
         string $workflowPurpose,
         string $promptObjective,
-        string $evaluatorPromptTemplate
+        string $evaluatorPromptTemplate,
+        string $evaluatorSystemPromptTemplate
     )
     {
         $assistant = is_array($runPayload['assistant_config'] ?? null) ? $runPayload['assistant_config'] : [];
@@ -836,7 +849,7 @@ final class WorkflowRefinementService
             'workflow_result_json' => $this->encodeJson($runPayload['workflow_result_summary'] ?? [], 25000),
         ];
         $rendered_evaluator_system_prompt = PromptTemplateRenderer::render(
-            PromptRefinementSettings::workflowEvaluatorSystem(),
+            $evaluatorSystemPromptTemplate,
             $evaluator_context
         );
         $rendered_evaluator_prompt = PromptTemplateRenderer::render($evaluatorPromptTemplate, $evaluator_context);
@@ -1197,6 +1210,84 @@ final class WorkflowRefinementService
                 'final_output' => is_array($item['final_output'] ?? null) ? $item['final_output'] : [],
                 'workflow_result_summary' => is_array($item['workflow_result_summary'] ?? null) ? $item['workflow_result_summary'] : [],
                 'workflow_context' => is_array($item['workflow_context'] ?? null) ? $item['workflow_context'] : [],
+            ];
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * @param mixed $historyPayload
+     * @return array<int,array<string,mixed>>
+     */
+    private function decodeRefinementHistory($historyPayload): array
+    {
+        $history = [];
+        if (is_string($historyPayload)) {
+            $decoded = json_decode(wp_unslash($historyPayload), true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                $history = $decoded;
+            }
+        } elseif (is_array($historyPayload)) {
+            $history = wp_unslash($historyPayload);
+        }
+
+        $normalized = [];
+        foreach ($history as $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+
+            $normalized[] = [
+                'iteration' => isset($item['iteration']) ? (int) $item['iteration'] : 0,
+                'evaluated_prompt_version' => isset($item['evaluated_prompt_version']) ? sanitize_text_field((string) $item['evaluated_prompt_version']) : '',
+                'evaluated_prompt_pack' => $this->normalizeHistoryPromptPack($item['evaluated_prompt_pack'] ?? []),
+                'average_score' => isset($item['average_score']) && is_numeric($item['average_score']) ? (float) $item['average_score'] : null,
+                'post_scores' => $this->normalizeHistoryPostScores($item['post_scores'] ?? []),
+                'produced_prompt_version' => isset($item['produced_prompt_version']) ? sanitize_text_field((string) $item['produced_prompt_version']) : null,
+                'produced_prompt_pack' => is_array($item['produced_prompt_pack'] ?? null) ? $this->normalizeHistoryPromptPack($item['produced_prompt_pack']) : null,
+            ];
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * @param mixed $pack
+     * @return array<string,string>
+     */
+    private function normalizeHistoryPromptPack($pack): array
+    {
+        $pack = is_array($pack) ? $pack : [];
+
+        return [
+            'system_prompt' => (string) ($pack['system_prompt'] ?? ''),
+            'user_message_template' => (string) ($pack['user_message_template'] ?? ''),
+            'expected_output_schema' => (string) ($pack['expected_output_schema'] ?? '{}'),
+        ];
+    }
+
+    /**
+     * @param mixed $postScores
+     * @return array<int,array<string,mixed>>
+     */
+    private function normalizeHistoryPostScores($postScores): array
+    {
+        if (!is_array($postScores)) {
+            return [];
+        }
+
+        $normalized = [];
+        foreach ($postScores as $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+
+            $normalized[] = [
+                'post_id' => isset($item['post_id']) ? (int) $item['post_id'] : 0,
+                'post_title' => isset($item['post_title']) ? sanitize_text_field((string) $item['post_title']) : '',
+                'score' => isset($item['score']) && is_numeric($item['score']) ? (float) $item['score'] : null,
+                'workflow_success' => !empty($item['workflow_success']),
             ];
         }
 

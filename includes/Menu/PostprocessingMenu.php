@@ -402,7 +402,9 @@ class PostprocessingMenu
         wp_add_inline_script(
             'polytrans-workflows',
             'window.polytransWorkflowRefinementDefaults = ' . wp_json_encode([
+                'evaluatorSystemPrompt' => PromptRefinementSettings::workflowEvaluatorSystem(),
                 'evaluatorPromptTemplate' => PromptRefinementSettings::workflowEvaluator(),
+                'adjusterSystemPrompt' => PromptRefinementSettings::workflowAdjusterSystem(),
                 'adjusterPromptTemplate' => PromptRefinementSettings::workflowAdjuster(),
             ]) . ';',
             'before'
@@ -1153,6 +1155,7 @@ class PostprocessingMenu
         $criteria = isset($_POST['criteria']) ? sanitize_textarea_field(wp_unslash($_POST['criteria'])) : '';
         $workflow_purpose = isset($_POST['workflow_purpose']) ? sanitize_textarea_field(wp_unslash($_POST['workflow_purpose'])) : '';
         $prompt_objective = isset($_POST['prompt_objective']) ? sanitize_textarea_field(wp_unslash($_POST['prompt_objective'])) : '';
+        $evaluator_system_prompt = isset($_POST['evaluator_system_prompt']) ? wp_unslash($_POST['evaluator_system_prompt']) : '';
         $evaluator_prompt_template = isset($_POST['evaluator_prompt_template']) ? wp_unslash($_POST['evaluator_prompt_template']) : '';
 
         $result = (new WorkflowRefinementService())->evaluateRun(
@@ -1161,7 +1164,8 @@ class PostprocessingMenu
             $criteria,
             $workflow_purpose,
             $prompt_objective,
-            is_string($evaluator_prompt_template) ? $evaluator_prompt_template : ''
+            is_string($evaluator_prompt_template) ? $evaluator_prompt_template : '',
+            is_string($evaluator_system_prompt) ? $evaluator_system_prompt : ''
         );
 
         $this->send_workflow_refinement_result($result);
@@ -1189,8 +1193,10 @@ class PostprocessingMenu
         $criteria = isset($_POST['criteria']) ? sanitize_textarea_field(wp_unslash($_POST['criteria'])) : '';
         $workflow_purpose = isset($_POST['workflow_purpose']) ? sanitize_textarea_field(wp_unslash($_POST['workflow_purpose'])) : '';
         $prompt_objective = isset($_POST['prompt_objective']) ? sanitize_textarea_field(wp_unslash($_POST['prompt_objective'])) : '';
+        $adjuster_system_prompt = isset($_POST['adjuster_system_prompt']) ? wp_unslash($_POST['adjuster_system_prompt']) : '';
         $adjuster_prompt_template = isset($_POST['adjuster_prompt_template']) ? wp_unslash($_POST['adjuster_prompt_template']) : '';
         $evaluations_payload = $_POST['evaluations'] ?? '[]'; // phpcs:ignore WordPress.Security.NonceVerification.Missing -- protected by check_ajax_referer above
+        $refinement_history_payload = $_POST['refinement_history'] ?? '[]'; // phpcs:ignore WordPress.Security.NonceVerification.Missing -- protected by check_ajax_referer above
         $current_system_prompt = array_key_exists('current_system_prompt', $_POST)
             ? wp_unslash($_POST['current_system_prompt']) // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- trusted admin test payload
             : null;
@@ -1208,11 +1214,13 @@ class PostprocessingMenu
             $prompt_objective,
             is_string($adjuster_prompt_template) ? $adjuster_prompt_template : '',
             $evaluations_payload,
+            is_string($adjuster_system_prompt) ? $adjuster_system_prompt : '',
             $current_system_prompt,
             $current_user_message_template,
             $current_expected_output_schema,
             is_array($workflow) ? $workflow : [],
-            $target_step_id
+            $target_step_id,
+            $refinement_history_payload
         );
 
         $this->send_workflow_refinement_result($result);
@@ -1506,7 +1514,8 @@ class PostprocessingMenu
             $params['criteria'] ?? '',
             $params['workflow_purpose'] ?? '',
             $params['prompt_objective'] ?? '',
-            $params['evaluator_prompt_template'] ?? ''
+            $params['evaluator_prompt_template'] ?? '',
+            $params['evaluator_system_prompt'] ?? ''
         );
 
         return $this->format_async_result($result);
@@ -1524,11 +1533,13 @@ class PostprocessingMenu
             $params['prompt_objective'] ?? '',
             $params['adjuster_prompt_template'] ?? '',
             $params['evaluations'] ?? '[]',
+            $params['adjuster_system_prompt'] ?? '',
             $params['current_system_prompt'] ?? null,
             $params['current_user_message_template'] ?? null,
             $params['current_expected_output_schema'] ?? null,
             is_array($params['workflow'] ?? null) ? $params['workflow'] : [],
-            $params['target_step_id'] ?? ''
+            $params['target_step_id'] ?? '',
+            $params['refinement_history'] ?? '[]'
         );
 
         return $this->format_async_result($result);

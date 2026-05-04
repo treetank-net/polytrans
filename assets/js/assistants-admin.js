@@ -1020,7 +1020,8 @@
                 selectedPosts: session.selectedPosts,
                 initialPromptPack: session.finalPromptPack,
                 existingIterations: session.iterations,
-                initialBasePromptPack: session.initialBasePromptPack
+                initialBasePromptPack: session.initialBasePromptPack,
+                initialEvaluatedRuns: session.finalEvaluationRuns
             }, {
                 $button: $('#assistant-refine-reeval-btn'),
                 runningLabel: 'Re-evaluating...',
@@ -1097,7 +1098,9 @@
                 : 1;
             const selectedPosts = Array.isArray(config.selectedPosts) ? config.selectedPosts : [];
             const existingIterations = Array.isArray(config.existingIterations) ? config.existingIterations.slice() : [];
+            const initialEvaluatedRuns = Array.isArray(config.initialEvaluatedRuns) ? config.initialEvaluatedRuns.slice() : [];
             const baseIterationCount = existingIterations.length;
+            const reuseInitialEvaluation = initialEvaluatedRuns.length > 0 && !!config.initialPromptPack;
             let currentPromptPack = config.initialPromptPack ? this.normalizePromptPack(config.initialPromptPack) : null;
             let initialBasePromptPack = config.initialBasePromptPack ? this.normalizePromptPack(config.initialBasePromptPack) : null;
 
@@ -1128,6 +1131,8 @@
             const $reevalButton = $('#assistant-refine-reeval-btn');
             const $applyButton = $('#assistant-refine-apply-btn');
             const stepsPerIteration = (selectedPosts.length * 2) + 1;
+            const finalVerificationSteps = selectedPosts.length * 2;
+            const skippedInitialEvaluationSteps = reuseInitialEvaluation ? selectedPosts.length * 2 : 0;
 
             const progressState = {
                 totalPosts: selectedPosts.length,
@@ -1137,14 +1142,16 @@
                 absoluteIteration: baseIterationCount + 1,
                 phase: 'execution',
                 errors: [],
-                totalSteps: totalIterations * stepsPerIteration,
+                totalSteps: (totalIterations * stepsPerIteration) + finalVerificationSteps - skippedInitialEvaluationSteps,
                 completedSteps: 0,
                 logs: []
             };
 
             this.pushRefinementLog(
                 progressState,
-                `Starting full re-eval: ${totalIterations} iteration(s), ${selectedPosts.length} post(s) per iteration.`
+                reuseInitialEvaluation
+                    ? `Continuing refinement from final verification: ${totalIterations} adjustment iteration(s), ${selectedPosts.length} cached evaluation run(s).`
+                    : `Starting full re-eval: ${totalIterations} iteration(s), ${selectedPosts.length} post(s) per iteration.`
             );
 
             const previousButtonText = $button.text();
@@ -1167,14 +1174,23 @@
                     const iterationNumber = baseIterationCount + iterationOffset;
                     progressState.currentIteration = iterationOffset;
                     progressState.absoluteIteration = iterationNumber;
-                    progressState.phase = 'execution';
+                    const shouldReuseEvaluation = reuseInitialEvaluation && iterationOffset === 1;
+                    progressState.phase = shouldReuseEvaluation ? 'adjustment' : 'execution';
                     progressState.completedPosts = 0;
                     progressState.currentPost = '';
-                    this.pushRefinementLog(progressState, `Iteration ${iterationNumber}: running assistant and evaluator.`);
+                    this.pushRefinementLog(
+                        progressState,
+                        shouldReuseEvaluation
+                            ? `Iteration ${iterationNumber}: reusing final verification results and running prompt adjuster.`
+                            : `Iteration ${iterationNumber}: running assistant and evaluator.`
+                    );
                     this.renderAssistantRefinementProgress(progressState);
 
-                    const evaluatedRuns = [];
-                    for (let index = 0; index < selectedPosts.length; index++) {
+                    const evaluatedRuns = shouldReuseEvaluation ? initialEvaluatedRuns.slice() : [];
+                    if (shouldReuseEvaluation) {
+                        progressState.completedPosts = selectedPosts.length;
+                    }
+                    for (let index = 0; !shouldReuseEvaluation && index < selectedPosts.length; index++) {
                         const post = selectedPosts[index];
                         progressState.currentPost = post.title || `Post #${post.id}`;
                         this.pushRefinementLog(progressState, `Iteration ${iterationNumber}, post ${index + 1}/${selectedPosts.length}: assistant execution started.`);
@@ -1268,7 +1284,8 @@
                         prompt_objective: promptObjective,
                         adjuster_system_prompt: adjusterSystemPrompt,
                         adjuster_prompt_template: adjusterTemplate,
-                        evaluations: JSON.stringify(evaluatedRuns)
+                        evaluations: JSON.stringify(evaluatedRuns),
+                        refinement_history: JSON.stringify(this.buildAssistantRefinementHistory(iterationResults))
                     };
                     if (currentPromptPack) {
                         adjustRequest.current_system_prompt = currentPromptPack.system_prompt || '';
@@ -1315,7 +1332,7 @@
                     );
 
                     if (!hasValidPack && iterationOffset < totalIterations) {
-                        throw new Error(`Iteration ${iterationNumber}: adjuster response is not valid prompt-pack JSON.`);
+                        throw new Error(`Iteration ${iterationNumber}: adjuster response is not a valid prompt pack.`);
                     }
                     if (nextPromptPack) {
                         currentPromptPack = nextPromptPack;
@@ -1336,7 +1353,6 @@
                 if (finalOutputPromptPack) {
                     progressState.phase = 'final_evaluation';
                     progressState.currentPost = '';
-                    progressState.totalSteps += selectedPosts.length * 2;
                     this.pushRefinementLog(progressState, 'Final verification: evaluating the selected final prompt pack.');
                     this.renderAssistantRefinementProgress(progressState);
                     finalEvaluationRuns = await this.runAssistantFinalVerification({
@@ -1351,6 +1367,8 @@
                         promptPack: finalOutputPromptPack,
                         progressState
                     });
+                } else {
+                    progressState.totalSteps = Math.max(progressState.completedSteps, progressState.totalSteps - finalVerificationSteps);
                 }
                 progressState.phase = 'completed';
                 progressState.currentPost = '';
@@ -1605,26 +1623,41 @@
                 ? (finalScoredRuns.reduce((sum, run) => sum + Number(run.evaluation.score || 0), 0) / finalScoredRuns.length)
                 : null;
             const applyVersionOptions = [
-                `<option value="initial">Before refinement</option>`,
+                `<option value="initial">Original prompt (before refinement)</option>`,
                 ...iterations
                     .filter((round) => round.output_prompt_pack)
-                    .map((round) => `<option value="iteration:${this.escapeHtml(String(round.iteration || 0))}" ${round === finalIteration ? 'selected' : ''}>After iteration ${this.escapeHtml(String(round.iteration || 0))}</option>`)
+                    .map((round) => `<option value="iteration:${this.escapeHtml(String(round.iteration || 0))}" ${round === finalIteration ? 'selected' : ''}>After adjustment ${this.escapeHtml(String(round.iteration || 0))}</option>`)
             ].join('');
 
             const avgTableRows = iterations.map((round) => {
+                const iterationNumber = parseInt(round.iteration || 0, 10);
+                const evaluatedPromptLabel = iterationNumber <= 1
+                    ? 'Original prompt (before refinement)'
+                    : `After adjustment ${iterationNumber - 1}`;
+                const producedPromptLabel = round.output_prompt_pack
+                    ? `After adjustment ${iterationNumber}`
+                    : 'n/a';
                 const avg = round.average_score === null || round.average_score === undefined
                     ? 'n/a'
                     : Number(round.average_score).toFixed(2);
                 return `
                     <tr>
-                        <td>${this.escapeHtml(String(round.iteration || 0))}</td>
+                        <td>${this.escapeHtml(evaluatedPromptLabel)}</td>
                         <td>${this.escapeHtml(avg)}</td>
                         <td>${this.escapeHtml(String((round.runs || []).length))}</td>
+                        <td>${this.escapeHtml(producedPromptLabel)}</td>
                     </tr>
                 `;
             }).join('');
 
             const roundDetailsHtml = iterations.map((round) => {
+                const iterationNumber = parseInt(round.iteration || 0, 10);
+                const evaluatedPromptLabel = iterationNumber <= 1
+                    ? 'Original prompt (before refinement)'
+                    : `After adjustment ${iterationNumber - 1}`;
+                const producedPromptLabel = round.output_prompt_pack
+                    ? `After adjustment ${iterationNumber}`
+                    : 'No valid adjusted prompt produced';
                 const runs = Array.isArray(round.runs) ? round.runs : [];
                 const adjustment = round.adjustment || {};
                 const parsed = adjustment.parsed || {};
@@ -1688,12 +1721,12 @@
 
                 return `
                     <details class="assistant-test-details" ${round.iteration === iterations.length ? 'open' : ''}>
-                        <summary>Iteration ${this.escapeHtml(String(round.iteration || 0))} | Avg score: ${this.escapeHtml(round.average_score === null || round.average_score === undefined ? 'n/a' : Number(round.average_score).toFixed(2))}</summary>
+                        <summary>${this.escapeHtml(evaluatedPromptLabel)} | Avg score: ${this.escapeHtml(round.average_score === null || round.average_score === undefined ? 'n/a' : Number(round.average_score).toFixed(2))} | Produced: ${this.escapeHtml(producedPromptLabel)}</summary>
                         ${runsHtml}
                         ${promptComparisonHtml}
 
                         <details class="assistant-test-details">
-                            <summary>Input Prompt Pack (iteration ${this.escapeHtml(String(round.iteration || 0))})</summary>
+                            <summary>Evaluated Prompt Pack: ${this.escapeHtml(evaluatedPromptLabel)}</summary>
                             <h5>System Prompt</h5>
                             <pre><code>${this.escapeHtml(inputPromptPack.system_prompt || '')}</code></pre>
                             <h5>User Message Template</h5>
@@ -1703,8 +1736,8 @@
                         </details>
 
                         <details class="assistant-test-details">
-                            <summary>Adjuster Output (iteration ${this.escapeHtml(String(round.iteration || 0))})</summary>
-                            ${isValidPack ? '' : '<p style="color:#d63638;"><strong>Adjuster response is not valid prompt-pack JSON. Raw output shown below.</strong></p>'}
+                            <summary>Adjustment ${this.escapeHtml(String(iterationNumber))} Output: ${this.escapeHtml(producedPromptLabel)}</summary>
+                            ${isValidPack ? '' : '<p style="color:#d63638;"><strong>Adjuster response is not a valid prompt pack. Raw output shown below.</strong></p>'}
                             <h5>System Prompt</h5>
                             <pre><code>${this.escapeHtml(parsed.system_prompt || '')}</code></pre>
                             <h5>User Message Template</h5>
@@ -1724,6 +1757,9 @@
             const finalIncludeSchema = finalAdjustment.adjust_expected_output_schema !== false;
             const initialPromptPack = this.normalizePromptPack(iterations[0]?.input_prompt_pack || {});
             const finalPromptPack = this.normalizePromptPack(finalParsed || {});
+            const finalVerificationPromptLabel = finalIteration
+                ? `After adjustment ${parseInt(finalIteration.iteration || 0, 10)}`
+                : 'latest adjusted prompt';
 
             const finalCombinedPack = finalIsValidPack
                 ? this.formatPromptPackArtifact(finalParsed, finalIncludeSchema)
@@ -1790,7 +1826,8 @@
 
                     <div class="assistant-test-section">
                         <h5>Final Verification</h5>
-                        <p><strong>Average score after final adjustment:</strong> ${this.escapeHtml(finalAverageScore === null ? 'n/a' : finalAverageScore.toFixed(2))}</p>
+                        <p><strong>Evaluated prompt version:</strong> ${this.escapeHtml(finalVerificationPromptLabel)}</p>
+                        <p><strong>Average score:</strong> ${this.escapeHtml(finalAverageScore === null ? 'n/a' : finalAverageScore.toFixed(2))}</p>
                         <table class="widefat striped">
                             <thead><tr><th>#</th><th>Post</th><th>Score</th><th>Run ID</th></tr></thead>
                             <tbody>${finalVerificationRows || '<tr><td colspan="4">No final verification data.</td></tr>'}</tbody>
@@ -1798,17 +1835,18 @@
                     </div>
 
                     <div class="assistant-test-section">
-                        <h5>Iteration Score Comparison</h5>
+                        <h5>Prompt Version Score Comparison</h5>
                         <table class="widefat striped">
                             <thead>
                                 <tr>
-                                    <th>Iteration</th>
+                                    <th>Evaluated Prompt Version</th>
                                     <th>Average Score</th>
                                     <th>Posts</th>
+                                    <th>Adjustment Produced</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                ${avgTableRows || '<tr><td colspan="3">No score data.</td></tr>'}
+                                ${avgTableRows || '<tr><td colspan="4">No score data.</td></tr>'}
                             </tbody>
                         </table>
                     </div>
@@ -1817,7 +1855,7 @@
 
                     <details class="assistant-test-details" open>
                         <summary>Final Proposed Prompt Pack (Diff vs Initial)</summary>
-                        ${finalIsValidPack ? '' : '<p style="color:#d63638;"><strong>Final adjuster response is not valid prompt-pack JSON. Showing raw output below.</strong></p>'}
+                        ${finalIsValidPack ? '' : '<p style="color:#d63638;"><strong>Final adjuster response is not a valid prompt pack. Showing raw output below.</strong></p>'}
                         ${finalIsValidPack ? `
                             ${this.renderPromptComparisonBlock('System Prompt', initialPromptPack.system_prompt, finalPromptPack.system_prompt)}
                             ${this.renderPromptComparisonBlock('User Message Template', initialPromptPack.user_message_template, finalPromptPack.user_message_template)}
@@ -1892,6 +1930,36 @@
                 user_message_template: String(input.user_message_template || ''),
                 expected_output_schema: String(input.expected_output_schema || '{}')
             };
+        },
+
+        /**
+         * Build compact prompt-version history for the adjuster.
+         */
+        buildAssistantRefinementHistory: function(iterations) {
+            if (!Array.isArray(iterations)) {
+                return [];
+            }
+
+            return iterations.map((round) => {
+                const iterationNumber = parseInt(round?.iteration || 0, 10);
+                const runs = Array.isArray(round?.runs) ? round.runs : [];
+
+                return {
+                    iteration: iterationNumber,
+                    evaluated_prompt_version: iterationNumber <= 1
+                        ? 'Original prompt (before refinement)'
+                        : `After adjustment ${iterationNumber - 1}`,
+                    evaluated_prompt_pack: this.normalizePromptPack(round?.input_prompt_pack || {}),
+                    average_score: round?.average_score ?? null,
+                    post_scores: runs.map((run) => ({
+                        post_id: parseInt(run?.post_id || 0, 10),
+                        post_title: String(run?.post_title || ''),
+                        score: run?.evaluation?.score ?? null
+                    })),
+                    produced_prompt_version: round?.output_prompt_pack ? `After adjustment ${iterationNumber}` : null,
+                    produced_prompt_pack: round?.output_prompt_pack ? this.normalizePromptPack(round.output_prompt_pack) : null
+                };
+            });
         },
 
         formatPromptPackArtifact: function(pack, includeSchema) {

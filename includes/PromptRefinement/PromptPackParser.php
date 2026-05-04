@@ -11,10 +11,12 @@ if (!defined('ABSPATH')) {
 final class PromptPackParser
 {
     /**
-     * Parse adjuster response into a prompt pack. JSON is preferred; legacy separator format remains as fallback.
+     * Parse adjuster response into a prompt pack. JSON is preferred; XML-style tags are the main natural-language fallback.
      *
      * JSON mode expects system_prompt, user_message_template and optionally expected_output_schema.
-     * Legacy separator mode is retained for old runs, but adjuster prompts should now request JSON.
+     * Tagged mode expects system_prompt, user_message_template and optionally expected_output_schema.
+     * The prefixed polytrans_* tags are retained as compatibility aliases.
+     * Legacy separator mode is retained for old runs.
      *
      * @return array<string,mixed>
      */
@@ -46,6 +48,11 @@ final class PromptPackParser
                     'expected_output_schema' => $expected_output_schema,
                 ];
             }
+        }
+
+        $tagged = self::parseTaggedPromptPack($text, $shouldAdjustExpectedOutputSchema, $fallback_schema);
+        if ($tagged['is_valid_pack'] === true) {
+            return $tagged;
         }
 
         $parts = preg_split('/\R---\R/', $text, 3);
@@ -83,5 +90,60 @@ final class PromptPackParser
             'user_message_template' => '',
             'expected_output_schema' => $fallback_schema,
         ];
+    }
+
+    /**
+     * @return array<string,mixed>
+     */
+    private static function parseTaggedPromptPack(
+        string $text,
+        bool $shouldAdjustExpectedOutputSchema,
+        string $fallbackSchema
+    ): array {
+        $system_prompt = self::extractFirstTag($text, ['polytrans_system_prompt', 'system_prompt']);
+        $user_message_template = self::extractFirstTag($text, ['polytrans_user_message_template', 'user_message_template', 'user_message']);
+        $expected_output_schema = self::extractFirstTag($text, ['polytrans_expected_output_schema', 'expected_output_schema']);
+
+        if ($system_prompt === null || trim($system_prompt) === '' || $user_message_template === null || trim($user_message_template) === '') {
+            return [
+                'is_valid_pack' => false,
+                'system_prompt' => '',
+                'user_message_template' => '',
+                'expected_output_schema' => $shouldAdjustExpectedOutputSchema ? '' : $fallbackSchema,
+            ];
+        }
+
+        if ($shouldAdjustExpectedOutputSchema && ($expected_output_schema === null || trim($expected_output_schema) === '')) {
+            return [
+                'is_valid_pack' => false,
+                'system_prompt' => '',
+                'user_message_template' => '',
+                'expected_output_schema' => '',
+            ];
+        }
+
+        return [
+            'is_valid_pack' => true,
+            'system_prompt' => trim($system_prompt),
+            'user_message_template' => trim($user_message_template),
+            'expected_output_schema' => $shouldAdjustExpectedOutputSchema
+                ? PromptPackNormalizer::normalizeExpectedOutputSchema(trim((string) $expected_output_schema))
+                : $fallbackSchema,
+        ];
+    }
+
+    /**
+     * @param string[] $tagNames
+     */
+    private static function extractFirstTag(string $text, array $tagNames): ?string
+    {
+        foreach ($tagNames as $tagName) {
+            $quoted_tag = preg_quote($tagName, '/');
+            if (preg_match('/<' . $quoted_tag . '>\s*(.*?)\s*<\/' . $quoted_tag . '>/is', $text, $matches)) {
+                return (string) $matches[1];
+            }
+        }
+
+        return null;
     }
 }

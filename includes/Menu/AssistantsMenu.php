@@ -1065,6 +1065,7 @@ class AssistantsMenu
         $adjuster_system_prompt = isset($_POST['adjuster_system_prompt']) ? wp_unslash($_POST['adjuster_system_prompt']) : '';
         $adjuster_prompt_template = isset($_POST['adjuster_prompt_template']) ? wp_unslash($_POST['adjuster_prompt_template']) : '';
         $evaluations_payload = $_POST['evaluations'] ?? '[]'; // phpcs:ignore WordPress.Security.NonceVerification.Missing -- protected by check_ajax_referer above
+        $refinement_history_payload = $_POST['refinement_history'] ?? '[]'; // phpcs:ignore WordPress.Security.NonceVerification.Missing -- protected by check_ajax_referer above
         $current_system_prompt = array_key_exists('current_system_prompt', $_POST) // phpcs:ignore WordPress.Security.NonceVerification.Missing -- protected by check_ajax_referer above
             ? wp_unslash($_POST['current_system_prompt']) // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- trusted admin test payload
             : null;
@@ -1084,7 +1085,8 @@ class AssistantsMenu
             $evaluations_payload,
             $current_system_prompt,
             $current_user_message_template,
-            $current_expected_output_schema
+            $current_expected_output_schema,
+            $refinement_history_payload
         );
 
         $this->send_assistant_refinement_result($result);

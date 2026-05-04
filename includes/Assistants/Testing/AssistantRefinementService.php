@@ -218,7 +218,8 @@ final class AssistantRefinementService
         $evaluationsPayload,
         $currentSystemPrompt = null,
         $currentUserMessageTemplate = null,
-        $currentExpectedOutputSchema = null
+        $currentExpectedOutputSchema = null,
+        $refinementHistoryPayload = '[]'
     ) {
         if ($assistantId <= 0) {
             return new \WP_Error('invalid_assistant_id', __('Invalid assistant ID.', 'polytrans'));
@@ -274,6 +275,7 @@ final class AssistantRefinementService
         }
 
         $should_adjust_expected_output_schema = PromptPackNormalizer::shouldAdjustExpectedOutputSchema($assistant);
+        $refinement_history = $this->decodeRefinementHistory($refinementHistoryPayload);
         $adjuster_context = [
             'criteria' => $criteria,
             'prompt_objective' => $promptObjective,
@@ -286,6 +288,8 @@ final class AssistantRefinementService
                 $normalized_evaluations,
                 JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
             ),
+            'refinement_history' => $refinement_history,
+            'refinement_history_json' => $this->encodeJson($refinement_history),
         ];
         $rendered_adjuster_system_prompt = PromptTemplateRenderer::render(
             $adjusterSystemPromptTemplate,
@@ -641,6 +645,95 @@ final class AssistantRefinementService
         }
 
         return [];
+    }
+
+    /**
+     * @param mixed $historyPayload
+     * @return array<int,array<string,mixed>>
+     */
+    private function decodeRefinementHistory($historyPayload): array
+    {
+        $history = [];
+        if (is_string($historyPayload)) {
+            $decoded = json_decode(wp_unslash($historyPayload), true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                $history = $decoded;
+            }
+        } elseif (is_array($historyPayload)) {
+            $history = wp_unslash($historyPayload);
+        }
+
+        $normalized = [];
+        foreach ($history as $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+
+            $normalized[] = [
+                'iteration' => isset($item['iteration']) ? (int) $item['iteration'] : 0,
+                'evaluated_prompt_version' => isset($item['evaluated_prompt_version']) ? sanitize_text_field((string) $item['evaluated_prompt_version']) : '',
+                'evaluated_prompt_pack' => $this->normalizeHistoryPromptPack($item['evaluated_prompt_pack'] ?? []),
+                'average_score' => isset($item['average_score']) && is_numeric($item['average_score']) ? (float) $item['average_score'] : null,
+                'post_scores' => $this->normalizeHistoryPostScores($item['post_scores'] ?? []),
+                'produced_prompt_version' => isset($item['produced_prompt_version']) ? sanitize_text_field((string) $item['produced_prompt_version']) : null,
+                'produced_prompt_pack' => is_array($item['produced_prompt_pack'] ?? null) ? $this->normalizeHistoryPromptPack($item['produced_prompt_pack']) : null,
+            ];
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * @param mixed $pack
+     * @return array<string,string>
+     */
+    private function normalizeHistoryPromptPack($pack): array
+    {
+        $pack = is_array($pack) ? $pack : [];
+
+        return [
+            'system_prompt' => (string) ($pack['system_prompt'] ?? ''),
+            'user_message_template' => (string) ($pack['user_message_template'] ?? ''),
+            'expected_output_schema' => (string) ($pack['expected_output_schema'] ?? '{}'),
+        ];
+    }
+
+    /**
+     * @param mixed $postScores
+     * @return array<int,array<string,mixed>>
+     */
+    private function normalizeHistoryPostScores($postScores): array
+    {
+        if (!is_array($postScores)) {
+            return [];
+        }
+
+        $normalized = [];
+        foreach ($postScores as $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+            $normalized[] = [
+                'post_id' => isset($item['post_id']) ? (int) $item['post_id'] : 0,
+                'post_title' => isset($item['post_title']) ? sanitize_text_field((string) $item['post_title']) : '',
+                'score' => isset($item['score']) && is_numeric($item['score']) ? (float) $item['score'] : null,
+            ];
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * @param mixed $value
+     */
+    private function encodeJson($value): string
+    {
+        $json = wp_json_encode($value, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        if (!is_string($json)) {
+            return '{}';
+        }
+
+        return $json;
     }
 
     /**

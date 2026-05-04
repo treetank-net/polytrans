@@ -29,6 +29,47 @@ it('parses JSON prompt packs with literal separators inside prompts', function (
     expect($parsed['expected_output_schema'])->toContain('"type"');
 });
 
+it('parses tagged prompt packs with optional adjuster commentary', function () {
+    $content = "<change_summary>\nMade the instruction stricter.\n</change_summary>\n\n" .
+        "<system_prompt>\nImproved system\n</system_prompt>\n\n" .
+        "<user_message_template>\nImproved {{ content }}\n---\nKeep literal separators.\n</user_message_template>\n\n" .
+        "<expected_output_schema>\n{\"type\":\"object\",\"required\":[\"summary\"]}\n</expected_output_schema>";
+
+    $parsed = PromptPackParser::parse($content, true, '{}');
+
+    expect($parsed['is_valid_pack'])->toBeTrue();
+    expect($parsed['system_prompt'])->toBe('Improved system');
+    expect($parsed['user_message_template'])->toContain('{{ content }}');
+    expect($parsed['user_message_template'])->toContain('---');
+    expect($parsed['expected_output_schema'])->toContain('"summary"');
+});
+
+it('parses prefixed tagged prompt packs for compatibility', function () {
+    $content = "<polytrans_system_prompt>\nImproved system\n</polytrans_system_prompt>\n\n" .
+        "<polytrans_user_message_template>\nImproved {{ content }}\n</polytrans_user_message_template>\n\n" .
+        "<polytrans_expected_output_schema>\n{\"type\":\"object\"}\n</polytrans_expected_output_schema>";
+
+    $parsed = PromptPackParser::parse($content, true, '{}');
+
+    expect($parsed['is_valid_pack'])->toBeTrue();
+    expect($parsed['system_prompt'])->toBe('Improved system');
+    expect($parsed['user_message_template'])->toBe('Improved {{ content }}');
+    expect($parsed['expected_output_schema'])->toContain('"type"');
+});
+
+it('parses tagged prompt packs while preserving schema for text output assistants', function () {
+    $content = "<system_prompt>\nImproved system\n</system_prompt>\n\n" .
+        "<user_message_template>\nImproved {{ title }}\n</user_message_template>\n\n" .
+        "<expected_output_schema>\n{\"hallucinated\":true}\n</expected_output_schema>";
+
+    $parsed = PromptPackParser::parse($content, false, '{"original":true}');
+
+    expect($parsed['is_valid_pack'])->toBeTrue();
+    expect($parsed['system_prompt'])->toBe('Improved system');
+    expect($parsed['user_message_template'])->toBe('Improved {{ title }}');
+    expect($parsed['expected_output_schema'])->toBe('{"original":true}');
+});
+
 it('keeps expected output schema unchanged for text output assistants', function () {
     $content = wp_json_encode([
         'system_prompt' => 'Improved system',
@@ -116,12 +157,14 @@ it('includes primary prompt purpose in default refinement templates', function (
         expect($template)->toContain('{{ prompt_objective }}');
         expect($template)->toContain('{{ criteria }}');
     }
+    expect(DefaultPromptTemplates::assistantAdjuster())->toContain('{{ refinement_history_json }}');
 
     foreach ($workflow_templates as $template) {
         expect($template)->toContain('{{ workflow_purpose }}');
         expect($template)->toContain('{{ prompt_objective }}');
         expect($template)->toContain('{{ criteria }}');
     }
+    expect(DefaultPromptTemplates::workflowAdjuster())->toContain('{{ refinement_history_json }}');
 });
 
 it('loads prompt refinement templates from settings with built-in fallback', function () {

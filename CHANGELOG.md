@@ -5,6 +5,23 @@ All notable changes to the PolyTrans plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.13.15] - 2026-05-04
+
+### Added
+- Workflow prompt refinement now exposes editable evaluator and adjuster system prompts, matching assistant refinement controls.
+- Prompt adjusters can now return prompt packs as XML-style blocks (`system_prompt`, `user_message_template`, and optional `expected_output_schema`) while retaining JSON and legacy separator parsing fallback.
+- Prompt adjusters now receive `refinement_history_json` with previous prompt versions, scores, and produced prompt packs to support regression-aware adjustments.
+
+### Changed
+- Default evaluator prompts now return structured natural-language diagnostics focused on reusable prompt-level causes and multiple improvement mechanisms.
+- Default adjuster prompts now prefer tagged prompt-pack blocks and use refinement history to avoid repeating changes that reduced scores.
+- Workflow refinement prompt controls now use the same side-by-side system/user-message layout as assistant refinement.
+- Refinement score tables now label evaluated prompt versions explicitly, distinguishing the original prompt from prompt versions produced by each adjustment.
+- Re-evaluate Again now reuses the previous final verification as the current evaluation before running the next adjuster pass, avoiding duplicate evaluation of the same prompt.
+
+### Fixed
+- Refinement progress totals now include final verification from the start and adjust correctly when final verification is skipped.
+
 ## [1.13.14] - 2026-05-04
 
 ### Changed

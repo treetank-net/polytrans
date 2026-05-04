@@ -12,7 +12,8 @@ final class DefaultPromptTemplates
 {
     public static function assistantEvaluatorSystem(): string
     {
-        return 'You are a strict quality evaluator. Be concise and always include one numeric score.';
+        return "You are a diagnostic prompt evaluator. Write natural-language feedback for a prompt adjuster, not final prompt text.\n" .
+            "Always start with `Score: N/100`. Do not return JSON. Focus on reusable prompt-level causes, not text-specific rewrites.";
     }
 
     public static function assistantEvaluator(): string
@@ -21,10 +22,16 @@ final class DefaultPromptTemplates
             "Primary purpose that must remain satisfied: {{ prompt_objective }}\n" .
             "Refinement criteria to improve: {{ criteria }}\n\n" .
             "Evaluate whether the assistant still fulfills the primary purpose while also improving toward the refinement criteria. Do not reward a response that satisfies the refinement criteria by abandoning the primary purpose.\n\n" .
-            "Be brief and provide:\n" .
-            "1) Numeric score (0-100)\n" .
-            "2) 2-4 short findings, including any primary-purpose regression\n" .
-            "3) One concrete suggestion\n\n" .
+            "Write a structured diagnostic report. Do not write the final improved prompt. Do not give only one suggestion. Suggestions must generalize across future inputs and must be based on prompt behavior, not this specific text alone.\n\n" .
+            "Use exactly these sections:\n" .
+            "Score: N/100\n" .
+            "Overall judgment:\n" .
+            "What helped:\n" .
+            "What hurt:\n" .
+            "Likely prompt-level cause:\n" .
+            "Prompt changes likely to improve future outputs:\n" .
+            "Risks / safeguards:\n\n" .
+            "In `Prompt changes likely to improve future outputs`, list multiple reusable mechanisms when relevant, such as clearer success criteria, stronger output-contract reminders, target-language checks, source-language interference checks, prioritization rules, preservation rules, or examples of acceptable versus unacceptable behavior. Avoid advice that only rewrites this one input.\n\n" .
             "System prompt:\n{{ interpolated_system_prompt }}\n\n" .
             "User message:\n{{ interpolated_user_message }}\n\n" .
             "{% if include_expected_output_schema %}Expected output schema:\n{{ expected_output_schema }}\n\n{% endif %}" .
@@ -43,23 +50,26 @@ final class DefaultPromptTemplates
             "Primary purpose that must remain satisfied: {{ prompt_objective }}\n" .
             "Refinement criteria to improve: {{ criteria }}.\n" .
             "Adjust the prompts to improve the refinement criteria without narrowing the prompt so much that it stops fulfilling the primary purpose.\n\n" .
+            "Use `Refinement history JSON` to compare previous prompt versions and scores. If the current evaluation is worse than an earlier version, consider reverting or partially undoing changes that likely caused the regression.\n\n" .
             "Remember, interpolation contains Twig-specific variables that relate to specific parts of the user input. Maintain syntax exactly.\n" .
             "Do not rewrite Twig tags, delimiters or whitespace within tags.\n" .
             "Variables like content may contain large text blocks. Keep variable references and do not inline or truncate their values.\n\n" .
-            "Return only valid JSON with these keys:\n" .
-            "- system_prompt: improved system prompt string\n" .
-            "- user_message_template: improved user message template string\n" .
-            "{% if adjust_expected_output_schema %}- expected_output_schema: improved expected output schema as a JSON object or JSON string\n{% endif %}" .
-            "Do not use markdown fences. Do not split the answer with separators. Prompt text may contain --- and that must remain literal content.\n\n" .
+            "Return the improved prompt pack using these XML-style wrapper tags, with no markdown fences:\n" .
+            "<system_prompt>\nImproved system prompt text\n</system_prompt>\n\n" .
+            "<user_message_template>\nImproved user message template text\n</user_message_template>\n\n" .
+            "{% if adjust_expected_output_schema %}<expected_output_schema>\nImproved expected output schema as JSON object text or JSON schema text\n</expected_output_schema>\n\n{% endif %}" .
+            "You may include a short <change_summary> before the prompt blocks, but the prompt blocks are authoritative. Do not put the wrapper tag names inside the prompt text itself. Prompt text may contain --- and that must remain literal content.\n\n" .
             "Current system prompt:\n{{ non_interpolated_system_prompt }}\n\n" .
             "Current user message template:\n{{ non_interpolated_user_message_template }}\n\n" .
             "{% if adjust_expected_output_schema %}Current expected output schema:\n{{ non_interpolated_expected_output_schema }}\n\n{% else %}Expected output schema is not part of this adjustment and must stay unchanged.\n\n{% endif %}" .
+            "Refinement history JSON:\n{{ refinement_history_json }}\n\n" .
             "Evaluations JSON:\n{{ evaluations_json }}";
     }
 
     public static function workflowEvaluatorSystem(): string
     {
-        return 'You are a strict workflow quality evaluator. Be concise and always include one numeric score.';
+        return "You are a diagnostic workflow evaluator. Write natural-language feedback for a prompt adjuster, not final prompt text.\n" .
+            "Always start with `Score: N/100`. Do not return JSON. Focus on reusable target-step prompt causes, not text-specific rewrites.";
     }
 
     public static function workflowEvaluator(): string
@@ -71,10 +81,19 @@ final class DefaultPromptTemplates
             "Selected target-step purpose that must remain satisfied: {{ prompt_objective }}\n" .
             "Refinement criteria to improve: {{ criteria }}\n\n" .
             "Evaluate whether the full workflow still fulfills its whole-workflow purpose and whether the selected step still fulfills its own purpose while also improving toward the refinement criteria. Do not reward changes that satisfy the refinement criteria by breaking either purpose.\n\n" .
-            "Be brief and provide:\n" .
-            "1) Numeric score (0-100)\n" .
-            "2) 2-4 findings that separate target-step issues from issues caused by previous or following workflow steps, including any workflow-purpose or step-purpose regression\n" .
-            "3) One concrete prompt-change suggestion for the target assistant step only\n\n" .
+            "Write a structured diagnostic report. Do not write the final improved prompt. Do not give only one suggestion. Suggestions must generalize across future workflow runs and must be based on target-step prompt behavior, not this specific post alone.\n" .
+            "Separate target-step prompt issues from issues caused by previous or following workflow steps. Only recommend changes for the selected target step when the workflow evidence supports that causal link. If a problem belongs elsewhere, say so under `Not caused by target step` and do not turn it into a target-step prompt change.\n\n" .
+            "Use exactly these sections:\n" .
+            "Score: N/100\n" .
+            "Overall judgment:\n" .
+            "Causality:\n" .
+            "What helped:\n" .
+            "What hurt:\n" .
+            "Likely target-step prompt-level cause:\n" .
+            "Prompt changes likely to improve future workflow outputs:\n" .
+            "Risks / safeguards:\n" .
+            "Not caused by target step:\n\n" .
+            "In `Prompt changes likely to improve future workflow outputs`, list multiple reusable mechanisms when relevant, such as clearer target-language requirements, stricter input/output contracts for later steps, better use of prior-step variables, stronger preservation rules, failure-mode checks, or examples of acceptable versus unacceptable target-step behavior.\n\n" .
             "Workflow: {{ workflow_name }} ({{ workflow_id }})\n" .
             "Workflow success: {{ workflow_success }}\n" .
             "Source language: {{ source_language }}\n" .
@@ -108,14 +127,15 @@ final class DefaultPromptTemplates
             "Use workflow context to understand which steps run before the selected target step, which steps run after it, what each step's prompts look like, whether each assistant returns JSON or text, and how output actions write data into workflow variables, post fields or meta.\n" .
             "Adjust only the selected target assistant prompt pack. Do not rewrite prompts for previous or following workflow steps. Do not narrow the selected prompt so much that it stops fulfilling its primary workflow role.\n" .
             "If a problem belongs to another workflow step, mention it indirectly only by making the target prompt produce clearer or more useful output for that later step.\n\n" .
+            "Use `Refinement history JSON` to compare previous target-step prompt versions and scores. If the current workflow evaluation is worse than an earlier version, consider reverting or partially undoing target-step prompt changes that likely caused the regression.\n\n" .
             "Remember, interpolation contains Twig-specific variables that relate to specific parts of the user input. Maintain syntax exactly.\n" .
             "Do not rewrite Twig tags, delimiters or whitespace within tags.\n" .
             "Variables like content may contain large text blocks. Keep variable references and do not inline or truncate their values.\n\n" .
-            "Return only valid JSON with these keys:\n" .
-            "- system_prompt: improved system prompt string\n" .
-            "- user_message_template: improved user message template string\n" .
-            "{% if adjust_expected_output_schema %}- expected_output_schema: improved expected output schema as a JSON object or JSON string\n{% endif %}" .
-            "Do not use markdown fences. Do not split the answer with separators. Prompt text may contain --- and that must remain literal content.\n\n" .
+            "Return the improved target-step prompt pack using these XML-style wrapper tags, with no markdown fences:\n" .
+            "<system_prompt>\nImproved system prompt text\n</system_prompt>\n\n" .
+            "<user_message_template>\nImproved user message template text\n</user_message_template>\n\n" .
+            "{% if adjust_expected_output_schema %}<expected_output_schema>\nImproved expected output schema as JSON object text or JSON schema text\n</expected_output_schema>\n\n{% endif %}" .
+            "You may include a short <change_summary> before the prompt blocks, but the prompt blocks are authoritative. Do not put the wrapper tag names inside the prompt text itself. Prompt text may contain --- and that must remain literal content.\n\n" .
             "Workflow structure JSON, including compact summaries of all steps:\n{{ workflow_structure_json }}\n\n" .
             "Selected target step context JSON:\n{{ target_step_context_json }}\n\n" .
             "Previous steps compact JSON:\n{{ previous_steps_json }}\n\n" .
@@ -123,6 +143,7 @@ final class DefaultPromptTemplates
             "Current system prompt:\n{{ non_interpolated_system_prompt }}\n\n" .
             "Current user message template:\n{{ non_interpolated_user_message_template }}\n\n" .
             "{% if adjust_expected_output_schema %}Current expected output schema:\n{{ non_interpolated_expected_output_schema }}\n\n{% else %}Expected output schema is not part of this adjustment and must stay unchanged.\n\n{% endif %}" .
+            "Refinement history JSON:\n{{ refinement_history_json }}\n\n" .
             "Full-workflow evaluations JSON:\n{{ evaluations_json }}";
     }
 
@@ -178,8 +199,8 @@ final class DefaultPromptTemplates
 
     public static function promptAdjusterSystem(): string
     {
-        return "You are a prompt optimization assistant. Return only the requested JSON object.\n" .
-            "Do not wrap the JSON in markdown fences and do not use section separators.\n" .
+        return "You are a prompt optimization assistant. Return only the requested prompt pack blocks.\n" .
+            "Use XML-style wrapper tags exactly as requested. Do not use markdown fences and do not use section separators.\n" .
             "Remember, interpolation contains Twig-specific variables that relate to specific parts of the user input. Maintain syntax exactly.\n" .
             "Do not rewrite Twig tags, delimiters or whitespace within tags (for example keep {% verbatim %}{{ content }}{% endverbatim %} exactly as provided).\n" .
             "Variables like content may contain large text blocks. Keep variable references and do not inline or truncate their values.";

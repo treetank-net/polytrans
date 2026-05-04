@@ -433,6 +433,24 @@
     min-height: 220px;
 }
 
+.workflow-refinement-prompt-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 16px;
+    align-items: start;
+}
+
+.workflow-refinement-prompt-field label {
+    display: block;
+    margin-bottom: 6px;
+}
+
+.workflow-refinement-prompt-field textarea {
+    width: 100%;
+    min-height: 220px;
+    resize: vertical;
+}
+
 .workflow-refinement-panel,
 .workflow-test-details {
     background: #fff;
@@ -469,6 +487,12 @@
     align-items: center;
     flex-wrap: wrap;
     margin: 16px 0;
+}
+
+@media (max-width: 782px) {
+    .workflow-refinement-prompt-grid {
+        grid-template-columns: 1fr;
+    }
 }
 
 .workflow-refine-progress-bar {
