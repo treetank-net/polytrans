@@ -69,6 +69,7 @@ build:
                 --exclude='.gitlab' \
                 --exclude='.gitlab-ci.yml' \
                 --exclude='node_modules' \
+                --exclude='skills' \
                 --exclude='tests' \
                 --exclude='docs/planning' \
                 --exclude='docs/development' \
