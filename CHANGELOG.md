@@ -5,6 +5,12 @@ All notable changes to the PolyTrans plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.13.17] - 2026-05-04
+
+### Fixed
+- Workflow prompt refinement now retries a failed workflow run once when the run result cannot be persisted.
+- Stored workflow refinement run payloads are smaller by avoiding duplicate non-interpolated prompt packs and full assistant prompt snapshots.
+
 ## [1.13.16] - 2026-05-04
 
 ### Changed
