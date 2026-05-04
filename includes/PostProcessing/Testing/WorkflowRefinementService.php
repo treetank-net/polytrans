@@ -1018,15 +1018,7 @@ final class WorkflowRefinementService
             return null;
         }
 
-        if ($limit < 0 || strlen($text) <= $limit) {
-            return $text;
-        }
-
-        if (function_exists('mb_substr')) {
-            return mb_substr($text, 0, $limit) . "\n\n[truncated for workflow refinement payload]";
-        }
-
-        return substr($text, 0, $limit) . "\n\n[truncated for workflow refinement payload]";
+        return $text;
     }
 
     /**

@@ -5,6 +5,13 @@ All notable changes to the PolyTrans plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.13.14] - 2026-05-04
+
+### Changed
+- Workflow prompt refinement can now evaluate posts independently of the workflow language. Leaving target language empty uses each selected post language as the refinement target language.
+- Workflow refinement results now update after each completed iteration and can be stopped after the current iteration without losing completed iteration output.
+- Workflow refinement payloads no longer append truncation markers to prompt/content fields, preventing evaluators from treating technical truncation notes as prompt instructions.
+
 ## [1.13.12] - 2026-04-30
 
 ### Fixed

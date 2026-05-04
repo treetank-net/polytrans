@@ -29,7 +29,7 @@ it('compacts workflow values before they are stored in refinement payloads', fun
     $compacted = invoke_workflow_refinement_method('compactValue', $large, 2, 10);
 
     expect($compacted)->toHaveKey('key_0');
-    expect($compacted['key_0'])->toBe("xxxxxxxxxx\n\n[truncated for workflow refinement payload]");
+    expect($compacted['key_0'])->toBe(str_repeat('x', 40));
     expect($compacted['__truncated_items'])->toBe(5);
 });
 
@@ -228,7 +228,7 @@ it('builds compact final output snapshot from workflow final context', function 
     ]);
 
     expect($snapshot['title'])->toBe('Final title');
-    expect($snapshot['content'])->toContain('[truncated for workflow refinement payload]');
+    expect($snapshot['content'])->toHaveLength(12020);
     expect($snapshot['excerpt'])->toBe('Final excerpt');
     expect($snapshot['meta']['TRANSLATION_REVIEW'])->toBe('Looks better.');
     expect($snapshot['previous_steps']['step_review']['feedback'])->toBe('Too literal.');

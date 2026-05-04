@@ -160,6 +160,7 @@ class PostAutocomplete
 
         $language = sanitize_text_field(wp_unslash($_POST['language'] ?? ''));
         $limit = intval($_POST['limit'] ?? 20);
+        $include_translations = !empty($_POST['include_translations']) && wp_validate_boolean(wp_unslash($_POST['include_translations']));
 
         // Limit the max number of posts to prevent performance issues
         if ($limit > 50) {
@@ -172,7 +173,10 @@ class PostAutocomplete
             'posts_per_page' => $limit,
             'orderby' => 'date',
             'order' => 'DESC',
-            'meta_query' => [
+        ];
+
+        if (!$include_translations) {
+            $args['meta_query'] = [
                 'relation' => 'OR',
                 [
                     'key' => '_polytrans_original_post_id',
@@ -183,8 +187,8 @@ class PostAutocomplete
                     'value' => '',
                     'compare' => '='
                 ]
-            ]
-        ];
+            ];
+        }
 
         // Filter by language if Polylang is available and language is specified
         if ($language && function_exists('pll_get_post_language')) {
@@ -196,7 +200,7 @@ class PostAutocomplete
             ];
         }
 
-        $cache_key = 'polytrans_recent_posts_' . md5($language . '_' . $limit);
+        $cache_key = 'polytrans_recent_posts_' . md5($language . '_' . $limit . '_' . ($include_translations ? 'with_translations' : 'originals_only'));
         $cached = \get_transient($cache_key);
         if (is_array($cached)) {
             wp_send_json_success(['posts' => $cached]);
@@ -210,6 +214,8 @@ class PostAutocomplete
 
             $original_post_id = get_post_meta($post->ID, '_polytrans_original_post_id', true);
             $is_translation = !empty($original_post_id);
+            $post_language = function_exists('pll_get_post_language') ?
+                pll_get_post_language($post->ID) : '';
 
             $custom_fields = [];
             $common_meta_keys = [
@@ -235,6 +241,7 @@ class PostAutocomplete
                 'post_type' => $post->post_type,
                 'post_status' => $post->post_status,
                 'post_date' => $post->post_date,
+                'language' => $post_language,
                 'is_translation' => $is_translation,
                 'original_post_id' => $original_post_id,
                 'meta' => $custom_fields,
