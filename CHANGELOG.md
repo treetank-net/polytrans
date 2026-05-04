@@ -5,6 +5,16 @@ All notable changes to the PolyTrans plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.13.16] - 2026-05-04
+
+### Changed
+- GitHub release notes now use the full installation, verification, changelog, and full-changelog link format instead of only the version changelog excerpt.
+
+### Fixed
+- Prompt refinement adjuster payloads are now compacted to avoid duplicating workflow context inside each evaluated run.
+- Workflow refinement truncation limits now actually apply to large prompt/context payload fields without adding truncation instructions to prompts.
+- Prompt refinement adjuster failures now include prompt-size diagnostics and prompt previews in the error payload and processing logs.
+
 ## [1.13.15.2] - 2026-05-04
 
 ### Fixed
