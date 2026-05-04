@@ -209,6 +209,54 @@ release-github:
         CHANGELOG="Release v${VERSION}"
       fi
 
+    # Create release description
+    - |
+      cat > /tmp/github_release_description.md << 'RELEASE_EOF'
+      ## PolyTrans v${VERSION}
+
+      ### 📦 Installation
+
+      **For WordPress Installation (Recommended):**
+      1. Download `polytrans.zip` ⬅️ Use this one!
+      2. Upload to WordPress via Plugins > Add New > Upload Plugin
+      3. Activate the plugin
+
+      **For Archival/Version Tracking:**
+      - Download `polytrans-${VERSION}.zip` if you need version-specific archive
+
+      **Note:** Both ZIPs contain identical files. The `polytrans.zip` ensures WordPress installs the plugin in the correct `polytrans/` directory.
+
+      ### ✅ What's Included
+
+      - All plugin files
+      - Composer dependencies (vendor/)
+      - Production-optimized autoloader
+
+      ### 🔐 Verification
+
+      Verify the download integrity:
+      ```bash
+      # For WordPress installation:
+      sha256sum -c polytrans.zip.sha256
+
+      # For versioned archive:
+      sha256sum -c polytrans-${VERSION}.zip.sha256
+      ```
+
+      ---
+
+      RELEASE_EOF
+    - echo "$CHANGELOG" > /tmp/github_changelog.txt
+    - cat /tmp/github_changelog.txt >> /tmp/github_release_description.md
+    - |
+      cat >> /tmp/github_release_description.md << 'FOOTER_EOF'
+
+      ---
+
+      **Full Changelog:** [CHANGELOG.md](https://github.com/treetank-net/polytrans/blob/main/CHANGELOG.md)
+      FOOTER_EOF
+    - sed -i "s/\${VERSION}/$VERSION/g" /tmp/github_release_description.md
+
     # Delete existing GitHub release for this tag (if any)
     - |
       EXISTING=$(curl --silent --show-error \
@@ -232,7 +280,7 @@ release-github:
         --data "{
           \"tag_name\": \"${CI_COMMIT_TAG}\",
           \"name\": \"PolyTrans v${VERSION}\",
-          \"body\": $(echo "$CHANGELOG" | jq -Rs .)
+          \"body\": $(cat /tmp/github_release_description.md | jq -Rs .)
         }" \
         "https://api.github.com/repos/treetank-net/polytrans/releases")
       UPLOAD_URL=$(echo "$RELEASE_RESPONSE" | jq -r '.upload_url' | sed 's/{?name,label}//')
