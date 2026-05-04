@@ -159,6 +159,10 @@ final class WorkflowRefinementService
         $run_payload['evaluated_at'] = time();
         $this->persistRunPayload($runId, $run_payload);
 
+        $workflow_context = $this->compactWorkflowContextForStorage(
+            $this->buildContextMap($workflow, $targetStep, $workflowResult)
+        );
+
         return [
             'run_id' => $runId,
             'target_step_id' => (string) ($run_payload['target_step_id'] ?? ''),
@@ -780,7 +784,7 @@ final class WorkflowRefinementService
                 'excerpt' => $post ? (string) wp_trim_words(wp_strip_all_tags($post->post_content), 24, '...') : '',
             ],
             'used_prompt_pack' => $usedPromptPack,
-            'workflow_context' => $this->buildContextMap($workflow, $targetStep, $workflowResult),
+            'workflow_context' => $workflow_context,
             'target_step_result' => $this->compactStepResult($target_step_result, true),
             'workflow_result' => [
                 'success' => !empty($workflowResult['success']),
@@ -969,12 +973,51 @@ final class WorkflowRefinementService
             'name' => (string) ($assistant['name'] ?? ''),
             'provider' => (string) ($assistant['provider'] ?? 'openai'),
             'status' => (string) ($assistant['status'] ?? 'active'),
-            'system_prompt' => (string) ($assistant['system_prompt'] ?? ''),
-            'user_message_template' => (string) ($assistant['user_message_template'] ?? ''),
             'api_parameters' => is_array($assistant['api_parameters'] ?? null) ? $assistant['api_parameters'] : [],
             'expected_format' => (string) ($assistant['expected_format'] ?? 'text'),
             'expected_output_schema' => PromptPackNormalizer::normalizeExpectedOutputSchema($assistant['expected_output_schema'] ?? null),
         ];
+    }
+
+    /**
+     * @param array<string,mixed> $context
+     * @return array<string,mixed>
+     */
+    private function compactWorkflowContextForStorage(array $context): array
+    {
+        if (is_array($context['target_step'] ?? null)) {
+            $context['target_step'] = $this->compactWorkflowStepContextForStorage($context['target_step']);
+        }
+
+        foreach (['previous_steps', 'following_steps', 'steps'] as $group_key) {
+            if (!is_array($context[$group_key] ?? null)) {
+                continue;
+            }
+            $context[$group_key] = array_map(function ($step): array {
+                return $this->compactWorkflowStepContextForStorage(is_array($step) ? $step : []);
+            }, $context[$group_key]);
+        }
+
+        return $context;
+    }
+
+    /**
+     * @param array<string,mixed> $step
+     * @return array<string,mixed>
+     */
+    private function compactWorkflowStepContextForStorage(array $step): array
+    {
+        if (is_array($step['non_interpolated_prompt_pack'] ?? null)) {
+            $pack = $step['non_interpolated_prompt_pack'];
+            $step['non_interpolated_prompt_pack_summary'] = [
+                'system_prompt_chars' => strlen((string) ($pack['system_prompt'] ?? '')),
+                'user_message_template_chars' => strlen((string) ($pack['user_message_template'] ?? '')),
+                'expected_output_schema_chars' => strlen((string) ($pack['expected_output_schema'] ?? '')),
+            ];
+            unset($step['non_interpolated_prompt_pack']);
+        }
+
+        return $step;
     }
 
     /**

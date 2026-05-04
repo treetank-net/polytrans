@@ -2641,7 +2641,13 @@ However, the integration of AI in healthcare also raises important questions abo
 
                     const runResponse = await runAsyncWorkflowJob({
                         jobType: 'workflow_run',
-                        jobParams: runRequest
+                        jobParams: runRequest,
+                        maxAttempts: 2,
+                        retryOnResultErrorCodes: ['workflow_refinement_run_persist_failed'],
+                        onRetry: ({ attempt, maxAttempts, message }) => {
+                            pushWorkflowRefinementLog(progressState, `Iteration ${iterationNumber}, post ${index + 1}/${selectedPosts.length}: workflow run persistence failed, retrying (${attempt + 1}/${maxAttempts})${message ? `: ${message}` : ''}.`);
+                            renderWorkflowRefinementProgress(progressState);
+                        }
                     });
                     if (!runResponse || !runResponse.success) {
                         throw new Error(runResponse?.data?.message || `Workflow run failed for post #${post.id}.`);
@@ -2918,6 +2924,14 @@ However, the integration of AI in healthcare also raises important questions abo
                     override_system_prompt: promptPack.system_prompt || '',
                     override_user_message_template: promptPack.user_message_template || '',
                     override_expected_output_schema: promptPack.expected_output_schema || ''
+                },
+                maxAttempts: 2,
+                retryOnResultErrorCodes: ['workflow_refinement_run_persist_failed'],
+                onRetry: ({ attempt, maxAttempts, message }) => {
+                    if (progressState) {
+                        pushWorkflowRefinementLog(progressState, `Final verification, post ${index + 1}/${posts.length}: workflow run persistence failed, retrying (${attempt + 1}/${maxAttempts})${message ? `: ${message}` : ''}.`);
+                        renderWorkflowRefinementProgress(progressState);
+                    }
                 }
             });
             if (!runResponse || !runResponse.success) {
@@ -2969,7 +2983,43 @@ However, the integration of AI in healthcare also raises important questions abo
         return finalRuns;
     }
 
-    async function runAsyncWorkflowJob({ jobType, jobParams, pollIntervalMs = 3000, timeoutMs = 5 * 60 * 1000 }) {
+    async function runAsyncWorkflowJob({
+        jobType,
+        jobParams,
+        pollIntervalMs = 3000,
+        timeoutMs = 5 * 60 * 1000,
+        maxAttempts = 1,
+        retryOnResultErrorCodes = [],
+        retryDelayMs = 1500,
+        onRetry = null
+    }) {
+        const attempts = Math.max(1, parseInt(maxAttempts || 1, 10));
+        const retryableCodes = Array.isArray(retryOnResultErrorCodes)
+            ? retryOnResultErrorCodes.map((code) => String(code || '')).filter(Boolean)
+            : [];
+
+        for (let attempt = 1; attempt <= attempts; attempt++) {
+            const result = await runSingleAsyncWorkflowJob({ jobType, jobParams, pollIntervalMs, timeoutMs });
+            const errorCode = String(result?.data?.error_code || '');
+            if (result?.success !== false || attempt >= attempts || !retryableCodes.includes(errorCode)) {
+                return result;
+            }
+
+            if (typeof onRetry === 'function') {
+                onRetry({
+                    attempt,
+                    maxAttempts: attempts,
+                    errorCode,
+                    message: String(result?.data?.message || '')
+                });
+            }
+            await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+        }
+
+        return { success: false, data: { message: 'Async job retry attempts exhausted.' } };
+    }
+
+    async function runSingleAsyncWorkflowJob({ jobType, jobParams, pollIntervalMs, timeoutMs }) {
         const dispatchResponse = await $.ajax({
             url: polytransWorkflows.ajaxUrl,
             type: 'POST',
