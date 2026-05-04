@@ -5,6 +5,11 @@ All notable changes to the PolyTrans plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.13.15.1] - 2026-05-04
+
+### Changed
+- Re-issued the 1.13.15 release as 1.13.15.1 so GitLab can build and publish GitHub release assets after the GitHub tag sync issue.
+
 ## [1.13.15] - 2026-05-04
 
 ### Added
