@@ -256,14 +256,14 @@ final class WorkflowRefinementService
 
         $workflow_context = is_array($evaluations[0]['workflow_context'] ?? null) ? $evaluations[0]['workflow_context'] : [];
         $refinement_history = $this->decodeRefinementHistory($refinementHistoryPayload);
-        $workflow_context_json = $this->encodeJson($workflow_context, 60000);
-        $workflow_structure_json = $this->encodeJson($workflow_context['steps'] ?? [], 35000);
-        $target_step_context_json = $this->encodeJson($workflow_context['target_step'] ?? [], 35000);
-        $previous_steps_json = $this->encodeJson($workflow_context['previous_steps'] ?? [], 18000);
-        $following_steps_json = $this->encodeJson($workflow_context['following_steps'] ?? [], 18000);
+        $workflow_context_json = $this->encodeJsonForEvaluation($workflow_context, 60000);
+        $workflow_structure_json = $this->encodeJsonForEvaluation($workflow_context['steps'] ?? [], 35000);
+        $target_step_context_json = $this->encodeJsonForEvaluation($workflow_context['target_step'] ?? [], 35000);
+        $previous_steps_json = $this->encodeJsonForEvaluation($workflow_context['previous_steps'] ?? [], 18000);
+        $following_steps_json = $this->encodeJsonForEvaluation($workflow_context['following_steps'] ?? [], 18000);
         $evaluations_for_prompt = $this->buildAdjusterEvaluationSummaries($evaluations);
-        $evaluations_json = $this->encodeJson($evaluations_for_prompt, 45000);
-        $refinement_history_json = $this->encodeJson($refinement_history, 25000);
+        $evaluations_json = $this->encodeJsonForEvaluation($evaluations_for_prompt, 45000);
+        $refinement_history_json = $this->encodeJsonForEvaluation($refinement_history, 25000);
         $adjuster_context = [
             'criteria' => $criteria,
             'workflow_purpose' => $workflowPurpose,
@@ -749,6 +749,9 @@ final class WorkflowRefinementService
     ): array
     {
         $target_step_result = $this->findStepResultById($workflowResult, (string) ($targetStep['id'] ?? ''));
+        $workflow_context = $this->compactWorkflowContextForStorage(
+            $this->buildContextMap($workflow, $targetStep, $workflowResult)
+        );
         $post_id = (int) ($context['translated_post_id'] ?? 0);
         $post = $post_id > 0 ? get_post($post_id) : null;
 
@@ -851,10 +854,7 @@ final class WorkflowRefinementService
         }
 
         $target_step_result = is_array($runPayload['target_step_result'] ?? null) ? $runPayload['target_step_result'] : [];
-        $assistant_output = $target_step_result['data'] ?? '';
-        if (!is_string($assistant_output)) {
-            $assistant_output = wp_json_encode($assistant_output, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-        }
+        $assistant_output = $this->formatStepOutputForEvaluation($target_step_result['data'] ?? '');
 
         $evaluator_context = [
             'criteria' => $criteria,
@@ -877,13 +877,19 @@ final class WorkflowRefinementService
             'target_assistant_output' => (string) $assistant_output,
             'include_expected_output_schema' => PromptPackNormalizer::shouldAdjustExpectedOutputSchema($assistant),
             'expected_output_schema' => PromptPackNormalizer::normalizeExpectedOutputSchema($assistant['expected_output_schema'] ?? null),
-            'workflow_context_json' => $this->encodeJson($runPayload['workflow_context'] ?? [], 60000),
-            'workflow_structure_json' => $this->encodeJson($runPayload['workflow_context']['steps'] ?? [], 35000),
-            'target_step_context_json' => $this->encodeJson($runPayload['workflow_context']['target_step'] ?? [], 35000),
-            'previous_steps_json' => $this->encodeJson($runPayload['workflow_context']['previous_steps'] ?? [], 18000),
-            'following_steps_json' => $this->encodeJson($runPayload['workflow_context']['following_steps'] ?? [], 18000),
-            'final_output_json' => $this->encodeJson($runPayload['final_output'] ?? [], 18000),
-            'workflow_result_json' => $this->encodeJson($runPayload['workflow_result_summary'] ?? [], 25000),
+            'workflow_context_json' => $this->encodeJsonForEvaluation($runPayload['workflow_context'] ?? [], 60000),
+            'workflow_structure_json' => $this->encodeJsonForEvaluation($runPayload['workflow_context']['steps'] ?? [], 35000),
+            'target_step_context_json' => $this->encodeJsonForEvaluation($runPayload['workflow_context']['target_step'] ?? [], 35000),
+            'previous_steps_json' => $this->encodeJsonForEvaluation($runPayload['workflow_context']['previous_steps'] ?? [], 18000),
+            'following_steps_json' => $this->encodeJsonForEvaluation($runPayload['workflow_context']['following_steps'] ?? [], 18000),
+            'final_output_json' => $this->encodeJsonForEvaluation(
+                $this->buildFinalOutputForEvaluation(
+                    is_array($runPayload['final_output'] ?? null) ? $runPayload['final_output'] : [],
+                    $assistant_output
+                ),
+                0
+            ),
+            'workflow_result_json' => $this->encodeJsonForEvaluation($runPayload['workflow_result_summary'] ?? [], 25000),
         ];
         $rendered_evaluator_system_prompt = PromptTemplateRenderer::render(
             $evaluatorSystemPromptTemplate,
@@ -951,8 +957,8 @@ final class WorkflowRefinementService
                 'step_type' => (string) ($step_result['step_type'] ?? ''),
                 'success' => !empty($step_result['success']),
                 'error' => $step_result['error'] ?? null,
-                'data' => $this->compactValue($step_result['data'] ?? null, 1, 1000),
-                'output_processing' => $this->compactValue($step_result['output_processing'] ?? null, 1, 1000),
+                'data_summary' => $this->summarizeValueShape($step_result['data'] ?? null),
+                'output_processing_summary' => $this->summarizeOutputProcessing($step_result['output_processing'] ?? null),
             ];
         }
 
@@ -1045,8 +1051,10 @@ final class WorkflowRefinementService
             'step_type' => (string) ($stepResult['step_type'] ?? ''),
             'success' => !empty($stepResult['success']),
             'error' => $stepResult['error'] ?? null,
-            'data' => $this->compactValue($stepResult['data'] ?? null, 2, $isTarget ? 8000 : 1500),
-            'output_processing' => $this->compactValue($stepResult['output_processing'] ?? null, 2, $isTarget ? 4000 : 1200),
+            'data' => $isTarget
+                ? $this->compactTargetStepData($stepResult['data'] ?? null)
+                : $this->summarizeValueShape($stepResult['data'] ?? null),
+            'output_processing' => $this->summarizeOutputProcessing($stepResult['output_processing'] ?? null),
             'interpolated_system_prompt' => $this->truncateText($stepResult['interpolated_system_prompt'] ?? null, $isTarget ? 12000 : 0),
             'interpolated_user_message' => $this->truncateText($stepResult['interpolated_user_message'] ?? null, $isTarget ? 16000 : 0),
         ];
@@ -1091,6 +1099,243 @@ final class WorkflowRefinementService
         }
 
         return (string) $value;
+    }
+
+    /**
+     * Preserve the selected step output as primary evidence. For text-mode steps
+     * this usually means one full ai_response string; for structured JSON outputs
+     * preserve values because the evaluator needs to verify output contracts.
+     *
+     * @param mixed $value
+     * @return mixed
+     */
+    private function compactTargetStepData($value)
+    {
+        return $this->removeInternalCompactionMarkers($value);
+    }
+
+    /**
+     * @param mixed $value
+     * @return array<string,mixed>
+     */
+    private function summarizeOutputProcessing($value): array
+    {
+        if (!is_array($value)) {
+            return $this->summarizeValueShape($value);
+        }
+
+        $changes = is_array($value['changes'] ?? null) ? $value['changes'] : [];
+
+        return [
+            'success' => !empty($value['success']),
+            'processed_actions' => isset($value['processed_actions'])
+                ? (int) $value['processed_actions']
+                : (isset($value['actions_processed']) ? (int) $value['actions_processed'] : 0),
+            'errors' => is_array($value['errors'] ?? null)
+                ? array_values(array_map('strval', $value['errors']))
+                : [],
+            'message' => isset($value['message']) ? (string) $value['message'] : '',
+            'changes' => $this->summarizeOutputChanges($changes),
+            'updated_context' => [
+                'present' => array_key_exists('updated_context', $value),
+                'value_detail' => 'not_included_in_refinement_evidence',
+            ],
+        ];
+    }
+
+    /**
+     * @param array<int|string,mixed> $changes
+     * @return array<int,array<string,mixed>>
+     */
+    private function summarizeOutputChanges(array $changes): array
+    {
+        $summaries = [];
+        foreach ($changes as $change) {
+            if (!is_array($change)) {
+                continue;
+            }
+
+            $summary = [];
+            foreach (['type', 'target', 'source_variable', 'field', 'meta_key'] as $key) {
+                if (isset($change[$key])) {
+                    $summary[$key] = (string) $change[$key];
+                }
+            }
+
+            if (isset($change['value'])) {
+                $summary['value'] = $this->summarizeValueShape($change['value']);
+            }
+
+            $summaries[] = $summary;
+        }
+
+        return $summaries;
+    }
+
+    /**
+     * @param mixed $value
+     * @return array<string,mixed>
+     */
+    private function summarizeValueShape($value): array
+    {
+        if ($value === null) {
+            return [
+                'type' => 'null',
+                'present' => false,
+            ];
+        }
+
+        if (is_string($value)) {
+            return [
+                'type' => 'string',
+                'present' => trim($value) !== '',
+                'chars' => strlen($value),
+            ];
+        }
+
+        if (is_array($value)) {
+            $keys = array_keys($value);
+
+            return [
+                'type' => 'array',
+                'present' => !empty($value),
+                'item_count' => count($value),
+                'keys' => array_slice(array_map('strval', $keys), 0, 20),
+                'value_detail' => 'shape_only',
+            ];
+        }
+
+        if (is_object($value)) {
+            return [
+                'type' => 'object',
+                'present' => true,
+                'class' => get_class($value),
+                'keys' => array_slice(array_keys(get_object_vars($value)), 0, 20),
+                'value_detail' => 'shape_only',
+            ];
+        }
+
+        return [
+            'type' => gettype($value),
+            'present' => true,
+            'value' => $value,
+        ];
+    }
+
+    /**
+     * @param mixed $value
+     */
+    private function formatStepOutputForEvaluation($value): string
+    {
+        if (is_array($value) && array_key_exists('ai_response', $value)) {
+            $non_empty_keys = array_filter(array_keys($value), static function ($key) use ($value): bool {
+                return $key !== 'ai_response' && $value[$key] !== null && $value[$key] !== '';
+            });
+
+            if (empty($non_empty_keys)) {
+                return (string) $value['ai_response'];
+            }
+        }
+
+        if (is_string($value)) {
+            return $value;
+        }
+
+        return (string) wp_json_encode($value, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    }
+
+    /**
+     * @param array<string,mixed> $finalOutput
+     * @return array<string,mixed>
+     */
+    private function buildFinalOutputForEvaluation(array $finalOutput, string $targetStepOutput): array
+    {
+        $result = $finalOutput;
+        if (!isset($result['content']) || !is_string($result['content']) || trim($result['content']) === '') {
+            return $result;
+        }
+
+        $content = $result['content'];
+        if (strlen($content) <= 4000) {
+            return $result;
+        }
+
+        if ($this->textsSubstantiallyOverlap($content, $targetStepOutput)) {
+            $result['content'] = [
+                'omitted' => true,
+                'chars' => strlen($content),
+                'reason' => 'Omitted because it substantially duplicates the selected target-step output already provided in full.',
+            ];
+        }
+
+        return $result;
+    }
+
+    private function textsSubstantiallyOverlap(string $left, string $right): bool
+    {
+        $left_normalized = $this->normalizeTextForComparison($left);
+        $right_normalized = $this->normalizeTextForComparison($right);
+
+        if ($left_normalized === '' || $right_normalized === '') {
+            return false;
+        }
+
+        if ($left_normalized === $right_normalized) {
+            return true;
+        }
+
+        $shorter = strlen($left_normalized) <= strlen($right_normalized) ? $left_normalized : $right_normalized;
+        $longer = $shorter === $left_normalized ? $right_normalized : $left_normalized;
+
+        if (strlen($shorter) < 1000) {
+            return false;
+        }
+
+        return strpos($longer, substr($shorter, 0, min(4000, strlen($shorter)))) !== false;
+    }
+
+    private function normalizeTextForComparison(string $text): string
+    {
+        $text = wp_strip_all_tags($text);
+        $text = preg_replace('/\s+/', ' ', $text);
+        if (!is_string($text)) {
+            return '';
+        }
+
+        return trim($text);
+    }
+
+    /**
+     * @param mixed $value
+     */
+    private function encodeJsonForEvaluation($value, int $limit = 0): string
+    {
+        return $this->encodeJson($this->removeInternalCompactionMarkers($value), $limit);
+    }
+
+    /**
+     * @param mixed $value
+     * @return mixed
+     */
+    private function removeInternalCompactionMarkers($value)
+    {
+        if (is_array($value)) {
+            $clean = [];
+            foreach ($value as $key => $item) {
+                if ($key === '__truncated_items') {
+                    continue;
+                }
+                $clean[$key] = $this->removeInternalCompactionMarkers($item);
+            }
+
+            return $clean;
+        }
+
+        if (is_object($value)) {
+            return $this->removeInternalCompactionMarkers(get_object_vars($value));
+        }
+
+        return $value;
     }
 
     /**
@@ -1242,10 +1487,10 @@ final class WorkflowRefinementService
 
         return [
             'title' => (string) ($final_context['title'] ?? ($translated['title'] ?? '')),
-            'content' => $this->truncateText((string) ($final_context['content'] ?? ($translated['content'] ?? '')), 12000),
+            'content' => (string) ($final_context['content'] ?? ($translated['content'] ?? '')),
             'excerpt' => (string) ($final_context['excerpt'] ?? ($translated['excerpt'] ?? '')),
             'meta' => $this->compactValue($meta, 2, 3000),
-            'previous_steps' => $this->compactValue($final_context['previous_steps'] ?? [], 2, 2500),
+            'previous_steps' => $this->summarizeValueShape($final_context['previous_steps'] ?? []),
         ];
     }
 
@@ -1315,8 +1560,6 @@ final class WorkflowRefinementService
                 'workflow_success' => !empty($item['workflow_success']),
                 'score' => isset($item['score']) && is_numeric($item['score']) ? (float) $item['score'] : null,
                 'feedback' => $this->truncateText((string) ($item['feedback'] ?? ''), 12000),
-                'final_output_summary' => $this->compactValue($item['final_output'] ?? [], 2, 2500),
-                'workflow_result_summary' => $this->compactValue($item['workflow_result_summary'] ?? [], 2, 2500),
             ];
         }
 

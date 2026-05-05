@@ -57,6 +57,7 @@ class PostprocessingMenu
         add_action('wp_ajax_polytrans_adjust_workflow_prompt', [$this, 'ajax_adjust_workflow_prompt']);
         add_action('wp_ajax_polytrans_apply_workflow_prompt_pack', [$this, 'ajax_apply_workflow_prompt_pack']);
         add_action('wp_ajax_polytrans_generate_workflow_description', [$this, 'ajax_generate_workflow_description']);
+        add_action('wp_ajax_polytrans_generate_workflow_criteria', [$this, 'ajax_generate_workflow_criteria']);
         add_action('wp_ajax_polytrans_save_workflow_description', [$this, 'ajax_save_workflow_description']);
         // Async job dispatch + poll (avoids 504 on slow AJAX endpoints)
         add_action('wp_ajax_polytrans_async_worker', [AsyncJobRunner::class, 'executeWorker']);
@@ -178,8 +179,10 @@ class PostprocessingMenu
                 ],
                 'descriptionPrompts' => [
                     'system' => PromptRefinementSettings::descriptionGeneratorSystem(),
+                    'criteriaSystem' => PromptRefinementSettings::criteriaGeneratorSystem(),
                     'workflow' => PromptRefinementSettings::workflowDescriptionGenerator(),
                     'workflowStep' => PromptRefinementSettings::workflowStepDescriptionGenerator(),
+                    'workflowCriteria' => PromptRefinementSettings::workflowCriteriaGenerator(),
                 ],
             ]);
 
@@ -1315,6 +1318,48 @@ class PostprocessingMenu
                 $prompt_template
             );
         }
+
+        $this->send_workflow_refinement_result($result);
+    }
+
+    /**
+     * AJAX: Rewrite workflow refinement criteria into a measurable replacement criterion.
+     */
+    public function ajax_generate_workflow_criteria()
+    {
+        if (!check_ajax_referer('polytrans_workflows_nonce', 'nonce', false)) {
+            wp_send_json_error(['message' => __('Security check failed.', 'polytrans')]);
+            return;
+        }
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => __('Permission denied.', 'polytrans')]);
+            return;
+        }
+
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Complex nested workflow config from trusted admin UI.
+        $workflow = isset($_POST['workflow']) ? wp_unslash($_POST['workflow']) : [];
+        if (!is_array($workflow)) {
+            wp_send_json_error(['message' => __('Workflow payload is required.', 'polytrans')]);
+            return;
+        }
+
+        $target_step_id = isset($_POST['target_step_id']) ? sanitize_text_field(wp_unslash($_POST['target_step_id'])) : '';
+        $current_criteria = isset($_POST['current_criteria']) ? (string) wp_unslash($_POST['current_criteria']) : '';
+        $workflow_purpose = isset($_POST['workflow_purpose']) ? (string) wp_unslash($_POST['workflow_purpose']) : '';
+        $prompt_objective = isset($_POST['prompt_objective']) ? (string) wp_unslash($_POST['prompt_objective']) : '';
+        $system_prompt_template = isset($_POST['criteria_system_prompt']) ? (string) wp_unslash($_POST['criteria_system_prompt']) : '';
+        $prompt_template = isset($_POST['criteria_prompt_template']) ? (string) wp_unslash($_POST['criteria_prompt_template']) : '';
+
+        $result = (new DescriptionGeneratorService())->generateWorkflowCriteria(
+            $workflow,
+            $target_step_id,
+            $current_criteria,
+            $workflow_purpose,
+            $prompt_objective,
+            $system_prompt_template,
+            $prompt_template
+        );
 
         $this->send_workflow_refinement_result($result);
     }

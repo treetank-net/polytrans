@@ -1625,6 +1625,36 @@
         });
     }
 
+    function handleWorkflowRefinementCriteriaGeneration() {
+        const workflow = window.polytransWorkflowTestData || {};
+        const prompts = polytransWorkflows.descriptionPrompts || {};
+        const targetStepId = String($('#workflow-refine-target-step').val() || '');
+
+        openWorkflowDescriptionModal({
+            title: 'Refine Criteria',
+            workflow,
+            targetType: 'criteria',
+            targetStepId,
+            systemPrompt: prompts.criteriaSystem || '',
+            promptTemplate: prompts.workflowCriteria || '',
+            currentDescription: $('#workflow-refine-criteria').val() || '',
+            resultLabel: 'Refined Criteria',
+            applyLabel: 'Replace Criteria',
+            generateLabel: 'Refine Criteria',
+            emptyMessage: 'Criteria is empty.',
+            ajaxAction: 'polytrans_generate_workflow_criteria',
+            resultKey: 'criteria',
+            extraData: () => ({
+                current_criteria: $('#workflow-refine-criteria').val() || '',
+                workflow_purpose: $('#workflow-refine-workflow-purpose').val() || '',
+                prompt_objective: $('#workflow-refine-objective').val() || ''
+            }),
+            onApply: (criteria) => {
+                $('#workflow-refine-criteria').val(criteria).trigger('change');
+            }
+        });
+    }
+
     function saveWorkflowDescription(payload) {
         return $.ajax({
             url: polytransWorkflows.ajaxUrl,
@@ -1651,7 +1681,7 @@
                         <button type="button" class="button-link polytrans-description-modal-close" aria-label="Close">&times;</button>
                     </div>
                     <div class="polytrans-description-modal-body">
-                        <label><strong>Generated Description</strong></label>
+                        <label><strong>${escapeHtml(config.resultLabel || 'Generated Description')}</strong></label>
                         <textarea class="large-text polytrans-description-result" rows="4">${escapeHtml(config.currentDescription || '')}</textarea>
                         <details class="polytrans-description-prompts" open>
                             <summary>Generator Prompts</summary>
@@ -1672,7 +1702,7 @@
                         <div class="polytrans-description-modal-error" style="display:none;"></div>
                     </div>
                     <div class="polytrans-description-modal-footer">
-                        <button type="button" class="button button-primary polytrans-description-generate">Generate Description</button>
+                        <button type="button" class="button button-primary polytrans-description-generate">${escapeHtml(config.generateLabel || 'Generate Description')}</button>
                         <button type="button" class="button button-primary polytrans-description-apply">${escapeHtml(config.applyLabel || 'Apply')}</button>
                         ${config.onSave ? '<button type="button" class="button polytrans-description-save">Apply & Save</button>' : ''}
                         <button type="button" class="button polytrans-description-modal-close">Cancel</button>
@@ -1703,35 +1733,38 @@
                     url: polytransWorkflows.ajaxUrl,
                     type: 'POST',
                     data: {
-                        action: 'polytrans_generate_workflow_description',
+                        action: config.ajaxAction || 'polytrans_generate_workflow_description',
                         nonce: polytransWorkflows.nonce,
                         workflow: config.workflow || {},
                         target_type: config.targetType || 'workflow',
                         target_step_id: config.targetStepId || '',
                         description_system_prompt: $modal.find('.polytrans-description-system-prompt').val() || '',
-                        description_prompt_template: $modal.find('.polytrans-description-prompt-template').val() || ''
+                        description_prompt_template: $modal.find('.polytrans-description-prompt-template').val() || '',
+                        criteria_system_prompt: $modal.find('.polytrans-description-system-prompt').val() || '',
+                        criteria_prompt_template: $modal.find('.polytrans-description-prompt-template').val() || '',
+                        ...(typeof config.extraData === 'function' ? config.extraData() : {})
                     }
                 });
                 if (!response || !response.success) {
-                    throw new Error(response?.data?.message || 'Description generation failed.');
+                    throw new Error(response?.data?.message || `${config.resultLabel || 'Description'} generation failed.`);
                 }
 
                 const data = response.data || {};
-                $modal.find('.polytrans-description-result').val(data.description || '');
+                $modal.find('.polytrans-description-result').val(data[config.resultKey || 'description'] || data.description || '');
                 $modal.find('.polytrans-description-rendered-system').text(data.rendered_system_prompt || '');
                 $modal.find('.polytrans-description-rendered-user').text(data.rendered_prompt || '');
                 $modal.find('.polytrans-description-raw-response').text(data.raw_response || '');
             } catch (error) {
-                $error.text(resolveWorkflowAjaxErrorMessage(error, 'Description generation failed.')).show();
+                $error.text(resolveWorkflowAjaxErrorMessage(error, `${config.resultLabel || 'Description'} generation failed.`)).show();
             } finally {
-                $generateButton.prop('disabled', false).text('Generate Description');
+                $generateButton.prop('disabled', false).text(config.generateLabel || 'Generate Description');
             }
         });
 
         $modal.on('click', '.polytrans-description-apply', function () {
             const description = ($modal.find('.polytrans-description-result').val() || '').trim();
             if (!description) {
-                $modal.find('.polytrans-description-modal-error').text('Description is empty.').show();
+                $modal.find('.polytrans-description-modal-error').text(config.emptyMessage || 'Description is empty.').show();
                 return;
             }
             config.onApply(description);
@@ -1744,7 +1777,7 @@
             const $error = $modal.find('.polytrans-description-modal-error');
 
             if (!description) {
-                $error.text('Description is empty.').show();
+                $error.text(config.emptyMessage || 'Description is empty.').show();
                 return;
             }
 
@@ -2033,7 +2066,11 @@ However, the integration of AI in healthcare also raises important questions abo
                             <tr>
                                 <th scope="row"><label for="workflow-refine-criteria">Criteria</label></th>
                                 <td>
-                                    <textarea id="workflow-refine-criteria" class="large-text code" rows="4" placeholder="As admin, I want the whole workflow output to do X, Y, Z..."></textarea>
+                                    <textarea id="workflow-refine-criteria" class="large-text code" rows="4" placeholder="Example: Make the target step output easier and safer for the follow-up step to apply. Prefer a shorter, clearer prompt with fewer conflicting rules."></textarea>
+                                    <p>
+                                        <button type="button" id="workflow-refine-generate-criteria" class="button">Refine Criteria</button>
+                                    </p>
+                                    <p class="description">Good criteria describe the operational improvement you want. Prefer reliability, clarity, and conflict removal over simply asking for more instructions.</p>
                                 </td>
                             </tr>
                             <tr>
@@ -2188,6 +2225,10 @@ However, the integration of AI in healthcare also raises important questions abo
         $('#workflow-refine-generate-workflow-description').on('click', function (e) {
             e.preventDefault();
             handleWorkflowRefinementDescriptionGeneration('workflow');
+        });
+        $('#workflow-refine-generate-criteria').on('click', function (e) {
+            e.preventDefault();
+            handleWorkflowRefinementCriteriaGeneration();
         });
 
         $('#workflow-refine-select-all-posts').on('click', function (e) {
@@ -3284,6 +3325,29 @@ However, the integration of AI in healthcare also raises important questions abo
                 </tr>
             `;
         }).join('');
+        const finalVerificationDetailsHtml = finalEvaluationRuns.map((run, idx) => {
+            const score = run?.evaluation?.score;
+            const feedback = run?.evaluation?.feedback || '';
+            const evaluatorPrompt = run?.evaluation?.rendered_prompt || '';
+            const runId = String(run?.run_id || '').trim();
+            const finalOutputText = run?.final_output ? JSON.stringify(run.final_output, null, 2) : '';
+            const workflowSummaryText = run?.workflow_result_summary ? JSON.stringify(run.workflow_result_summary, null, 2) : '';
+
+            return `
+                <details class="workflow-test-details">
+                    <summary>Final verification post #${idx + 1}: ${escapeHtml(run.post_title || `ID ${run.post_id || 0}`)}${score !== null && score !== undefined ? ` | Score: ${escapeHtml(String(score))}` : ''}${runId ? ` | Run ID: ${escapeHtml(runId)}` : ''}</summary>
+                    ${runId ? `<h5>Run ID</h5><pre><code>${escapeHtml(runId)}</code></pre>` : ''}
+                    <h5>Evaluator Feedback</h5>
+                    <pre><code>${escapeHtml(feedback)}</code></pre>
+                    <h5>Final Workflow Output</h5>
+                    <pre><code>${escapeHtml(finalOutputText)}</code></pre>
+                    <h5>Workflow Step Summary</h5>
+                    <pre><code>${escapeHtml(workflowSummaryText)}</code></pre>
+                    <h5>Rendered Evaluator Prompt</h5>
+                    <pre><code>${escapeHtml(evaluatorPrompt)}</code></pre>
+                </details>
+            `;
+        }).join('');
         const finalScoreTableRow = finalEvaluationRuns.length
             ? `
                 <tr>
@@ -3352,6 +3416,12 @@ However, the integration of AI in healthcare also raises important questions abo
                         <thead><tr><th>#</th><th>Post</th><th>Score</th><th>Run ID</th></tr></thead>
                         <tbody>${finalVerificationRows || '<tr><td colspan="4">No final verification data.</td></tr>'}</tbody>
                     </table>
+                    ${finalVerificationDetailsHtml ? `
+                        <details class="workflow-test-details" open>
+                            <summary>${escapeHtml(finalVerificationPromptLabel)} | Avg score: ${escapeHtml(finalAverageScore === null ? 'n/a' : finalAverageScore.toFixed(2))} | Final verification source runs</summary>
+                            ${finalVerificationDetailsHtml}
+                        </details>
+                    ` : ''}
                 </div>
 
                 <div class="workflow-refinement-panel">

@@ -93,6 +93,61 @@ it('summarizes workflow context around the selected target step', function () {
     expect($context['following_steps'])->toBe([]);
 });
 
+it('stores workflow context in workflow refinement run payloads', function () {
+    $workflow = [
+        'id' => 'workflow_test',
+        'name' => 'Review workflow',
+        'description' => 'Review post.',
+        'steps' => [
+            [
+                'id' => 'step_review',
+                'name' => 'Review',
+                'type' => 'managed_assistant',
+                'assistant_id' => 0,
+            ],
+        ],
+    ];
+
+    $payload = invoke_workflow_refinement_method(
+        'buildRunPayload',
+        'run_test',
+        $workflow,
+        $workflow['steps'][0],
+        [
+            'id' => 123,
+            'name' => 'Reviewer',
+            'provider' => 'openai',
+            'expected_format' => 'text',
+        ],
+        [
+            'translated_post_id' => 0,
+            'source_language' => 'fr',
+            'target_language' => 'pl',
+        ],
+        [
+            'success' => true,
+            'step_results' => [
+                [
+                    'step_id' => 'step_review',
+                    'step_name' => 'Review',
+                    'step_type' => 'managed_assistant',
+                    'success' => true,
+                    'data' => ['ai_response' => 'Review notes.'],
+                ],
+            ],
+        ],
+        [
+            'system_prompt' => 'System prompt',
+            'user_message_template' => 'User template',
+            'expected_output_schema' => '{}',
+        ]
+    );
+
+    expect($payload['workflow_context']['steps'])->toHaveCount(1);
+    expect($payload['workflow_context']['target_step']['id'])->toBe('step_review');
+    expect($payload['workflow_context']['target_step']['run']['data']['ai_response'])->toBe('Review notes.');
+});
+
 it('uses workflow target step description as default refinement primary purpose', function () {
     expect(invoke_workflow_refinement_method(
         'resolveWorkflowPromptObjective',
@@ -228,8 +283,86 @@ it('builds compact final output snapshot from workflow final context', function 
     ]);
 
     expect($snapshot['title'])->toBe('Final title');
-    expect($snapshot['content'])->toHaveLength(12000);
+    expect($snapshot['content'])->toHaveLength(12020);
     expect($snapshot['excerpt'])->toBe('Final excerpt');
     expect($snapshot['meta']['TRANSLATION_REVIEW'])->toBe('Looks better.');
-    expect($snapshot['previous_steps']['step_review']['feedback'])->toBe('Too literal.');
+    expect($snapshot['previous_steps']['value_detail'])->toBe('shape_only');
+});
+
+it('formats plain text step output for evaluator without ai_response storage wrapper', function () {
+    $output = invoke_workflow_refinement_method('formatStepOutputForEvaluation', [
+        'ai_response' => 'Clean review notes.',
+    ]);
+
+    expect($output)->toBe('Clean review notes.');
+});
+
+it('preserves full selected target step data as primary evaluation evidence', function () {
+    $data = invoke_workflow_refinement_method('compactTargetStepData', [
+        'ai_response' => str_repeat('x', 12020),
+    ]);
+
+    expect($data['ai_response'])->toHaveLength(12020);
+});
+
+it('summarizes output processing without carrying updated context payloads', function () {
+    $summary = invoke_workflow_refinement_method('summarizeOutputProcessing', [
+        'success' => true,
+        'processed_actions' => 1,
+        'message' => 'Successfully processed 1 output actions',
+        'changes' => [
+            [
+                'type' => 'update_post_meta',
+                'target' => 'TRANSLATION_REVIEW',
+                'value' => str_repeat('x', 1000),
+            ],
+        ],
+        'updated_context' => [
+            'translated_post' => [
+                'content' => str_repeat('y', 10000),
+            ],
+        ],
+    ]);
+
+    expect($summary['success'])->toBeTrue();
+    expect($summary['processed_actions'])->toBe(1);
+    expect($summary['updated_context']['value_detail'])->toBe('not_included_in_refinement_evidence');
+    expect($summary['changes'][0]['value']['chars'])->toBe(1000);
+    expect($summary)->not->toHaveKey('__truncated_items');
+});
+
+it('omits long final content for evaluator only when it duplicates target output', function () {
+    $content = str_repeat('Final content paragraph. ', 300);
+
+    $output = invoke_workflow_refinement_method('buildFinalOutputForEvaluation', [
+        'title' => 'Final title',
+        'content' => $content,
+    ], $content);
+
+    expect($output['content'])->toBeArray();
+    expect($output['content']['omitted'])->toBeTrue();
+});
+
+it('keeps long final content for evaluator when it is distinct evidence', function () {
+    $content = str_repeat('Final rewritten publication copy. ', 300);
+    $targetOutput = str_repeat('Review notes and recommendations. ', 300);
+
+    $output = invoke_workflow_refinement_method('buildFinalOutputForEvaluation', [
+        'title' => 'Final title',
+        'content' => $content,
+    ], $targetOutput);
+
+    expect($output['content'])->toBe($content);
+});
+
+it('removes internal compaction markers before rendering evaluator json', function () {
+    $clean = invoke_workflow_refinement_method('removeInternalCompactionMarkers', [
+        'items' => [
+            'first' => 'visible',
+            '__truncated_items' => 3,
+        ],
+    ]);
+
+    expect($clean['items'])->toHaveKey('first');
+    expect($clean['items'])->not->toHaveKey('__truncated_items');
 });

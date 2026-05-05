@@ -23,6 +23,16 @@ it('parses JSON description generator responses', function () {
     expect($description)->toBe('Translates WordPress posts into natural Polish.');
 });
 
+it('parses JSON criteria generator responses', function () {
+    $service = new DescriptionGeneratorService();
+
+    $criteria = invoke_description_generator_method($service, 'parseDescription', [
+        '{"criteria":"Make the target step safer for the follow-up step without adding prompt bloat."}',
+    ]);
+
+    expect($criteria)->toBe('Make the target step safer for the follow-up step without adding prompt bloat.');
+});
+
 it('builds assistant description context from prompt pack fields', function () {
     $service = new DescriptionGeneratorService();
 

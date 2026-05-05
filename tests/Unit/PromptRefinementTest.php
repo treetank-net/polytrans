@@ -167,6 +167,24 @@ it('includes primary prompt purpose in default refinement templates', function (
     expect(DefaultPromptTemplates::workflowAdjuster())->toContain('{{ refinement_history_json }}');
 });
 
+it('guides refinement prompts away from prompt bloat and blind rule stacking', function () {
+    expect(DefaultPromptTemplates::assistantEvaluatorSystem())->toContain('instruction overload');
+    expect(DefaultPromptTemplates::workflowEvaluatorSystem())->toContain('Do not assume adding another rule is the best fix');
+
+    expect(DefaultPromptTemplates::assistantEvaluator())->toContain('If the criteria would encourage prompt bloat');
+    expect(DefaultPromptTemplates::assistantEvaluator())->toContain('smallest effective prompt change');
+    expect(DefaultPromptTemplates::workflowEvaluator())->toContain('workflow contract change');
+    expect(DefaultPromptTemplates::workflowEvaluator())->toContain('Constraint diagnosis');
+
+    expect(DefaultPromptTemplates::assistantAdjuster())->toContain('Treat the criteria as user intent');
+    expect(DefaultPromptTemplates::assistantAdjuster())->toContain('Do not append new checklist sections');
+    expect(DefaultPromptTemplates::workflowAdjuster())->toContain('shorter, clearer, more reliable target-step prompt');
+    expect(DefaultPromptTemplates::workflowAdjuster())->toContain('validation/workflow mechanics are needed outside the prompt');
+
+    expect(DefaultPromptTemplates::promptAdjusterSystem())->toContain('Prefer the smallest effective prompt change');
+    expect(DefaultPromptTemplates::promptAdjusterSystem())->toContain('do not merely restate it more strongly');
+});
+
 it('loads prompt refinement templates from settings with built-in fallback', function () {
     expect(PromptRefinementSettings::assistantEvaluatorSystem([]))->toBe(DefaultPromptTemplates::assistantEvaluatorSystem());
     expect(PromptRefinementSettings::assistantEvaluator([]))->toBe(DefaultPromptTemplates::assistantEvaluator());
@@ -189,7 +207,15 @@ it('includes description generator templates in prompt refinement settings', fun
     expect($defaults[PromptRefinementSettings::ASSISTANT_DESCRIPTION_GENERATOR_KEY])->toContain('{{ assistant_name }}');
     expect($defaults[PromptRefinementSettings::WORKFLOW_DESCRIPTION_GENERATOR_KEY])->toContain('{{ workflow_steps_json }}');
     expect($defaults[PromptRefinementSettings::WORKFLOW_STEP_DESCRIPTION_GENERATOR_KEY])->toContain('{{ target_step_json }}');
+    expect($defaults[PromptRefinementSettings::WORKFLOW_CRITERIA_GENERATOR_KEY])->toContain('{{ current_criteria }}');
+    expect($defaults[PromptRefinementSettings::CRITERIA_GENERATOR_SYSTEM_KEY])->toContain('observable quality');
+    expect($defaults[PromptRefinementSettings::CRITERIA_GENERATOR_SYSTEM_KEY])->toContain('do not infer a narrow step contract');
+    expect($defaults[PromptRefinementSettings::WORKFLOW_CRITERIA_GENERATOR_KEY])->toContain('more detected issues');
+    expect($defaults[PromptRefinementSettings::WORKFLOW_CRITERIA_GENERATOR_KEY])->toContain('Do not turn a broad goal into a narrow implementation');
+    expect($defaults[PromptRefinementSettings::WORKFLOW_CRITERIA_GENERATOR_KEY])->toContain('Treat those as context for understanding the task, not as criteria to import');
     expect($current[PromptRefinementSettings::DESCRIPTION_GENERATOR_SYSTEM_KEY])->toBe(DefaultPromptTemplates::descriptionGeneratorSystem());
+    expect($current[PromptRefinementSettings::CRITERIA_GENERATOR_SYSTEM_KEY])->toBe(DefaultPromptTemplates::criteriaGeneratorSystem());
+    expect($current[PromptRefinementSettings::WORKFLOW_CRITERIA_GENERATOR_KEY])->toBe(DefaultPromptTemplates::workflowCriteriaGenerator());
     expect(PromptRefinementSettings::workflowStepDescriptionGenerator([
         PromptRefinementSettings::WORKFLOW_STEP_DESCRIPTION_GENERATOR_KEY => '',
     ]))->toBe(DefaultPromptTemplates::workflowStepDescriptionGenerator());

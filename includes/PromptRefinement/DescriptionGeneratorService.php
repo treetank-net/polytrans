@@ -84,6 +84,52 @@ final class DescriptionGeneratorService
     }
 
     /**
+     * @param array<string,mixed> $workflow
+     * @return array<string,mixed>|\WP_Error
+     */
+    public function generateWorkflowCriteria(
+        array $workflow,
+        string $targetStepId,
+        string $currentCriteria,
+        string $workflowPurpose,
+        string $promptObjective,
+        string $systemPromptTemplate = '',
+        string $promptTemplate = ''
+    ) {
+        $target_step = $this->findStep($workflow, $targetStepId);
+        if (!$target_step) {
+            return new \WP_Error('criteria_target_step_not_found', __('Selected workflow step was not found.', 'polytrans'));
+        }
+
+        $systemPromptTemplate = trim($systemPromptTemplate) !== ''
+            ? $systemPromptTemplate
+            : PromptRefinementSettings::criteriaGeneratorSystem();
+        $promptTemplate = trim($promptTemplate) !== ''
+            ? $promptTemplate
+            : PromptRefinementSettings::workflowCriteriaGenerator();
+
+        $context = array_merge(
+            $this->buildWorkflowContext($workflow, $target_step),
+            [
+                'current_criteria' => $this->plainText($currentCriteria),
+                'workflow_purpose' => $this->plainText($workflowPurpose),
+                'prompt_objective' => $this->plainText($promptObjective),
+            ]
+        );
+        $runner = $this->resolveWorkflowRunnerConfig($workflow, $target_step);
+
+        $result = $this->generate($runner, $context, $systemPromptTemplate, $promptTemplate, 'workflow_criteria');
+        if (is_wp_error($result)) {
+            return $result;
+        }
+
+        $result['criteria'] = $result['description'] ?? '';
+        unset($result['description']);
+
+        return $result;
+    }
+
+    /**
      * @param array<string,mixed> $runner
      * @param array<string,mixed> $context
      * @return array<string,mixed>|\WP_Error
@@ -318,7 +364,7 @@ final class DescriptionGeneratorService
         }
 
         if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-            $description = trim((string) ($decoded['description'] ?? ''));
+            $description = trim((string) ($decoded['description'] ?? $decoded['criteria'] ?? ''));
             if ($description !== '') {
                 return $this->plainText($description);
             }

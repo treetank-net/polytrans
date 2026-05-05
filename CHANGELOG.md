@@ -5,6 +5,23 @@ All notable changes to the PolyTrans plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.13.19] - 2026-05-05
+
+### Added
+- Workflow prompt refinement now includes a criteria refinement modal that rewrites broad user goals into concise measurable evaluator criteria.
+- Workflow and assistant prompt refinement result details now expose final verification evidence, including per-post scores, run IDs, evaluator feedback, workflow output summaries, and rendered evaluator prompts.
+
+### Changed
+- Default evaluator and adjuster prompts now diagnose prompt bloat, conflicting instructions, downstream contract issues, and regressions instead of blindly stacking more rules.
+- Workflow criteria generation now keeps broad criteria broad and measurable, avoiding imported output contracts, magic phrases, and step mechanics unless the user explicitly asks for contract compliance.
+- Workflow refinement evaluator evidence is compacted around the target step while preserving full selected target-step data and avoiding duplicate final output content where possible.
+
+### Fixed
+- Workflow refinement run payloads now persist workflow context correctly for later inspection.
+- Workflow refinement evidence no longer exposes internal truncation markers or large output-processing context payloads to evaluators.
+- Criteria generator settings now use a dedicated criteria system prompt instead of the description generator prompt.
+- Prompt refinement settings now save the criteria generator prompt templates.
+
 ## [1.13.18] - 2026-05-05
 
 ### Fixed

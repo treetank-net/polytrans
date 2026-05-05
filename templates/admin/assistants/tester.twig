@@ -98,7 +98,8 @@
                         <tr>
                             <th scope="row"><label for="assistant-refine-criteria">{{ __('Refinement Criteria', 'polytrans') }}</label></th>
                             <td>
-                                <textarea id="assistant-refine-criteria" class="large-text code" rows="4" placeholder="{{ __('As admin, I want this assistant to do X, Y, Z...', 'polytrans') }}"></textarea>
+                                <textarea id="assistant-refine-criteria" class="large-text code" rows="4" placeholder="{{ __('Example: Make this assistant output more reliable and easier to use downstream. Prefer a shorter, clearer prompt with fewer conflicting rules.', 'polytrans') }}"></textarea>
+                                <p class="description">{{ __('Good criteria describe the operational improvement you want. Prefer reliability, clarity, and conflict removal over simply asking for more instructions.', 'polytrans') }}</p>
                             </td>
                         </tr>
                         <tr>

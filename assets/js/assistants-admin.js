@@ -1776,6 +1776,40 @@
                     </tr>
                 `;
             }).join('');
+            const finalVerificationDetailsHtml = finalEvaluationRuns.map((run, idx) => {
+                const score = run?.evaluation?.score;
+                const feedback = run?.evaluation?.feedback || '';
+                const evaluatorSystemPrompt = run?.evaluation?.rendered_system_prompt || '';
+                const evaluatorPrompt = run?.evaluation?.rendered_prompt || '';
+                const runId = String(run?.run_id || '').trim();
+                const assistantOutput = typeof run?.assistant_output === 'string'
+                    ? run.assistant_output
+                    : JSON.stringify(run?.assistant_output || {}, null, 2);
+                const finalPostCandidate = run?.final_post_candidate || null;
+                const finalPostCandidateText = finalPostCandidate ? JSON.stringify(finalPostCandidate, null, 2) : '';
+
+                return `
+                    <details class="assistant-test-details">
+                        <summary>Final verification post #${idx + 1}: ${this.escapeHtml(run.post_title || `ID ${run.post_id || 0}`)}${score !== null && score !== undefined ? ` | Score: ${this.escapeHtml(String(score))}` : ''}${runId ? ` | Run ID: ${this.escapeHtml(runId)}` : ''}</summary>
+                        ${runId ? `<h5>Run ID</h5><pre><code>${this.escapeHtml(runId)}</code></pre>` : ''}
+                        <h5>Evaluator Feedback</h5>
+                        <pre><code>${this.escapeHtml(feedback)}</code></pre>
+                        <div class="assistant-refinement-rendered-prompt-grid">
+                            <div>
+                                <h5>Rendered Evaluator System Prompt</h5>
+                                <pre><code>${this.escapeHtml(evaluatorSystemPrompt)}</code></pre>
+                            </div>
+                            <div>
+                                <h5>Rendered Evaluator User Message</h5>
+                                <pre><code>${this.escapeHtml(evaluatorPrompt)}</code></pre>
+                            </div>
+                        </div>
+                        <h5>Assistant Output</h5>
+                        <pre><code>${this.escapeHtml(assistantOutput)}</code></pre>
+                        ${finalPostCandidateText ? `<h5>Final Post Candidate</h5><pre><code>${this.escapeHtml(finalPostCandidateText)}</code></pre>` : ''}
+                    </details>
+                `;
+            }).join('');
             const finalScoreTableRow = finalEvaluationRuns.length
                 ? `
                     <tr>
@@ -1843,6 +1877,12 @@
                             <thead><tr><th>#</th><th>Post</th><th>Score</th><th>Run ID</th></tr></thead>
                             <tbody>${finalVerificationRows || '<tr><td colspan="4">No final verification data.</td></tr>'}</tbody>
                         </table>
+                        ${finalVerificationDetailsHtml ? `
+                            <details class="assistant-test-details" open>
+                                <summary>${this.escapeHtml(finalVerificationPromptLabel)} | Avg score: ${this.escapeHtml(finalAverageScore === null ? 'n/a' : finalAverageScore.toFixed(2))} | Final verification source runs</summary>
+                                ${finalVerificationDetailsHtml}
+                            </details>
+                        ` : ''}
                     </div>
 
                     <div class="assistant-test-section">
