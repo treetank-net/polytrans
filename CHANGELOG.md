@@ -5,6 +5,12 @@ All notable changes to the PolyTrans plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.13.18] - 2026-05-05
+
+### Fixed
+- Workflow prompt refinement now uses database table to persist workflow runs (as transients were failing to save)
+- Added maintenance tab that allows clearing old logs and workflow runs
+
 ## [1.13.17] - 2026-05-04
 
 ### Fixed

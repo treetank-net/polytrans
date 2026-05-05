@@ -7,7 +7,9 @@
 
 namespace PolyTrans\Menu;
 
+use PolyTrans\PromptRefinement\RefinementRunStorage;
 use PolyTrans\Templating\TemplateRenderer;
+use PolyTrans\Core\LogsManager;
 
 if (!defined('ABSPATH')) {
     exit;
@@ -37,6 +39,10 @@ class SettingsMenu
         // Register universal AJAX endpoints early (before page render)
         // This ensures endpoints are available for AJAX requests
         add_action('wp_ajax_polytrans_validate_provider_key', [\PolyTrans\Core\TranslationSettings::class, 'ajax_validate_provider_key_static']);
+        add_action('wp_ajax_polytrans_refinement_run_storage_stats', [$this, 'ajax_refinement_run_storage_stats']);
+        add_action('wp_ajax_polytrans_cleanup_refinement_runs', [$this, 'ajax_cleanup_refinement_runs']);
+        add_action('wp_ajax_polytrans_maintenance_stats', [$this, 'ajax_maintenance_stats']);
+        add_action('wp_ajax_polytrans_cleanup_logs', [$this, 'ajax_cleanup_logs']);
     }
 
 
@@ -159,5 +165,80 @@ class SettingsMenu
         // Note: polytrans_settings class is autoloaded (aliased to TranslationSettings)
         $settings = new \polytrans_settings();
         $settings->render();
+    }
+
+    public function ajax_refinement_run_storage_stats(): void
+    {
+        check_ajax_referer('polytrans_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => __('Insufficient permissions.', 'polytrans')], 403);
+        }
+
+        wp_send_json_success(['stats' => RefinementRunStorage::stats()]);
+    }
+
+    public function ajax_cleanup_refinement_runs(): void
+    {
+        check_ajax_referer('polytrans_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => __('Insufficient permissions.', 'polytrans')], 403);
+        }
+
+        $mode = isset($_POST['mode']) ? sanitize_key(wp_unslash($_POST['mode'])) : 'expired';
+        if ($mode === 'all') {
+            $deleted = RefinementRunStorage::deleteAll();
+        } else {
+            $mode = 'expired';
+            $deleted = RefinementRunStorage::cleanupExpiredNow();
+        }
+
+        wp_send_json_success([
+            'deleted' => $deleted,
+            'mode' => $mode,
+            'stats' => RefinementRunStorage::stats(),
+        ]);
+    }
+
+    public function ajax_maintenance_stats(): void
+    {
+        check_ajax_referer('polytrans_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => __('Insufficient permissions.', 'polytrans')], 403);
+        }
+
+        $retention_days = isset($_POST['logs_retention_days']) ? intval($_POST['logs_retention_days']) : null;
+
+        wp_send_json_success([
+            'logs' => LogsManager::get_storage_stats($retention_days),
+            'refinement_runs' => RefinementRunStorage::stats(),
+        ]);
+    }
+
+    public function ajax_cleanup_logs(): void
+    {
+        check_ajax_referer('polytrans_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => __('Insufficient permissions.', 'polytrans')], 403);
+        }
+
+        $mode = isset($_POST['mode']) ? sanitize_key(wp_unslash($_POST['mode'])) : 'old';
+        if ($mode === 'all') {
+            $deleted = LogsManager::truncate_logs();
+        } else {
+            $mode = 'old';
+            $retention_days = isset($_POST['logs_retention_days']) ? intval($_POST['logs_retention_days']) : null;
+            $deleted = LogsManager::clear_old_logs($retention_days ?? 30);
+            update_option('polytrans_logs_cleanup_at', time(), false);
+        }
+
+        wp_send_json_success([
+            'deleted' => $deleted,
+            'mode' => $mode,
+            'stats' => LogsManager::get_storage_stats(isset($_POST['logs_retention_days']) ? intval($_POST['logs_retention_days']) : null),
+        ]);
     }
 }

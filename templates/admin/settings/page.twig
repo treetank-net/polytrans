@@ -12,6 +12,7 @@
         <a href="#tag-settings" class="nav-tab" id="tag-tab">{{ __('Tag Settings', 'polytrans') }}</a>
         <a href="#email-settings" class="nav-tab" id="email-tab">{{ __('Email Settings', 'polytrans') }}</a>
         <a href="#prompt-refinement-settings" class="nav-tab" id="prompt-refinement-tab">{{ __('Refinement Prompts', 'polytrans') }}</a>
+        <a href="#maintenance-settings" class="nav-tab" id="maintenance-tab">{{ __('Maintenance', 'polytrans') }}</a>
         {% for provider_id, settings_provider in settings_providers %}
             <a href="#{{ provider_id|esc_attr }}-settings" class="nav-tab provider-settings-tab" id="{{ provider_id|esc_attr }}-tab">
                 {{ settings_provider.get_tab_label()|esc_html }}
@@ -82,6 +83,13 @@
             {{ include('admin/settings/tabs/prompt-refinement-settings.twig', {
                 'prompt_refinement_templates': prompt_refinement_templates,
                 'prompt_refinement_default_templates': prompt_refinement_default_templates,
+                'settings': settings
+            }) }}
+        </div>
+
+        <!-- Maintenance Settings Tab -->
+        <div id="maintenance-settings" class="tab-content" style="display:none;">
+            {{ include('admin/settings/tabs/maintenance-settings.twig', {
                 'settings': settings
             }) }}
         </div>

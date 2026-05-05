@@ -683,5 +683,161 @@
         if (window.PolyTransLanguagePaths && window.PolyTransLanguagePaths.updateLanguagePairVisibility) {
             window.PolyTransLanguagePaths.updateLanguagePairVisibility();
         }
+
+        function formatMaintenanceBytes(bytes) {
+            var value = parseInt(bytes || 0, 10);
+            if (!Number.isFinite(value) || value <= 0) {
+                return '0 B';
+            }
+            var units = ['B', 'KB', 'MB', 'GB'];
+            var unitIndex = 0;
+            while (value >= 1024 && unitIndex < units.length - 1) {
+                value = value / 1024;
+                unitIndex++;
+            }
+            return value.toFixed(unitIndex === 0 ? 0 : 2) + ' ' + units[unitIndex];
+        }
+
+        function formatMaintenanceTime(timestamp) {
+            var value = parseInt(timestamp || 0, 10);
+            if (!value) {
+                return '-';
+            }
+            return new Date(value * 1000).toLocaleString();
+        }
+
+        function showMaintenanceStatus(message, isError) {
+            var $status = $('#polytrans-maintenance-status');
+            if (!$status.length) {
+                return;
+            }
+            $status
+                .removeClass('notice-success notice-error notice-info')
+                .addClass(isError ? 'notice-error' : 'notice-success')
+                .text(message)
+                .show();
+        }
+
+        function renderRefinementStorageStats(stats) {
+            stats = stats || {};
+            $('#refinement-run-storage-total').text(String(stats.total_runs || 0));
+            $('#refinement-run-storage-expired').text(String(stats.expired_runs || 0));
+            $('#refinement-run-storage-size').text(formatMaintenanceBytes(stats.total_payload_size || 0));
+            $('#refinement-run-storage-last-cleanup').text(formatMaintenanceTime(stats.last_cleanup_at || 0));
+        }
+
+        function renderLogStorageStats(stats) {
+            stats = stats || {};
+            $('#polytrans-log-storage-total').text(String(stats.total_logs || 0));
+            $('#polytrans-log-storage-old').text(String(stats.old_logs || 0));
+            $('#polytrans-log-storage-size').text(formatMaintenanceBytes(stats.total_payload_size || 0));
+            $('#polytrans-log-storage-last-cleanup').text(formatMaintenanceTime(stats.last_cleanup_at || 0));
+        }
+
+        function currentLogsRetentionDays() {
+            var value = parseInt($('#logs-retention-days').val() || '30', 10);
+            if (!Number.isFinite(value)) {
+                return 30;
+            }
+            return Math.max(1, Math.min(value, 365));
+        }
+
+        function loadMaintenanceStats() {
+            if (!$('#refresh-polytrans-maintenance-stats').length) {
+                return;
+            }
+            $.ajax({
+                url: PolyTransAjax.ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'polytrans_maintenance_stats',
+                    nonce: PolyTransAjax.nonce,
+                    logs_retention_days: currentLogsRetentionDays()
+                }
+            }).done(function(response) {
+                if (!response || !response.success) {
+                    showMaintenanceStatus(response && response.data && response.data.message ? response.data.message : 'Failed to load maintenance stats.', true);
+                    return;
+                }
+                renderLogStorageStats(response.data.logs || {});
+                renderRefinementStorageStats(response.data.refinement_runs || {});
+            }).fail(function() {
+                showMaintenanceStatus('Failed to load maintenance stats.', true);
+            });
+        }
+
+        function cleanupLogs(mode) {
+            var truncate = mode === 'all';
+            if (truncate && !confirm('Truncate all PolyTrans database logs? This cannot be undone.')) {
+                return;
+            }
+
+            $.ajax({
+                url: PolyTransAjax.ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'polytrans_cleanup_logs',
+                    nonce: PolyTransAjax.nonce,
+                    mode: truncate ? 'all' : 'old',
+                    logs_retention_days: currentLogsRetentionDays()
+                }
+            }).done(function(response) {
+                if (!response || !response.success) {
+                    showMaintenanceStatus(response && response.data && response.data.message ? response.data.message : 'Failed to clean logs.', true);
+                    return;
+                }
+                renderLogStorageStats(response.data.stats || {});
+                showMaintenanceStatus('Deleted ' + String(response.data.deleted || 0) + ' log entr' + (parseInt(response.data.deleted || 0, 10) === 1 ? 'y.' : 'ies.'), false);
+            }).fail(function() {
+                showMaintenanceStatus('Failed to clean logs.', true);
+            });
+        }
+
+        function cleanupRefinementRuns(mode) {
+            var deleteAll = mode === 'all';
+            if (deleteAll && !confirm('Delete all temporary prompt refinement run payloads? Active refinement sessions may need to be restarted.')) {
+                return;
+            }
+
+            $.ajax({
+                url: PolyTransAjax.ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'polytrans_cleanup_refinement_runs',
+                    nonce: PolyTransAjax.nonce,
+                    mode: deleteAll ? 'all' : 'expired'
+                }
+            }).done(function(response) {
+                if (!response || !response.success) {
+                    showMaintenanceStatus(response && response.data && response.data.message ? response.data.message : 'Failed to clean refinement runs.', true);
+                    return;
+                }
+                renderRefinementStorageStats(response.data.stats || {});
+                showMaintenanceStatus('Deleted ' + String(response.data.deleted || 0) + ' refinement run(s).', false);
+            }).fail(function() {
+                showMaintenanceStatus('Failed to clean refinement runs.', true);
+            });
+        }
+
+        $('#refresh-polytrans-maintenance-stats').on('click', function() {
+            loadMaintenanceStats();
+        });
+        $('#logs-retention-days').on('change', function() {
+            loadMaintenanceStats();
+        });
+        $('#cleanup-old-polytrans-logs').on('click', function() {
+            cleanupLogs('old');
+        });
+        $('#truncate-polytrans-logs').on('click', function() {
+            cleanupLogs('all');
+        });
+        $('#cleanup-expired-refinement-runs').on('click', function() {
+            cleanupRefinementRuns('expired');
+        });
+        $('#cleanup-all-refinement-runs').on('click', function() {
+            cleanupRefinementRuns('all');
+        });
+
+        loadMaintenanceStats();
     });
 })(jQuery);

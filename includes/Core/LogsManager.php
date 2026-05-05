@@ -697,6 +697,89 @@ class LogsManager
     }
 
     /**
+     * @return array<string,mixed>
+     */
+    public static function get_storage_stats($retention_days = null): array
+    {
+        global $wpdb;
+
+        if (!self::logs_table_exists()) {
+            return [
+                'total_logs' => 0,
+                'old_logs' => 0,
+                'total_payload_size' => 0,
+                'oldest_created_at' => '',
+                'newest_created_at' => '',
+                'last_cleanup_at' => (int) get_option('polytrans_logs_cleanup_at', 0),
+                'retention_days' => self::get_retention_days($retention_days),
+            ];
+        }
+
+        $table_name = $wpdb->prefix . 'polytrans_logs';
+        $retention_days = self::get_retention_days($retention_days);
+        $cutoff = gmdate('Y-m-d H:i:s', strtotime('-' . $retention_days . ' days'));
+
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Admin maintenance stats for plugin-owned table.
+        $row = $wpdb->get_row("SELECT COUNT(*) AS total_logs, COALESCE(SUM(CHAR_LENGTH(message) + COALESCE(CHAR_LENGTH(context), 0)), 0) AS total_payload_size, MIN(created_at) AS oldest_created_at, MAX(created_at) AS newest_created_at FROM {$table_name}", ARRAY_A);
+
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Admin maintenance stats for plugin-owned table.
+        $old_logs = (int) $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$table_name} WHERE created_at < %s", $cutoff));
+
+        return [
+            'total_logs' => (int) ($row['total_logs'] ?? 0),
+            'old_logs' => $old_logs,
+            'total_payload_size' => (int) ($row['total_payload_size'] ?? 0),
+            'oldest_created_at' => (string) ($row['oldest_created_at'] ?? ''),
+            'newest_created_at' => (string) ($row['newest_created_at'] ?? ''),
+            'last_cleanup_at' => (int) get_option('polytrans_logs_cleanup_at', 0),
+            'retention_days' => $retention_days,
+        ];
+    }
+
+    public static function truncate_logs(): int
+    {
+        global $wpdb;
+
+        if (!self::logs_table_exists()) {
+            return 0;
+        }
+
+        $stats = self::get_storage_stats();
+
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Manual admin maintenance for plugin-owned table.
+        $truncated = $wpdb->query("TRUNCATE TABLE " . $wpdb->prefix . 'polytrans_logs');
+
+        return $truncated !== false ? (int) ($stats['total_logs'] ?? 0) : 0;
+    }
+
+    public static function maybe_cleanup_old_logs(): int
+    {
+        $settings = get_option('polytrans_settings', []);
+        // must be set explicitly
+        if (!is_numeric($settings['logs_retention_days'])) {
+            return 0;
+        }
+        $retention_days = self::get_retention_days($settings['logs_retention_days']);
+        $last_cleanup = (int) get_option('polytrans_logs_cleanup_at', 0);
+        if ($last_cleanup > 0 && (time() - $last_cleanup) < DAY_IN_SECONDS) {
+            return 0;
+        }
+
+        update_option('polytrans_logs_cleanup_at', time(), false);
+        return self::clear_old_logs($retention_days);
+    }
+
+    private static function get_retention_days($days = null): int
+    {
+        if ($days === null) {
+            $settings = get_option('polytrans_settings', []);
+            $days = $settings['logs_retention_days'] ?? 30;
+        }
+
+        return max(1, min(365, intval($days)));
+    }
+
+    /**
      * Create admin interface to view logs
      */
     public static function admin_logs_page()

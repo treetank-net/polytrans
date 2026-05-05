@@ -208,6 +208,8 @@ function polytrans_check_workflows_table()
 {
     \PolyTrans\PostProcessing\Managers\WorkflowStorageManager::initialize();
     \PolyTrans\Assistants\AssistantManager::create_table();
+    \PolyTrans\PromptRefinement\RefinementRunStorage::initialize();
+    \PolyTrans\Core\LogsManager::maybe_cleanup_old_logs();
     
     // Add expected_output_schema column if it doesn't exist
     global $wpdb;
@@ -271,6 +273,9 @@ function polytrans_activate()
 
     // Initialize assistants table
     \PolyTrans\Assistants\AssistantManager::create_table();
+
+    // Initialize prompt refinement runtime storage table
+    \PolyTrans\PromptRefinement\RefinementRunStorage::initialize();
 
     // Run migration from ai_assistant to managed_assistant (one-time)
     if (\PolyTrans\Assistants\AssistantMigration::is_migration_needed()) {

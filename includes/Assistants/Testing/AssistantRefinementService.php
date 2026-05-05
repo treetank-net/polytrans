@@ -13,6 +13,7 @@ use PolyTrans\PromptRefinement\PromptPackNormalizer;
 use PolyTrans\PromptRefinement\PromptPackParser;
 use PolyTrans\PromptRefinement\PromptRefinementSettings;
 use PolyTrans\PromptRefinement\PromptTemplateRenderer;
+use PolyTrans\PromptRefinement\RefinementRunStorage;
 use PolyTrans\Testing\PostTestContextBuilder;
 
 if (!defined('ABSPATH')) {
@@ -52,7 +53,7 @@ final class AssistantRefinementService
         $run_id = $this->generateRunId();
         $run_payload = $this->buildRunPayload($run_id, $execution);
 
-        if (!set_transient($this->getRunTransientKey($run_id), $run_payload, $this->getRunTtl())) {
+        if (!$this->persistRunPayload($run_id, $run_payload)) {
             return new \WP_Error('assistant_run_persist_failed', __('Failed to persist assistant run. Please retry.', 'polytrans'));
         }
 
@@ -89,7 +90,7 @@ final class AssistantRefinementService
             $evaluatorSystemPromptTemplate = PromptRefinementSettings::assistantEvaluatorSystem();
         }
 
-        $run_payload = get_transient($this->getRunTransientKey($runId));
+        $run_payload = $this->loadRunPayload($runId);
         if (!is_array($run_payload)) {
             return new \WP_Error('assistant_run_not_found', __('Assistant run not found or expired. Run assistant step again.', 'polytrans'));
         }
@@ -122,7 +123,7 @@ final class AssistantRefinementService
 
         $run_payload['evaluation'] = $evaluation;
         $run_payload['evaluated_at'] = time();
-        set_transient($this->getRunTransientKey($runId), $run_payload, $this->getRunTtl());
+        $this->persistRunPayload($runId, $run_payload);
 
         return [
             'run_id' => $runId,
@@ -196,7 +197,7 @@ final class AssistantRefinementService
 
         $run_payload['evaluation'] = $evaluation;
         $run_payload['evaluated_at'] = time();
-        set_transient($this->getRunTransientKey($run_id), $run_payload, $this->getRunTtl());
+        $this->persistRunPayload($run_id, $run_payload);
 
         $response = $this->buildRunResponse($run_payload);
         $response['evaluation'] = $evaluation;
@@ -832,6 +833,32 @@ final class AssistantRefinementService
     private function getRunTransientKey(string $runId): string
     {
         return 'polytrans_assistant_refine_run_' . md5($runId);
+    }
+
+    /**
+     * @param array<string,mixed> $runPayload
+     */
+    private function persistRunPayload(string $runId, array $runPayload): bool
+    {
+        if (RefinementRunStorage::store($runId, 'assistant', $runPayload, $this->getRunTtl())) {
+            return true;
+        }
+
+        return (bool) set_transient($this->getRunTransientKey($runId), $runPayload, $this->getRunTtl());
+    }
+
+    /**
+     * @return array<string,mixed>|null
+     */
+    private function loadRunPayload(string $runId): ?array
+    {
+        $payload = RefinementRunStorage::get($runId);
+        if (is_array($payload)) {
+            return $payload;
+        }
+
+        $payload = get_transient($this->getRunTransientKey($runId));
+        return is_array($payload) ? $payload : null;
     }
 
     private function generateRunId(): string

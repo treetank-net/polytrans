@@ -14,6 +14,7 @@ use PolyTrans\PromptRefinement\PromptPackNormalizer;
 use PolyTrans\PromptRefinement\PromptPackParser;
 use PolyTrans\PromptRefinement\PromptRefinementSettings;
 use PolyTrans\PromptRefinement\PromptTemplateRenderer;
+use PolyTrans\PromptRefinement\RefinementRunStorage;
 
 if (!defined('ABSPATH')) {
     exit;
@@ -142,7 +143,7 @@ final class WorkflowRefinementService
             $evaluatorSystemPromptTemplate = PromptRefinementSettings::workflowEvaluatorSystem();
         }
 
-        $run_payload = get_transient($this->getRunTransientKey($runId));
+        $run_payload = $this->loadRunPayload($runId);
         if (!is_array($run_payload)) {
             return new \WP_Error('workflow_refinement_run_not_found', __('Workflow run not found or expired. Run workflow again.', 'polytrans'));
         }
@@ -159,9 +160,10 @@ final class WorkflowRefinementService
         $run_payload['evaluated_at'] = time();
         $this->persistRunPayload($runId, $run_payload);
 
-        $workflow_context = $this->compactWorkflowContextForStorage(
-            $this->buildContextMap($workflow, $targetStep, $workflowResult)
-        );
+        // TODO: check if this is outdated? No longer used
+        // $workflow_context = $this->compactWorkflowContextForStorage(
+        //     $this->buildContextMap($workflow, $targetStep, $workflowResult)
+        // );
 
         return [
             'run_id' => $runId,
@@ -1466,6 +1468,10 @@ final class WorkflowRefinementService
      */
     private function persistRunPayload(string $runId, array $runPayload): bool
     {
+        if (RefinementRunStorage::store($runId, 'workflow', $runPayload, $this->getRunTtl())) {
+            return true;
+        }
+
         $transient_key = $this->getRunTransientKey($runId);
         $stored = set_transient($transient_key, $runPayload, $this->getRunTtl());
 
@@ -1489,6 +1495,20 @@ final class WorkflowRefinementService
         );
 
         return false;
+    }
+
+    /**
+     * @return array<string,mixed>|null
+     */
+    private function loadRunPayload(string $runId): ?array
+    {
+        $payload = RefinementRunStorage::get($runId);
+        if (is_array($payload)) {
+            return $payload;
+        }
+
+        $payload = get_transient($this->getRunTransientKey($runId));
+        return is_array($payload) ? $payload : null;
     }
 
     private function getRunTransientKey(string $runId): string

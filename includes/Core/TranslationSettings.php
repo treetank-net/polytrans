@@ -223,6 +223,7 @@ class TranslationSettings
 
         // Field whitelist for dirty check (one pattern per line)
         $settings['dirty_check_field_whitelist'] = sanitize_textarea_field(wp_unslash($_POST['dirty_check_field_whitelist'] ?? ''));
+        $settings['logs_retention_days'] = max(1, min(365, intval($_POST['logs_retention_days'] ?? 30)));
 
         $prompt_template_keys = [
             PromptRefinementSettings::ASSISTANT_EVALUATOR_SYSTEM_KEY,
