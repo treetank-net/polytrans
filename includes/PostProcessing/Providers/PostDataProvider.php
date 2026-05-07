@@ -17,6 +17,26 @@ if (!defined('ABSPATH')) {
 class PostDataProvider implements VariableProviderInterface
 {
     private static array $cache = [];
+
+    /**
+     * Clear cached formatted post data so following workflow executions see
+     * changes persisted by previous workflow output actions.
+     */
+    public static function invalidate_post_cache(int $post_id): void
+    {
+        if ($post_id <= 0) {
+            return;
+        }
+
+        unset(self::$cache[$post_id]);
+
+        $post = get_post($post_id);
+        if ($post) {
+            \delete_transient(self::build_cache_key($post));
+        }
+
+        clean_post_cache($post_id);
+    }
     /**
      * Get the provider identifier
      * 
@@ -235,7 +255,7 @@ class PostDataProvider implements VariableProviderInterface
             return self::$cache[$post_id];
         }
 
-        $transient_key = 'polytrans_post_data_' . $post_id . '_' . strtotime($post->post_modified_gmt);
+        $transient_key = self::build_cache_key($post);
         $cached = \get_transient($transient_key);
         if (is_array($cached)) {
             self::$cache[$post_id] = $cached;
@@ -325,5 +345,13 @@ class PostDataProvider implements VariableProviderInterface
         \set_transient($transient_key, $data, 10 * MINUTE_IN_SECONDS);
 
         return $data;
+    }
+
+    /**
+     * @param \WP_Post $post Post object
+     */
+    private static function build_cache_key($post): string
+    {
+        return 'polytrans_post_data_' . (int) $post->ID . '_' . strtotime((string) $post->post_modified_gmt);
     }
 }

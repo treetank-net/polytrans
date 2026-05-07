@@ -378,7 +378,17 @@ class WorkflowManager
     {
         // For now, execute immediately
         // In production, this should be queued for background processing
+        $translated_post_id = isset($context['translated_post_id']) ? (int) $context['translated_post_id'] : 0;
+
+        if ($translated_post_id > 0) {
+            PostDataProvider::invalidate_post_cache($translated_post_id);
+        }
+
         $this->execute_workflow($workflow, $context);
+
+        if ($translated_post_id > 0) {
+            PostDataProvider::invalidate_post_cache($translated_post_id);
+        }
     }
 
     /**
