@@ -52,6 +52,7 @@
             <thead>
                 <tr>
                     <th class="workflow-col-name">{{ __('Name', 'polytrans')|esc_html }}</th>
+                    <th class="workflow-col-priority">{{ __('Priority', 'polytrans')|esc_html }}</th>
                     <th class="workflow-col-language">{{ __('Language', 'polytrans')|esc_html }}</th>
                     <th class="workflow-col-steps">{{ __('Steps', 'polytrans')|esc_html }}</th>
                     <th class="workflow-col-status">{{ __('Status', 'polytrans')|esc_html }}</th>
@@ -64,6 +65,9 @@
                     <tr data-workflow-id="{{ workflow.id|esc_attr }}">
                         <td>
                             <strong>{{ workflow.name|esc_html }}</strong>
+                        </td>
+                        <td>
+                            {{ workflow.priority|default(100)|esc_html }}
                         </td>
                         <td>
                             {% if workflow.language is not defined or workflow.language is null or workflow.language == '' %}
@@ -132,4 +136,3 @@
         </table>
     {% endif %}
 </div>
-

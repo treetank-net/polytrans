@@ -440,6 +440,13 @@
                             </td>
                         </tr>
                         <tr>
+                            <th><label for="workflow-priority">Priority</label></th>
+                            <td>
+                                <input type="number" id="workflow-priority" name="workflow_priority" class="small-text" step="1" value="${escapeHtml(String(workflowData.priority ?? 100))}">
+                                <p class="description">Lower priority values run earlier when multiple workflows match the same translation.</p>
+                            </td>
+                        </tr>
+                        <tr>
                             <th><label for="workflow-enabled">Status</label></th>
                             <td>
                                 <label>
@@ -1434,6 +1441,7 @@
             name: $('#workflow-name').val(),
             description: $('#workflow-description').val(),
             language: $('#workflow-language').val(),
+            priority: parseInt($('#workflow-priority').val() || '100', 10),
             enabled: $('#workflow-enabled').is(':checked'),
             attribution_user: $('#workflow-attribution-user-hidden').val(),
             triggers: {

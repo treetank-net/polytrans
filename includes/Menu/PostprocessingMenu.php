@@ -1652,6 +1652,7 @@ class PostprocessingMenu
             'name' => sanitize_text_field($workflow_data['name'] ?? ''),
             'description' => sanitize_textarea_field($workflow_data['description'] ?? ''),
             'language' => sanitize_text_field($workflow_data['language'] ?? 'en'),
+            'priority' => intval($workflow_data['priority'] ?? 100),
             'enabled' => $workflow_data['enabled'] === 'true',
             'attribution_user' => $attribution_user,
             'triggers' => [
@@ -1870,6 +1871,7 @@ class PostprocessingMenu
             'name' => '',
             'description' => '',
             'language' => 'en',
+            'priority' => 100,
             'enabled' => true,
             'attribution_user' => null,
             'steps' => []

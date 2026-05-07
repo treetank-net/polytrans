@@ -19,6 +19,8 @@ class WorkflowStorageManager
     const LEGACY_OPTION_NAME = 'polytrans_workflows';
     const SETTINGS_OPTION_NAME = 'polytrans_postprocessing_settings';
     const MIGRATION_FLAG = 'polytrans_workflows_migrated';
+    const DEFAULT_PRIORITY = 100;
+    private static bool $priority_column_checked = false;
 
     /**
      * Initialize - Create table and migrate if needed
@@ -45,6 +47,8 @@ class WorkflowStorageManager
 
             return;
         }
+
+        self::ensure_priority_column();
 
         // Table exists - check if we need to migrate
         $migrated = get_option(self::MIGRATION_FLAG, false);
@@ -79,6 +83,7 @@ class WorkflowStorageManager
             description text,
             language varchar(10) NOT NULL,
             enabled tinyint(1) DEFAULT 1,
+            priority int(11) NOT NULL DEFAULT 100,
             triggers text NOT NULL,
             steps longtext NOT NULL,
             output_actions text NOT NULL,
@@ -122,6 +127,7 @@ class WorkflowStorageManager
                     'description' => $workflow['description'] ?? '',
                     'language' => $workflow['language'] ?? $workflow['target_language'] ?? '',
                     'enabled' => isset($workflow['enabled']) ? (int)$workflow['enabled'] : 1,
+                    'priority' => isset($workflow['priority']) ? (int) $workflow['priority'] : self::DEFAULT_PRIORITY,
 
                     // JSON encode complex fields
                     'triggers' => wp_json_encode($workflow['triggers'] ?? []),
@@ -168,6 +174,37 @@ class WorkflowStorageManager
     }
 
     /**
+     * Ensure the priority column exists on installations created before
+     * workflow execution ordering was added. Do not add an index here; workflow
+     * tables are small and avoiding an extra migration lock is preferable.
+     */
+    private static function ensure_priority_column(): void
+    {
+        if (self::$priority_column_checked) {
+            return;
+        }
+
+        global $wpdb;
+        $table_name = $wpdb->prefix . self::TABLE_NAME;
+
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+        $column = $wpdb->get_var(
+            $wpdb->prepare(
+                // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name from $wpdb->prefix constant
+                "SHOW COLUMNS FROM $table_name LIKE %s",
+                'priority'
+            )
+        );
+
+        if (!$column) {
+            // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name from $wpdb->prefix constant
+            $wpdb->query("ALTER TABLE $table_name ADD COLUMN priority int(11) NOT NULL DEFAULT " . self::DEFAULT_PRIORITY . " AFTER enabled");
+        }
+
+        self::$priority_column_checked = true;
+    }
+
+    /**
      * Hydrate workflow from database row (decode JSON, backward compatibility)
      */
     private static function hydrate_workflow($row)
@@ -179,6 +216,7 @@ class WorkflowStorageManager
             'language' => $row['language'],
             'target_language' => $row['language'],  // Alias for backward compatibility
             'enabled' => (bool)$row['enabled'],
+            'priority' => isset($row['priority']) ? (int) $row['priority'] : self::DEFAULT_PRIORITY,
 
             'triggers' => json_decode($row['triggers'], true) ?: [],
             'steps' => json_decode($row['steps'], true) ?: [],
@@ -201,9 +239,10 @@ class WorkflowStorageManager
     {
         global $wpdb;
         $table_name = $wpdb->prefix . self::TABLE_NAME;
+        self::ensure_priority_column();
 
         // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name from $wpdb->prefix constant
-        $results = $wpdb->get_results("SELECT * FROM $table_name ORDER BY name ASC", ARRAY_A);
+        $results = $wpdb->get_results("SELECT * FROM $table_name ORDER BY priority ASC, name ASC", ARRAY_A);
 
         if (!$results) {
             return [];
@@ -232,13 +271,14 @@ class WorkflowStorageManager
     {
         global $wpdb;
         $table_name = $wpdb->prefix . self::TABLE_NAME;
+        self::ensure_priority_column();
 
         // Get workflows for this specific language OR workflows with empty language (all languages)
         // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
         $results = $wpdb->get_results(
             $wpdb->prepare(
                 // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name from $wpdb->prefix constant
-                "SELECT * FROM $table_name WHERE language = %s OR language = '' OR language IS NULL ORDER BY name ASC",
+                "SELECT * FROM $table_name WHERE language = %s OR language = '' OR language IS NULL ORDER BY priority ASC, name ASC",
                 $language
             ),
             ARRAY_A
@@ -291,6 +331,7 @@ class WorkflowStorageManager
     {
         global $wpdb;
         $table_name = $wpdb->prefix . self::TABLE_NAME;
+        self::ensure_priority_column();
 
         // Validate workflow structure
         $validation = $this->validate_workflow($workflow);
@@ -314,6 +355,7 @@ class WorkflowStorageManager
             'description' => $workflow['description'] ?? '',
             'language' => $workflow['language'] ?? $workflow['target_language'] ?? '',
             'enabled' => isset($workflow['enabled']) ? (int)$workflow['enabled'] : 1,
+            'priority' => isset($workflow['priority']) ? (int) $workflow['priority'] : self::DEFAULT_PRIORITY,
 
             'triggers' => wp_json_encode($workflow['triggers'] ?? []),
             'steps' => wp_json_encode($workflow['steps'] ?? []),
