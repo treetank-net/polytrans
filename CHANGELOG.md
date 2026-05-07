@@ -5,6 +5,16 @@ All notable changes to the PolyTrans plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.14.0] - 2026-05-07
+
+### Added
+- Workflow prompt refinement results now update live after each workflow run, evaluator result, adjuster output, and final verification step.
+- In-progress workflow refinement runs now expose per-post run IDs, final workflow output, workflow step summaries, evaluator feedback, scores, and partial averages as soon as each stage completes.
+- Adjusted prompt pack versions become selectable as soon as the adjuster produces them, without waiting for later workflow or final verification steps to finish.
+
+### Changed
+- Default prompt refinement evaluator, adjuster, and criteria generator prompts are shorter while preserving evaluator reasoning, causality notes, Twig safety, prompt-pack wrapper contracts, refinement history, and evaluation payloads.
+
 ## [1.13.19] - 2026-05-05
 
 ### Added

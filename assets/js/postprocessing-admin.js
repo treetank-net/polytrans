@@ -2618,6 +2618,50 @@ However, the integration of AI in healthcare also raises important questions abo
         const iterationResults = existingIterations.slice();
         workflowRefinementCancelRequested = false;
 
+        const renderPartialResults = (finalEvaluationRuns = []) => {
+            const latestAdjustmentIteration = iterationResults.slice().reverse().find((round) => round?.adjustment) || null;
+            const latestPromptPackIteration = iterationResults.slice().reverse().find((round) => round?.output_prompt_pack) || null;
+            const finalAdjustment = latestAdjustmentIteration?.adjustment || {};
+            const finalParsed = finalAdjustment.parsed || {};
+            const finalPromptPack = finalParsed.is_valid_pack
+                ? normalizeWorkflowPromptPack(finalParsed)
+                : (latestPromptPackIteration?.output_prompt_pack || currentPromptPack || null);
+
+            lastWorkflowRefinementSession = {
+                workflow,
+                targetStepId,
+                targetStepType,
+                assistantId,
+                sourceLanguage,
+                targetLanguage,
+                criteria,
+                workflowPurpose,
+                promptObjective,
+                evaluatorSystemPrompt,
+                evaluatorTemplate,
+                adjusterSystemPrompt,
+                adjusterTemplate,
+                selectedPosts,
+                iterations: iterationResults,
+                finalPromptPack,
+                initialBasePromptPack,
+                finalEvaluationRuns,
+                partial: true
+            };
+            renderWorkflowRefinementResults({
+                criteria,
+                workflowPurpose,
+                promptObjective,
+                iterations: iterationResults,
+                selectedPosts,
+                initialBasePromptPack,
+                targetStepId,
+                finalEvaluationRuns,
+                partial: true,
+                stoppedEarly: false
+            });
+        };
+
         pushWorkflowRefinementLog(
             progressState,
             reuseInitialEvaluation
@@ -2653,8 +2697,19 @@ However, the integration of AI in healthcare also raises important questions abo
                 renderWorkflowRefinementProgress(progressState);
 
                 const evaluatedRuns = shouldReuseEvaluation ? initialEvaluatedRuns.slice() : [];
+                const iterationResult = {
+                    iteration: iterationNumber,
+                    runs: evaluatedRuns,
+                    adjustment: null,
+                    average_score: calculateWorkflowAverageScore(evaluatedRuns),
+                    input_prompt_pack: normalizeWorkflowPromptPack(currentPromptPack || initialBasePromptPack || {}),
+                    output_prompt_pack: null,
+                    status: shouldReuseEvaluation ? 'evaluated' : 'running'
+                };
+                iterationResults.push(iterationResult);
                 if (shouldReuseEvaluation) {
                     progressState.completedPosts = selectedPosts.length;
+                    renderPartialResults();
                 }
                 for (let index = 0; !shouldReuseEvaluation && index < selectedPosts.length; index++) {
                     const post = selectedPosts[index];
@@ -2699,8 +2754,22 @@ However, the integration of AI in healthcare also raises important questions abo
                     if (!runId) {
                         throw new Error(`Workflow run for post #${post.id} did not return run_id.`);
                     }
+                    const partialRun = Object.assign({}, runData, {
+                        run_id: runId,
+                        evaluation: null,
+                        final_output: runData?.final_output || null
+                    });
+                    evaluatedRuns.push(partialRun);
+                    if (!initialBasePromptPack && runData.used_prompt_pack) {
+                        initialBasePromptPack = normalizeWorkflowPromptPack(runData.used_prompt_pack || {});
+                    }
+                    if (!iterationResult.input_prompt_pack || !iterationResult.input_prompt_pack.system_prompt) {
+                        iterationResult.input_prompt_pack = normalizeWorkflowPromptPack(currentPromptPack || runData.used_prompt_pack || {});
+                    }
+                    iterationResult.average_score = calculateWorkflowAverageScore(evaluatedRuns);
                     progressState.completedSteps += 1;
                     pushWorkflowRefinementLog(progressState, `Iteration ${iterationNumber}, post ${index + 1}/${selectedPosts.length}: workflow done (run_id: ${runId}).`);
+                    renderPartialResults();
                     renderWorkflowRefinementProgress(progressState);
 
                     const evaluateResponse = await runAsyncWorkflowJob({
@@ -2719,17 +2788,18 @@ However, the integration of AI in healthcare also raises important questions abo
                         throw new Error(evaluateResponse?.data?.message || `Evaluation failed for post #${post.id}.`);
                     }
 
-                    const evaluatedRun = Object.assign({}, runData, {
+                    Object.assign(partialRun, {
                         run_id: String(evaluateResponse?.data?.run_id || runId),
                         evaluation: evaluateResponse?.data?.evaluation || null,
                         final_output: evaluateResponse?.data?.final_output || runData?.final_output || null
                     });
-                    evaluatedRuns.push(evaluatedRun);
+                    iterationResult.average_score = calculateWorkflowAverageScore(evaluatedRuns);
 
                     progressState.completedPosts = index + 1;
                     progressState.completedSteps += 1;
                     const score = evaluateResponse?.data?.evaluation?.score;
                     pushWorkflowRefinementLog(progressState, `Iteration ${iterationNumber}, post ${index + 1}/${selectedPosts.length}: evaluator done${score !== null && score !== undefined ? ` (score ${score})` : ''}.`);
+                    renderPartialResults();
                     renderWorkflowRefinementProgress(progressState);
                 }
 
@@ -2749,7 +2819,7 @@ However, the integration of AI in healthcare also raises important questions abo
                     adjuster_system_prompt: adjusterSystemPrompt,
                     adjuster_prompt_template: adjusterTemplate,
                     evaluations: evaluatedRuns,
-                    refinement_history: buildWorkflowRefinementHistory(iterationResults)
+                    refinement_history: buildWorkflowRefinementHistory(iterationResults.filter((round) => round !== iterationResult))
                 };
                 if (currentPromptPack) {
                     adjustRequest.current_system_prompt = currentPromptPack.system_prompt || '';
@@ -2770,22 +2840,19 @@ However, the integration of AI in healthcare also raises important questions abo
                 const parsed = adjustment.parsed || {};
                 const hasValidPack = !!parsed.is_valid_pack;
                 const nextPromptPack = hasValidPack ? normalizeWorkflowPromptPack(parsed) : null;
-                const scoredRuns = evaluatedRuns.filter((run) => run?.evaluation && run.evaluation.score !== null && run.evaluation.score !== undefined);
-                const averageScore = scoredRuns.length
-                    ? (scoredRuns.reduce((sum, run) => sum + Number(run.evaluation.score || 0), 0) / scoredRuns.length)
-                    : null;
+                const averageScore = calculateWorkflowAverageScore(evaluatedRuns);
 
                 if (!initialBasePromptPack) {
                     initialBasePromptPack = normalizeWorkflowPromptPack(adjustment.input_prompt_pack || currentPromptPack || {});
                 }
 
-                iterationResults.push({
-                    iteration: iterationNumber,
+                Object.assign(iterationResult, {
                     runs: evaluatedRuns,
                     adjustment,
                     average_score: averageScore,
-                    input_prompt_pack: normalizeWorkflowPromptPack(adjustment.input_prompt_pack || currentPromptPack || {}),
-                    output_prompt_pack: nextPromptPack
+                    input_prompt_pack: normalizeWorkflowPromptPack(adjustment.input_prompt_pack || currentPromptPack || iterationResult.input_prompt_pack || {}),
+                    output_prompt_pack: nextPromptPack,
+                    status: hasValidPack ? 'adjusted' : 'adjustment_invalid'
                 });
 
                 pushWorkflowRefinementLog(progressState, `Iteration ${iterationNumber}: adjuster finished${hasValidPack ? '' : ' (invalid prompt pack format)'}.`);
@@ -2795,38 +2862,7 @@ However, the integration of AI in healthcare also raises important questions abo
                 if (nextPromptPack) {
                     currentPromptPack = nextPromptPack;
                 }
-                lastWorkflowRefinementSession = {
-                    workflow,
-                    targetStepId,
-                    targetStepType,
-                    assistantId,
-                    sourceLanguage,
-                    targetLanguage,
-                    criteria,
-                    workflowPurpose,
-                    promptObjective,
-                    evaluatorSystemPrompt,
-                    evaluatorTemplate,
-                    adjusterSystemPrompt,
-                    adjusterTemplate,
-                    selectedPosts,
-                    iterations: iterationResults,
-                    finalPromptPack: currentPromptPack,
-                    initialBasePromptPack,
-                    finalEvaluationRuns: []
-                };
-                renderWorkflowRefinementResults({
-                    criteria,
-                    workflowPurpose,
-                    promptObjective,
-                    iterations: iterationResults,
-                    selectedPosts,
-                    initialBasePromptPack,
-                    targetStepId,
-                    finalEvaluationRuns: [],
-                    partial: true,
-                    stoppedEarly: false
-                });
+                renderPartialResults();
                 renderWorkflowRefinementProgress(progressState);
 
                 if (workflowRefinementCancelRequested && iterationOffset < totalIterations) {
@@ -2866,7 +2902,8 @@ However, the integration of AI in healthcare also raises important questions abo
                     evaluatorTemplate,
                     selectedPosts,
                     promptPack: finalOutputPromptPack,
-                    progressState
+                    progressState,
+                    onPartialUpdate: renderPartialResults
                 });
             } else {
                 progressState.totalSteps = Math.max(progressState.completedSteps, progressState.totalSteps - finalVerificationSteps);
@@ -2940,6 +2977,7 @@ However, the integration of AI in healthcare also raises important questions abo
         const posts = Array.isArray(config.selectedPosts) ? config.selectedPosts : [];
         const promptPack = normalizeWorkflowPromptPack(config.promptPack || {});
         const progressState = config.progressState || null;
+        const onPartialUpdate = typeof config.onPartialUpdate === 'function' ? config.onPartialUpdate : null;
 
         for (let index = 0; index < posts.length; index++) {
             const post = posts[index];
@@ -2984,6 +3022,15 @@ However, the integration of AI in healthcare also raises important questions abo
             if (!runId) {
                 throw new Error(`Final workflow verification for post #${post.id} did not return run_id.`);
             }
+            const finalRun = Object.assign({}, runData, {
+                run_id: runId,
+                evaluation: null,
+                final_output: runData?.final_output || null
+            });
+            finalRuns.push(finalRun);
+            if (onPartialUpdate) {
+                onPartialUpdate(finalRuns);
+            }
             if (progressState) {
                 progressState.completedSteps += 1;
                 pushWorkflowRefinementLog(progressState, `Final verification, post ${index + 1}/${posts.length}: workflow done (run_id: ${runId}).`);
@@ -3006,12 +3053,14 @@ However, the integration of AI in healthcare also raises important questions abo
                 throw new Error(evaluateResponse?.data?.message || `Final workflow verification evaluation failed for post #${post.id}.`);
             }
 
-            const finalRun = Object.assign({}, runData, {
+            Object.assign(finalRun, {
                 run_id: String(evaluateResponse?.data?.run_id || runId),
                 evaluation: evaluateResponse?.data?.evaluation || null,
                 final_output: evaluateResponse?.data?.final_output || runData?.final_output || null
             });
-            finalRuns.push(finalRun);
+            if (onPartialUpdate) {
+                onPartialUpdate(finalRuns);
+            }
 
             if (progressState) {
                 progressState.completedSteps += 1;
@@ -3187,23 +3236,27 @@ However, the integration of AI in healthcare also raises important questions abo
         const isPartial = !!data.partial;
         const stoppedEarly = !!data.stoppedEarly;
         const finalIteration = iterations.length ? iterations[iterations.length - 1] : null;
-        const finalAdjustment = finalIteration?.adjustment || {};
+        const latestAdjustmentIteration = iterations.slice().reverse().find((round) => round?.adjustment) || null;
+        const latestPromptPackIteration = iterations.slice().reverse().find((round) => round?.output_prompt_pack) || null;
+        const finalAdjustment = latestAdjustmentIteration?.adjustment || finalIteration?.adjustment || {};
         const finalParsed = finalAdjustment.parsed || {};
         const finalIsValidPack = !!finalParsed.is_valid_pack;
         const includeSchema = finalAdjustment.adjust_expected_output_schema !== false;
-        const finalPromptPack = finalIsValidPack ? normalizeWorkflowPromptPack(finalParsed) : normalizeWorkflowPromptPack(finalIteration?.output_prompt_pack || {});
+        const finalPromptPack = finalIsValidPack ? normalizeWorkflowPromptPack(finalParsed) : normalizeWorkflowPromptPack(latestPromptPackIteration?.output_prompt_pack || {});
         const initialPromptPack = normalizeWorkflowPromptPack(data.initialBasePromptPack || iterations[0]?.input_prompt_pack || {});
         const finalEvaluationRuns = Array.isArray(data.finalEvaluationRuns) ? data.finalEvaluationRuns : [];
         const finalScoredRuns = finalEvaluationRuns.filter((run) => run?.evaluation && run.evaluation.score !== null && run.evaluation.score !== undefined);
         const finalAverageScore = finalScoredRuns.length
             ? (finalScoredRuns.reduce((sum, run) => sum + Number(run.evaluation.score || 0), 0) / finalScoredRuns.length)
             : null;
-        const applyVersionOptions = [
+        const applyOptions = [
             '<option value="initial">Original prompt (before refinement)</option>',
             ...iterations
                 .filter((round) => round.output_prompt_pack)
-                .map((round) => `<option value="iteration:${escapeHtml(String(round.iteration || 0))}" ${round === finalIteration ? 'selected' : ''}>After adjustment ${escapeHtml(String(round.iteration || 0))}</option>`)
-        ].join('');
+                .map((round) => `<option value="iteration:${escapeHtml(String(round.iteration || 0))}" ${round === latestPromptPackIteration ? 'selected' : ''}>After adjustment ${escapeHtml(String(round.iteration || 0))}</option>`)
+        ];
+        const applyVersionOptions = applyOptions.join('');
+        const hasAdjustedPromptPack = iterations.some((round) => round.output_prompt_pack);
 
         const avgTableRows = iterations.map((round) => {
             const iterationNumber = parseInt(round.iteration || 0, 10);
@@ -3212,7 +3265,7 @@ However, the integration of AI in healthcare also raises important questions abo
                 : `After adjustment ${iterationNumber - 1}`;
             const producedPromptLabel = round.output_prompt_pack
                 ? `After adjustment ${iterationNumber}`
-                : 'n/a';
+                : (round.adjustment ? 'n/a' : 'Pending adjuster');
             const avg = round.average_score === null || round.average_score === undefined
                 ? 'n/a'
                 : Number(round.average_score).toFixed(2);
@@ -3233,8 +3286,9 @@ However, the integration of AI in healthcare also raises important questions abo
                 : `After adjustment ${iterationNumber - 1}`;
             const producedPromptLabel = round.output_prompt_pack
                 ? `After adjustment ${iterationNumber}`
-                : 'No valid adjusted prompt produced';
+                : (round.adjustment ? 'No valid adjusted prompt produced' : 'Adjustment pending');
             const runs = Array.isArray(round.runs) ? round.runs : [];
+            const hasAdjustment = !!round.adjustment;
             const adjustment = round.adjustment || {};
             const parsed = adjustment.parsed || {};
             const isValidPack = !!parsed.is_valid_pack;
@@ -3268,7 +3322,14 @@ However, the integration of AI in healthcare also raises important questions abo
                 `;
             }).join('');
 
-            const promptComparisonHtml = outputPromptPack
+            const promptComparisonHtml = !hasAdjustment
+                ? `
+                    <div class="single-content">
+                        <h6>Prompt Diff</h6>
+                        <div class="comparison-content">Prompt adjuster has not run for this iteration yet.</div>
+                    </div>
+                `
+                : outputPromptPack
                 ? `
                     <details class="workflow-test-details" open>
                         <summary>Prompt Diff (Input vs Adjusted)</summary>
@@ -3289,7 +3350,7 @@ However, the integration of AI in healthcare also raises important questions abo
                     <summary>${escapeHtml(evaluatedPromptLabel)} | Avg score: ${escapeHtml(round.average_score === null || round.average_score === undefined ? 'n/a' : Number(round.average_score).toFixed(2))} | Produced: ${escapeHtml(producedPromptLabel)}</summary>
                     ${runsHtml}
                     ${promptComparisonHtml}
-                    <details class="workflow-test-details">
+                    ${hasAdjustment ? `<details class="workflow-test-details">
                         <summary>Adjustment ${escapeHtml(String(iterationNumber))} Output: ${escapeHtml(producedPromptLabel)}</summary>
                         ${isValidPack ? '' : '<p style="color:#d63638;"><strong>Adjuster response is not a valid prompt pack. Raw output shown below.</strong></p>'}
                         <h5>System Prompt</h5>
@@ -3299,7 +3360,7 @@ However, the integration of AI in healthcare also raises important questions abo
                         ${roundIncludeSchema ? `<h5>Expected Output Schema</h5><pre><code>${escapeHtml(parsed.expected_output_schema || '')}</code></pre>` : ''}
                         <h5>Prompt Pack JSON</h5>
                         <pre><code>${escapeHtml(combinedPack)}</code></pre>
-                    </details>
+                    </details>` : ''}
                 </details>
             `;
         }).join('');
@@ -3362,8 +3423,8 @@ However, the integration of AI in healthcare also raises important questions abo
 
         $('#workflow-refinement-results').html(`
             <div class="test-results success">
-                <h4>${escapeHtml(isPartial ? 'Workflow Prompt Refinement - Completed Iterations So Far' : (stoppedEarly ? 'Workflow Prompt Refinement - Stopped Early' : 'Workflow Prompt Refinement Results'))}</h4>
-                ${isPartial ? '<p class="description">This preview updates after each completed iteration. You can inspect finished iteration results while the next work continues.</p>' : ''}
+                <h4>${escapeHtml(isPartial ? 'Workflow Prompt Refinement - Live Results' : (stoppedEarly ? 'Workflow Prompt Refinement - Stopped Early' : 'Workflow Prompt Refinement Results'))}</h4>
+                ${isPartial ? '<p class="description">This preview updates after each workflow run, evaluator result, adjuster output, and final verification step.</p>' : ''}
                 ${stoppedEarly ? '<p class="description">Run stopped after the last completed iteration. No partial in-flight iteration was applied.</p>' : ''}
                 <div class="execution-details">
                     <div class="execution-detail">
@@ -3390,7 +3451,7 @@ However, the integration of AI in healthcare also raises important questions abo
                     <button type="button" id="workflow-refine-reeval-btn" class="button" ${isPartial ? 'disabled' : ''}>Re-evaluate Again</button>
                     <label for="workflow-refine-apply-version"><strong>Apply Version</strong></label>
                     <select id="workflow-refine-apply-version">${applyVersionOptions}</select>
-                    <button type="button" id="workflow-refine-apply-btn" class="button button-primary" ${applyVersionOptions && !isPartial ? '' : 'disabled'}>Apply Selected Prompt Pack</button>
+                    <button type="button" id="workflow-refine-apply-btn" class="button button-primary" ${hasAdjustedPromptPack ? '' : 'disabled'}>Apply Selected Prompt Pack</button>
                 </div>
 
                 <div class="workflow-refinement-panel">
@@ -3462,6 +3523,15 @@ However, the integration of AI in healthcare also raises important questions abo
                 </details>
             </div>
         `).show();
+    }
+
+    function calculateWorkflowAverageScore(runs) {
+        const scoredRuns = (Array.isArray(runs) ? runs : [])
+            .filter((run) => run?.evaluation && run.evaluation.score !== null && run.evaluation.score !== undefined);
+
+        return scoredRuns.length
+            ? (scoredRuns.reduce((sum, run) => sum + Number(run.evaluation.score || 0), 0) / scoredRuns.length)
+            : null;
     }
 
     function renderWorkflowRefinementError(message, partialIterations = []) {
