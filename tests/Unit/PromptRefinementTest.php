@@ -167,22 +167,24 @@ it('includes primary prompt purpose in default refinement templates', function (
     expect(DefaultPromptTemplates::workflowAdjuster())->toContain('{{ refinement_history_json }}');
 });
 
-it('guides refinement prompts away from prompt bloat and blind rule stacking', function () {
-    expect(DefaultPromptTemplates::assistantEvaluatorSystem())->toContain('evidence and reasoning');
-    expect(DefaultPromptTemplates::workflowEvaluatorSystem())->toContain('full post context');
+it('keeps refinement prompts compact while preserving regression and shortening guidance', function () {
+    expect(DefaultPromptTemplates::assistantEvaluatorSystem())->toContain('Score: N/100');
+    expect(DefaultPromptTemplates::workflowEvaluatorSystem())->toContain('selected step');
 
-    expect(DefaultPromptTemplates::assistantEvaluator())->toContain('prompt bloat');
-    expect(DefaultPromptTemplates::assistantEvaluator())->toContain('smallest effective prompt change');
-    expect(DefaultPromptTemplates::workflowEvaluator())->toContain('downstream contract mismatch');
-    expect(DefaultPromptTemplates::workflowEvaluator())->toContain('Constraint diagnosis');
+    expect(DefaultPromptTemplates::assistantEvaluator())->toContain('shorter clearer prompts');
+    expect(DefaultPromptTemplates::workflowEvaluator())->toContain('Separate target-step prompt issues');
 
-    expect(DefaultPromptTemplates::assistantAdjuster())->toContain('infer the reusable prompt-level problem');
-    expect(DefaultPromptTemplates::assistantAdjuster())->toContain('adding as well as removing sentences is valid');
-    expect(DefaultPromptTemplates::workflowAdjuster())->toContain('Some comments may be text-specific');
-    expect(DefaultPromptTemplates::workflowAdjuster())->toContain('Adding as well as removing sentences is valid');
+    expect(DefaultPromptTemplates::assistantAdjuster())->toContain('current score regressed');
+    expect(DefaultPromptTemplates::assistantAdjuster())->toContain('shorten, add, remove, merge');
+    expect(DefaultPromptTemplates::workflowAdjuster())->toContain('Improve only the selected target-step prompt pack');
+    expect(DefaultPromptTemplates::workflowAdjuster())->toContain('current score regressed');
 
-    expect(DefaultPromptTemplates::promptAdjusterSystem())->toContain('Prefer the smallest effective prompt change');
-    expect(DefaultPromptTemplates::promptAdjusterSystem())->toContain('Do not merely restate an already-violated rule more strongly');
+    expect(DefaultPromptTemplates::promptAdjusterSystem())->toContain('smallest effective change');
+    expect(DefaultPromptTemplates::promptAdjusterSystem())->toContain('{{ content }}');
+
+    expect(str_word_count(DefaultPromptTemplates::assistantEvaluatorSystem()))->toBeLessThan(40);
+    expect(str_word_count(DefaultPromptTemplates::workflowEvaluatorSystem()))->toBeLessThan(45);
+    expect(str_word_count(DefaultPromptTemplates::promptAdjusterSystem()))->toBeLessThan(45);
 });
 
 it('loads prompt refinement templates from settings with built-in fallback', function () {
