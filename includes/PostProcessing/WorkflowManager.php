@@ -408,7 +408,12 @@ class WorkflowManager
             'source' => 'workflow_manager',
             'workflow_name' => $workflow_name,
             'workflow_id' => $workflow_id,
-            'post_id' => $context['translated_post_id'] ?? null
+            'post_id' => $context['translated_post_id'] ?? null,
+            'original_post_id' => $context['original_post_id'] ?? null,
+            'translated_post_id' => $context['translated_post_id'] ?? null,
+            'target_language' => $context['target_language'] ?? null,
+            'trigger' => $context['trigger'] ?? null,
+            'test_mode' => $test_mode
         ]);
 
         try {
@@ -429,7 +434,7 @@ class WorkflowManager
                     'workflow_name' => $workflow_name,
                     'workflow_id' => $workflow_id,
                     'post_id' => $context['translated_post_id'] ?? null
-                ]);
+                ] + $this->build_execution_log_context($context, $result, $test_mode, $variable_context));
             } else {
                 $error_msg = $result['error'] ?? 'Unknown error';
                 \PolyTrans_Logs_Manager::log("Workflow '{$workflow_name}' execution failed: {$error_msg}", 'error', [
@@ -438,7 +443,7 @@ class WorkflowManager
                     'workflow_id' => $workflow_id,
                     'error' => $error_msg,
                     'post_id' => $context['translated_post_id'] ?? null
-                ]);
+                ] + $this->build_execution_log_context($context, $result, $test_mode, $variable_context));
             }
 
             return $result;
@@ -466,6 +471,108 @@ class WorkflowManager
 
             return $error_result;
         }
+    }
+
+    /**
+     * Build compact diagnostic context for workflow completion logs.
+     */
+    private function build_execution_log_context($context, $result, $test_mode, $variable_context = null): array
+    {
+        $step_summary = $this->summarize_step_results($result['step_results'] ?? []);
+        $total_output_actions = 0;
+        $total_changes = 0;
+
+        foreach ($step_summary as $step) {
+            $total_output_actions += (int) ($step['output_actions_processed'] ?? 0);
+            $total_changes += (int) ($step['changes_count'] ?? 0);
+        }
+
+        $context_keys = is_array($context) ? array_keys($context) : [];
+        $variable_keys = is_array($variable_context) ? array_keys($variable_context) : [];
+
+        return [
+            'original_post_id' => $context['original_post_id'] ?? null,
+            'translated_post_id' => $context['translated_post_id'] ?? null,
+            'target_language' => $context['target_language'] ?? null,
+            'trigger' => $context['trigger'] ?? null,
+            'test_mode' => $test_mode,
+            'execution_time' => isset($result['execution_time']) ? round((float) $result['execution_time'], 3) : 0,
+            'steps_executed' => (int) ($result['steps_executed'] ?? 0),
+            'step_summary' => $step_summary,
+            'total_output_actions_processed' => $total_output_actions,
+            'total_changes_count' => $total_changes,
+            'context_keys' => $context_keys,
+            'variable_count' => count($variable_keys),
+            'variable_keys' => $variable_keys,
+            'has_original_post_data' => is_array($variable_context) && isset($variable_context['original']),
+            'has_translated_post_data' => is_array($variable_context) && isset($variable_context['translated']),
+            'translated_meta_keys' => $this->extract_meta_keys($variable_context['translated']['meta'] ?? null),
+            'final_context_keys' => isset($result['final_context']) && is_array($result['final_context'])
+                ? array_keys($result['final_context'])
+                : []
+        ];
+    }
+
+    /**
+     * Reduce full step results to fields useful in logs without storing prompt or response payloads.
+     */
+    private function summarize_step_results($step_results): array
+    {
+        if (!is_array($step_results)) {
+            return [];
+        }
+
+        $summary = [];
+        foreach ($step_results as $index => $step_result) {
+            if (!is_array($step_result)) {
+                continue;
+            }
+
+            $data = $step_result['data'] ?? [];
+            $output_processing = $step_result['output_processing'] ?? [];
+            $changes = is_array($output_processing) && isset($output_processing['changes']) && is_array($output_processing['changes'])
+                ? $output_processing['changes']
+                : [];
+
+            $summary[] = [
+                'step_number' => $index + 1,
+                'step_id' => $step_result['step_id'] ?? null,
+                'step_name' => $step_result['step_name'] ?? null,
+                'step_type' => $step_result['step_type'] ?? null,
+                'success' => (bool) ($step_result['success'] ?? false),
+                'execution_time' => isset($step_result['execution_time']) ? round((float) $step_result['execution_time'], 3) : 0,
+                'output_variables' => is_array($data) ? array_keys($data) : [],
+                'output_actions_processed' => is_array($output_processing) ? (int) ($output_processing['processed_actions'] ?? 0) : 0,
+                'changes_count' => count($changes),
+                'change_targets' => $this->extract_change_targets($changes),
+                'output_errors' => is_array($output_processing) ? ($output_processing['errors'] ?? []) : [],
+                'error' => $step_result['error'] ?? null,
+                'tokens_used' => $step_result['tokens_used'] ?? null
+            ];
+        }
+
+        return $summary;
+    }
+
+    private function extract_change_targets(array $changes): array
+    {
+        $targets = [];
+        foreach ($changes as $change) {
+            if (!is_array($change)) {
+                continue;
+            }
+
+            $type = $change['type'] ?? 'unknown';
+            $target = $change['target'] ?? $change['field'] ?? null;
+            $targets[] = $target ? "{$type}:{$target}" : $type;
+        }
+
+        return $targets;
+    }
+
+    private function extract_meta_keys($meta): array
+    {
+        return is_array($meta) ? array_keys($meta) : [];
     }
 
     /**

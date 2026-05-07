@@ -832,7 +832,9 @@ class BackgroundProcessor
                 'workflow_id' => $workflow_id,
                 'post_id' => $translated_post_id,
                 'success' => $result['success'] ?? false,
-                'steps_executed' => $result['steps_executed'] ?? 0
+                'steps_executed' => $result['steps_executed'] ?? 0,
+                'execution_time' => isset($result['execution_time']) ? round((float) $result['execution_time'], 3) : 0,
+                'step_summary' => self::summarize_workflow_steps_for_log($result['step_results'] ?? [])
             ]);
         } catch (\Throwable $e) {
             self::log("Workflow execution failed: " . $e->getMessage(), "error", [
@@ -853,6 +855,45 @@ class BackgroundProcessor
             // Clear execution lock
             delete_transient('polytrans_workflow_lock_' . $workflow_id . '_' . $translated_post_id);
         }
+    }
+
+    /**
+     * Compact workflow step results for background execution logs.
+     */
+    private static function summarize_workflow_steps_for_log($step_results): array
+    {
+        if (!is_array($step_results)) {
+            return [];
+        }
+
+        $summary = [];
+        foreach ($step_results as $index => $step_result) {
+            if (!is_array($step_result)) {
+                continue;
+            }
+
+            $data = $step_result['data'] ?? [];
+            $output_processing = $step_result['output_processing'] ?? [];
+            $changes = is_array($output_processing) && isset($output_processing['changes']) && is_array($output_processing['changes'])
+                ? $output_processing['changes']
+                : [];
+
+            $summary[] = [
+                'step_number' => $index + 1,
+                'step_id' => $step_result['step_id'] ?? null,
+                'step_name' => $step_result['step_name'] ?? null,
+                'step_type' => $step_result['step_type'] ?? null,
+                'success' => (bool) ($step_result['success'] ?? false),
+                'execution_time' => isset($step_result['execution_time']) ? round((float) $step_result['execution_time'], 3) : 0,
+                'output_variables' => is_array($data) ? array_keys($data) : [],
+                'output_actions_processed' => is_array($output_processing) ? (int) ($output_processing['processed_actions'] ?? 0) : 0,
+                'changes_count' => count($changes),
+                'error' => $step_result['error'] ?? null,
+                'tokens_used' => $step_result['tokens_used'] ?? null
+            ];
+        }
+
+        return $summary;
     }
 
     /**

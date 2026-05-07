@@ -260,7 +260,7 @@ class WorkflowExecutor
                     'success' => $step_result['success'],
                     'data' => $step_result['data'] ?? null,
                     'error' => $step_result['error'] ?? null,
-                    'execution_time' => $step_result['execution_time'] ?? 0,
+                    'execution_time' => $step_execution_time,
                     // Include interpolated prompts if available
                     'interpolated_system_prompt' => $step_result['interpolated_system_prompt'] ?? null,
                     'interpolated_user_message' => $step_result['interpolated_user_message'] ?? null,
