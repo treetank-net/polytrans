@@ -5,6 +5,12 @@ All notable changes to the PolyTrans plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.14.3] - 2026-05-07
+
+### Fixed
+- Workflow output context refresh now invalidates post data caches before rebuilding context, so persisted post meta changes are visible immediately after output actions.
+- Post data cache invalidation tests now isolate WordPress transient mocks reliably across the unit suite.
+
 ## [1.14.2] - 2026-05-07
 
 ### Added

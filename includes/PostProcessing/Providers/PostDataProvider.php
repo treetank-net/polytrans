@@ -31,11 +31,13 @@ class PostDataProvider implements VariableProviderInterface
         unset(self::$cache[$post_id]);
 
         $post = get_post($post_id);
-        if ($post) {
+        if ($post && function_exists('delete_transient')) {
             \delete_transient(self::build_cache_key($post));
         }
 
-        clean_post_cache($post_id);
+        if (function_exists('clean_post_cache')) {
+            clean_post_cache($post_id);
+        }
     }
     /**
      * Get the provider identifier
@@ -256,10 +258,12 @@ class PostDataProvider implements VariableProviderInterface
         }
 
         $transient_key = self::build_cache_key($post);
-        $cached = \get_transient($transient_key);
-        if (is_array($cached)) {
-            self::$cache[$post_id] = $cached;
-            return $cached;
+        if (function_exists('get_transient')) {
+            $cached = \get_transient($transient_key);
+            if (is_array($cached)) {
+                self::$cache[$post_id] = $cached;
+                return $cached;
+            }
         }
 
         // Get author information
@@ -342,7 +346,10 @@ class PostDataProvider implements VariableProviderInterface
         ];
 
         self::$cache[$post_id] = $data;
-        \set_transient($transient_key, $data, 10 * MINUTE_IN_SECONDS);
+        if (function_exists('set_transient')) {
+            $ttl = defined('MINUTE_IN_SECONDS') ? 10 * MINUTE_IN_SECONDS : 600;
+            \set_transient($transient_key, $data, $ttl);
+        }
 
         return $data;
     }

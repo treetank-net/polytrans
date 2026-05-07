@@ -15,7 +15,9 @@ if (!defined('MINUTE_IN_SECONDS')) {
 if (!function_exists('get_post')) {
     function get_post($post_id)
     {
-        return $GLOBALS['polytrans_post_data_provider_posts'][$post_id] ?? null;
+        return $GLOBALS['polytrans_post_data_provider_posts'][$post_id]
+            ?? $GLOBALS['polytrans_test_posts'][$post_id]
+            ?? null;
     }
 }
 
@@ -53,7 +55,20 @@ if (!function_exists('has_post_thumbnail')) {
 if (!function_exists('get_post_meta')) {
     function get_post_meta($post_id, $key = '', $single = false)
     {
-        return $key === '' ? [] : ($single ? '' : []);
+        $meta = $GLOBALS['polytrans_post_data_provider_meta'][$post_id]
+            ?? $GLOBALS['polytrans_test_post_meta'][$post_id]
+            ?? [];
+
+        if ($key === '') {
+            return $meta;
+        }
+
+        $values = $meta[$key] ?? [];
+        if ($single) {
+            return $values[0] ?? '';
+        }
+
+        return $values;
     }
 }
 
@@ -97,6 +112,7 @@ if (!function_exists('delete_transient')) {
     function delete_transient($key)
     {
         unset($GLOBALS['polytrans_post_data_provider_transients'][$key]);
+        unset($GLOBALS['polytrans_async_job_store'][$key]);
         return true;
     }
 }
@@ -113,6 +129,9 @@ beforeEach(function () {
     $GLOBALS['polytrans_post_data_provider_transients'] = [];
     $GLOBALS['polytrans_post_data_provider_cleaned_posts'] = [];
     $GLOBALS['polytrans_post_data_provider_posts'] = [];
+    $GLOBALS['polytrans_post_data_provider_meta'] = [];
+    $GLOBALS['polytrans_test_posts'] = [];
+    $GLOBALS['polytrans_async_job_store'] = [];
 });
 
 describe('Variable Aliases', function () {
@@ -209,7 +228,7 @@ describe('Backward Compatibility', function () {
 
 describe('Cache Invalidation', function () {
     it('clears cached post snapshots so following reads see updated post data', function () {
-        $GLOBALS['polytrans_post_data_provider_posts'][123] = (object) [
+        $post = (object) [
             'ID' => 123,
             'post_author' => 1,
             'post_title' => 'Before workflow',
@@ -227,11 +246,14 @@ describe('Cache Invalidation', function () {
             'comment_status' => 'closed',
             'ping_status' => 'closed',
         ];
+        $GLOBALS['polytrans_post_data_provider_posts'][123] = $post;
+        $GLOBALS['polytrans_test_posts'][123] = $post;
 
         $first = $this->provider->get_variables(['translated_post_id' => 123]);
         expect($first['translated']['title'])->toBe('Before workflow');
 
         $GLOBALS['polytrans_post_data_provider_posts'][123]->post_title = 'After workflow';
+        $GLOBALS['polytrans_test_posts'][123]->post_title = 'After workflow';
 
         $cached = $this->provider->get_variables(['translated_post_id' => 123]);
         expect($cached['translated']['title'])->toBe('Before workflow');

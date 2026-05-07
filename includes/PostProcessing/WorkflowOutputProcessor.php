@@ -1097,6 +1097,8 @@ class WorkflowOutputProcessor
             return $context;
         }
 
+        PostDataProvider::invalidate_post_cache((int) $post_id);
+
         // Use Post Data Provider to rebuild complete context
         // Note: Provider classes are autoloaded
         $post_data_provider = new PostDataProvider();
