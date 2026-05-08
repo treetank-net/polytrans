@@ -171,13 +171,14 @@ it('keeps refinement prompts compact while preserving regression and shortening 
     expect(DefaultPromptTemplates::assistantEvaluatorSystem())->toContain('Score: N/100');
     expect(DefaultPromptTemplates::workflowEvaluatorSystem())->toContain('selected step');
 
-    expect(DefaultPromptTemplates::assistantEvaluator())->toContain('shorter clearer prompts');
+    expect(DefaultPromptTemplates::assistantEvaluator())->toContain('Current goal');
     expect(DefaultPromptTemplates::workflowEvaluator())->toContain('Separate target-step prompt issues');
 
-    expect(DefaultPromptTemplates::assistantAdjuster())->toContain('current score regressed');
+    expect(DefaultPromptTemplates::assistantAdjuster())->toContain('after regression');
     expect(DefaultPromptTemplates::assistantAdjuster())->toContain('shorten, add, remove, merge');
     expect(DefaultPromptTemplates::workflowAdjuster())->toContain('Improve only the selected target-step prompt pack');
-    expect(DefaultPromptTemplates::workflowAdjuster())->toContain('current score regressed');
+    expect(DefaultPromptTemplates::workflowAdjuster())->toContain('Current goal');
+    expect(DefaultPromptTemplates::workflowAdjuster())->toContain('after regression');
 
     expect(DefaultPromptTemplates::promptAdjusterSystem())->toContain('smallest effective change');
     expect(DefaultPromptTemplates::promptAdjusterSystem())->toContain('{{ content }}');

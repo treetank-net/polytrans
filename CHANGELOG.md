@@ -5,6 +5,16 @@ All notable changes to the PolyTrans plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.14.6] - 2026-05-08
+
+### Added
+- Workflow prompt refinement can now continue from the current saved prompt, the original prompt from the last run, a selected adjustment, or the latest refined prompt, making it possible to retarget the criteria between runs.
+- Workflow prompt refinement can reload the current workflow definition without losing refinement criteria, purpose text, selected posts, or evaluator/adjuster prompt edits.
+
+### Changed
+- Default prompt refinement evaluator and adjuster prompts now treat criteria as the current goal, with workflow and step purpose used as context to avoid drifting too far from the intended behavior.
+- Workflow refinement re-evaluation controls now live in the main refinement controls instead of the results panel.
+
 ## [1.14.5] - 2026-05-07
 
 ### Changed

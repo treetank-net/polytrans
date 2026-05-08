@@ -2109,6 +2109,16 @@ However, the integration of AI in healthcare also raises important questions abo
                                 </td>
                             </tr>
                             <tr>
+                                <th scope="row"><label for="workflow-refine-start-version">Continue / Retarget</label></th>
+                                <td>
+                                    <select id="workflow-refine-start-version" class="regular-text">
+                                        <option value="current">Current saved target prompt</option>
+                                    </select>
+                                    <button type="button" id="workflow-refine-reload-workflow" class="button">Reload Workflow</button>
+                                    <p class="description">Change the criteria or target purpose above, then continue from a previous prompt version. Reload updates the workflow definition without losing these refinement prompts and criteria.</p>
+                                </td>
+                            </tr>
+                            <tr>
                                 <th scope="row">Evaluator Prompts</th>
                                 <td>
                                     <div class="workflow-refinement-prompt-grid">
@@ -2220,6 +2230,11 @@ However, the integration of AI in healthcare also raises important questions abo
                 description = step.description || (step.type === 'managed_assistant' ? managedDescriptions[String(step.assistant_id || '')] || '' : '');
             }
             $('#workflow-refine-objective').val(description);
+        });
+
+        $('#workflow-refine-reload-workflow').on('click', function (e) {
+            e.preventDefault();
+            handleWorkflowRefinementReloadWorkflow();
         });
 
         $('#workflow-refine-refresh-posts').on('click', function (e) {
@@ -2354,12 +2369,18 @@ However, the integration of AI in healthcare also raises important questions abo
                     return `<option value="${escapeHtml(String(post.id))}">${escapeHtml(languageLabel)}${escapeHtml(post.title)}${dateStr ? ` (${escapeHtml(dateStr)})` : ''}${escapeHtml(translationLabel)}</option>`;
                 }).join('');
                 $select.html(options);
+                if (Array.isArray(window.workflowRefinementPendingSelectedPostIds)) {
+                    $select.val(window.workflowRefinementPendingSelectedPostIds);
+                    window.workflowRefinementPendingSelectedPostIds = null;
+                }
             } else {
                 window.workflowRefinementRecentPosts = [];
+                window.workflowRefinementPendingSelectedPostIds = null;
                 $select.html('<option value="">No posts found</option>');
             }
         }).fail(function () {
             window.workflowRefinementRecentPosts = [];
+            window.workflowRefinementPendingSelectedPostIds = null;
             $select.html('<option value="">Error loading posts</option>');
         });
     }
@@ -2374,6 +2395,183 @@ However, the integration of AI in healthcare also raises important questions abo
             : [];
 
         return posts.filter((post) => selectedIds.includes(String(post.id)));
+    }
+
+    function collectWorkflowRefinementControlState() {
+        return {
+            activeMode: $('.workflow-test-tab.active').data('mode') || 'test',
+            targetStepId: ($('#workflow-refine-target-step').val() || '').trim(),
+            sourceLanguage: ($('#workflow-refine-source-language').val() || '').trim(),
+            targetLanguage: ($('#workflow-refine-target-language').val() || '').trim(),
+            selectedPostIds: $('#workflow-refine-recent-posts').val() || [],
+            criteria: $('#workflow-refine-criteria').val() || '',
+            workflowPurpose: $('#workflow-refine-workflow-purpose').val() || '',
+            promptObjective: $('#workflow-refine-objective').val() || '',
+            iterations: $('#workflow-refine-iterations').val() || '2',
+            startVersion: $('#workflow-refine-start-version').val() || 'current',
+            evaluatorSystemPrompt: $('#workflow-refine-evaluator-system-prompt').val() || '',
+            evaluatorTemplate: $('#workflow-refine-evaluator-template').val() || '',
+            adjusterSystemPrompt: $('#workflow-refine-adjuster-system-prompt').val() || '',
+            adjusterTemplate: $('#workflow-refine-adjuster-template').val() || ''
+        };
+    }
+
+    function restoreWorkflowRefinementControlState(state) {
+        if (!state) {
+            updateWorkflowRefinementStartVersionOptions();
+            return;
+        }
+
+        if (state.selectedPostIds.length) {
+            window.workflowRefinementPendingSelectedPostIds = state.selectedPostIds;
+        }
+
+        if (state.activeMode === 'refine') {
+            $('.workflow-test-tab[data-mode="refine"]').trigger('click');
+        }
+
+        $('#workflow-refine-target-step').val(state.targetStepId);
+        $('#workflow-refine-source-language').val(state.sourceLanguage);
+        $('#workflow-refine-target-language').val(state.targetLanguage);
+        $('#workflow-refine-criteria').val(state.criteria);
+        $('#workflow-refine-workflow-purpose').val(state.workflowPurpose);
+        $('#workflow-refine-objective').val(state.promptObjective);
+        $('#workflow-refine-iterations').val(state.iterations);
+        $('#workflow-refine-evaluator-system-prompt').val(state.evaluatorSystemPrompt);
+        $('#workflow-refine-evaluator-template').val(state.evaluatorTemplate);
+        $('#workflow-refine-adjuster-system-prompt').val(state.adjusterSystemPrompt);
+        $('#workflow-refine-adjuster-template').val(state.adjusterTemplate);
+
+        updateWorkflowRefinementStartVersionOptions(state.startVersion);
+
+        if (state.selectedPostIds.length) {
+            const applyPostSelection = () => {
+                $('#workflow-refine-recent-posts').val(state.selectedPostIds);
+            };
+            applyPostSelection();
+            setTimeout(applyPostSelection, 250);
+        }
+    }
+
+    function updateWorkflowRefinementStartVersionOptions(preferredValue = null) {
+        const $select = $('#workflow-refine-start-version');
+        if (!$select.length) {
+            return;
+        }
+
+        const session = lastWorkflowRefinementSession;
+        const options = ['<option value="current">Current saved target prompt</option>'];
+        if (session?.initialBasePromptPack) {
+            options.push('<option value="initial">Original prompt from last refinement</option>');
+        }
+        if (Array.isArray(session?.iterations)) {
+            session.iterations
+                .filter((round) => round?.output_prompt_pack)
+                .forEach((round) => {
+                    const iteration = parseInt(round.iteration || 0, 10);
+                    options.push(`<option value="iteration:${escapeHtml(String(iteration))}">After adjustment ${escapeHtml(String(iteration))}</option>`);
+                });
+        }
+        if (session?.finalPromptPack) {
+            options.push('<option value="final">Latest prompt from last refinement</option>');
+        }
+
+        const previous = preferredValue || $select.val() || 'current';
+        $select.html(options.join(''));
+        const hasPrevious = $select.find('option').toArray().some((option) => String(option.value) === String(previous));
+        $select.val(hasPrevious ? previous : 'current');
+    }
+
+    function resolveWorkflowContinuationState(selection) {
+        const session = lastWorkflowRefinementSession;
+        const value = String(selection || 'current');
+        if (!session || value === 'current') {
+            return {
+                initialPromptPack: null,
+                existingIterations: [],
+                initialBasePromptPack: null,
+                initialEvaluatedRuns: []
+            };
+        }
+
+        if (value === 'initial') {
+            return {
+                initialPromptPack: session.initialBasePromptPack ? normalizeWorkflowPromptPack(session.initialBasePromptPack) : null,
+                existingIterations: [],
+                initialBasePromptPack: session.initialBasePromptPack ? normalizeWorkflowPromptPack(session.initialBasePromptPack) : null,
+                initialEvaluatedRuns: []
+            };
+        }
+
+        if (value === 'final') {
+            return {
+                initialPromptPack: session.finalPromptPack ? normalizeWorkflowPromptPack(session.finalPromptPack) : null,
+                existingIterations: Array.isArray(session.iterations) ? session.iterations.slice() : [],
+                initialBasePromptPack: session.initialBasePromptPack ? normalizeWorkflowPromptPack(session.initialBasePromptPack) : null,
+                initialEvaluatedRuns: []
+            };
+        }
+
+        const match = value.match(/^iteration:(\d+)$/);
+        if (match && Array.isArray(session.iterations)) {
+            const iterationNumber = parseInt(match[1], 10);
+            const iteration = session.iterations.find((round) => parseInt(round?.iteration || 0, 10) === iterationNumber);
+            return {
+                initialPromptPack: iteration?.output_prompt_pack ? normalizeWorkflowPromptPack(iteration.output_prompt_pack) : null,
+                existingIterations: session.iterations.filter((round) => parseInt(round?.iteration || 0, 10) <= iterationNumber),
+                initialBasePromptPack: session.initialBasePromptPack ? normalizeWorkflowPromptPack(session.initialBasePromptPack) : null,
+                initialEvaluatedRuns: []
+            };
+        }
+
+        return {
+            initialPromptPack: null,
+            existingIterations: [],
+            initialBasePromptPack: null,
+            initialEvaluatedRuns: []
+        };
+    }
+
+    async function handleWorkflowRefinementReloadWorkflow() {
+        const workflow = window.polytransWorkflowTestData || {};
+        const workflowId = String(workflow.id || '').trim();
+        if (!workflowId) {
+            showNotice('error', 'Cannot reload an unsaved workflow.');
+            return;
+        }
+
+        const state = collectWorkflowRefinementControlState();
+        const $button = $('#workflow-refine-reload-workflow');
+        const previousText = $button.text();
+        $button.prop('disabled', true).text('Reloading...');
+
+        try {
+            const response = await $.ajax({
+                url: polytransWorkflows.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'polytrans_get_workflow',
+                    nonce: polytransWorkflows.nonce,
+                    workflow_id: workflowId
+                }
+            });
+
+            if (!response?.success || !response.data) {
+                throw new Error(response?.data?.message || response?.data || 'Failed to reload workflow.');
+            }
+
+            window.polytransWorkflowTestData = response.data;
+            if (lastWorkflowRefinementSession) {
+                lastWorkflowRefinementSession.workflow = response.data;
+            }
+            renderWorkflowTester(response.data);
+            restoreWorkflowRefinementControlState(state);
+            showNotice('success', 'Workflow reloaded. Refinement settings were preserved.');
+        } catch (error) {
+            showNotice('error', resolveWorkflowAjaxErrorMessage(error, 'Failed to reload workflow.'));
+        } finally {
+            $button.prop('disabled', false).text(previousText || 'Reload Workflow');
+        }
     }
 
     /**
@@ -2425,6 +2623,7 @@ However, the integration of AI in healthcare also raises important questions abo
         const adjusterSystemPrompt = ($('#workflow-refine-adjuster-system-prompt').val() || '').trim();
         const adjusterTemplate = ($('#workflow-refine-adjuster-template').val() || '').trim();
         const configuredIterations = parseInt($('#workflow-refine-iterations').val() || '1', 10);
+        const continuation = resolveWorkflowContinuationState($('#workflow-refine-start-version').val());
         const totalIterations = Number.isFinite(configuredIterations)
             ? Math.max(1, Math.min(configuredIterations, 10))
             : 1;
@@ -2446,9 +2645,10 @@ However, the integration of AI in healthcare also raises important questions abo
             adjusterTemplate,
             totalIterations,
             selectedPosts,
-            initialPromptPack: null,
-            existingIterations: [],
-            initialBasePromptPack: null
+            initialPromptPack: continuation.initialPromptPack,
+            existingIterations: continuation.existingIterations,
+            initialBasePromptPack: continuation.initialBasePromptPack,
+            initialEvaluatedRuns: continuation.initialEvaluatedRuns
         }, {
             $button: $('#run-workflow-refinement-btn'),
             runningLabel: 'Running Full Workflow Re-eval...',
@@ -2477,17 +2677,17 @@ However, the integration of AI in healthcare also raises important questions abo
             targetStepId: session.targetStepId,
             targetStepType: session.targetStepType,
             assistantId: session.assistantId,
-            sourceLanguage: session.sourceLanguage,
-            targetLanguage: session.targetLanguage,
-            criteria: session.criteria,
-            workflowPurpose: session.workflowPurpose,
-            promptObjective: session.promptObjective,
-            evaluatorSystemPrompt: session.evaluatorSystemPrompt,
-            evaluatorTemplate: session.evaluatorTemplate,
-            adjusterSystemPrompt: session.adjusterSystemPrompt,
-            adjusterTemplate: session.adjusterTemplate,
+            sourceLanguage: ($('#workflow-refine-source-language').val() || session.sourceLanguage || '').trim(),
+            targetLanguage: ($('#workflow-refine-target-language').val() || session.targetLanguage || '').trim(),
+            criteria: ($('#workflow-refine-criteria').val() || session.criteria || '').trim(),
+            workflowPurpose: ($('#workflow-refine-workflow-purpose').val() || session.workflowPurpose || '').trim(),
+            promptObjective: ($('#workflow-refine-objective').val() || session.promptObjective || '').trim(),
+            evaluatorSystemPrompt: ($('#workflow-refine-evaluator-system-prompt').val() || session.evaluatorSystemPrompt || '').trim(),
+            evaluatorTemplate: ($('#workflow-refine-evaluator-template').val() || session.evaluatorTemplate || '').trim(),
+            adjusterSystemPrompt: ($('#workflow-refine-adjuster-system-prompt').val() || session.adjusterSystemPrompt || '').trim(),
+            adjusterTemplate: ($('#workflow-refine-adjuster-template').val() || session.adjusterTemplate || '').trim(),
             totalIterations,
-            selectedPosts: session.selectedPosts,
+            selectedPosts: getSelectedWorkflowRefinementPosts().length ? getSelectedWorkflowRefinementPosts() : session.selectedPosts,
             initialPromptPack: session.finalPromptPack,
             existingIterations: session.iterations,
             initialBasePromptPack: session.initialBasePromptPack,
@@ -3454,9 +3654,6 @@ However, the integration of AI in healthcare also raises important questions abo
                 </div>
 
                 <div class="workflow-refinement-actions-row">
-                    <label for="workflow-refine-extra-iterations"><strong>Re-evaluate Again</strong></label>
-                    <input type="number" id="workflow-refine-extra-iterations" class="small-text" min="1" max="10" step="1" value="1">
-                    <button type="button" id="workflow-refine-reeval-btn" class="button" ${isPartial ? 'disabled' : ''}>Re-evaluate Again</button>
                     <label for="workflow-refine-apply-version"><strong>Apply Version</strong></label>
                     <select id="workflow-refine-apply-version">${applyVersionOptions}</select>
                     <button type="button" id="workflow-refine-apply-btn" class="button button-primary" ${hasAdjustedPromptPack ? '' : 'disabled'}>Apply Selected Prompt Pack</button>
@@ -3531,6 +3728,7 @@ However, the integration of AI in healthcare also raises important questions abo
                 </details>
             </div>
         `).show();
+        updateWorkflowRefinementStartVersionOptions();
     }
 
     function calculateWorkflowAverageScore(runs) {

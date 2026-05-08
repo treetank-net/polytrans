@@ -12,15 +12,15 @@ final class DefaultPromptTemplates
 {
     public static function assistantEvaluatorSystem(): string
     {
-        return "You are a prompt evaluator. Start with `Score: N/100`. Do not return JSON or improved prompt text. Explain briefly what helped, what hurt, and what prompt-level change would most improve future outputs.";
+        return "You are a prompt evaluator. Start with `Score: N/100`. Do not return JSON or improved prompt text. Judge the output against the current goal and briefly explain what prompt change would help.";
     }
 
     public static function assistantEvaluator(): string
     {
-        return "Evaluate this assistant output against the purpose and criteria.\n" .
-            "Purpose: {{ prompt_objective }}\n" .
-            "Criteria: {{ criteria }}\n\n" .
-            "Give useful evidence for an adjuster that may add, remove, shorten, merge, or revert prompt text. Prefer shorter clearer prompts when they still satisfy purpose and criteria.\n\n" .
+        return "Evaluate this assistant output in light of the current goal, which may or may not be fulfilled.\n" .
+            "Current goal: {{ criteria }}\n" .
+            "Assistant purpose (context): {{ prompt_objective }}\n\n" .
+            "Give evidence useful to an adjuster. Recommend prompt changes that satisfy the current goal without drifting far from purpose. Prefer shorter clearer prompts when sufficient.\n\n" .
             "System prompt:\n{{ interpolated_system_prompt }}\n\n" .
             "User message:\n{{ interpolated_user_message }}\n\n" .
             "{% if include_expected_output_schema %}Expected output schema:\n{{ expected_output_schema }}\n\n{% endif %}" .
@@ -35,14 +35,14 @@ final class DefaultPromptTemplates
     public static function assistantAdjuster(): string
     {
         return "Improve this prompt pack.\n" .
-            "Purpose: {{ prompt_objective }}\n" .
-            "Criteria: {{ criteria }}\n\n" .
-            "Use the evaluations, full context, and refinement history. You may shorten, add, remove, merge, reprioritize, or revert, especially when the current score regressed. Preserve Twig syntax and variable references exactly.\n\n" .
+            "Current goal: {{ criteria }}\n" .
+            "Assistant purpose (context): {{ prompt_objective }}\n\n" .
+            "Use evaluations, context, and history to fulfil the current goal without drifting far from purpose. You may shorten, add, remove, merge, reprioritize, or revert, especially after regression. Preserve Twig syntax and variable references exactly.\n\n" .
             "Return XML-style blocks, no markdown fences:\n" .
+            "<change_summary>\nReason briefly about the chosen changes.\n</change_summary>\n\n" .
             "<system_prompt>\nImproved system prompt text\n</system_prompt>\n\n" .
             "<user_message_template>\nImproved user message template text\n</user_message_template>\n\n" .
             "{% if adjust_expected_output_schema %}<expected_output_schema>\nImproved expected output schema as JSON object text or JSON schema text\n</expected_output_schema>\n\n{% endif %}" .
-            "Optional: <change_summary>one short sentence</change_summary>\n\n" .
             "Current system prompt:\n{{ non_interpolated_system_prompt }}\n\n" .
             "Current user message template:\n{{ non_interpolated_user_message_template }}\n\n" .
             "{% if adjust_expected_output_schema %}Current expected output schema:\n{{ non_interpolated_expected_output_schema }}\n\n{% endif %}" .
@@ -52,16 +52,16 @@ final class DefaultPromptTemplates
 
     public static function workflowEvaluatorSystem(): string
     {
-        return "You are a workflow prompt evaluator. Start with `Score: N/100`. Do not return JSON or improved prompt text. Explain briefly whether the selected step helped the whole workflow and what target-step prompt change would most help.";
+        return "You are a workflow prompt evaluator. Start with `Score: N/100`. Do not return JSON or improved prompt text. Judge the selected step against the current goal and explain what target-step prompt change would help.";
     }
 
     public static function workflowEvaluator(): string
     {
-        return "Evaluate the selected assistant step by the final workflow outcome.\n" .
-            "Workflow purpose: {{ workflow_purpose }}\n" .
-            "Selected step purpose: {{ prompt_objective }}\n" .
-            "Criteria: {{ criteria }}\n\n" .
-            "Use the full context. Separate target-step prompt issues from other-step/tooling issues. Give evidence useful to an adjuster; shorter clearer prompts are preferred when they still satisfy purpose and criteria.\n\n" .
+        return "Evaluate the selected assistant step by the final workflow outcome in light of the current goal, which may or may not be fulfilled.\n" .
+            "Current goal: {{ criteria }}\n" .
+            "Workflow purpose (context): {{ workflow_purpose }}\n" .
+            "Selected step purpose (context): {{ prompt_objective }}\n\n" .
+            "Use the full context. Separate target-step prompt issues from other-step/tooling issues. Give evidence useful to an adjuster; shorter clearer prompts are preferred when they satisfy purpose and current goal.\n\n" .
             "Workflow: {{ workflow_name }} ({{ workflow_id }})\n" .
             "Workflow success: {{ workflow_success }}\n" .
             "Source language: {{ source_language }}\n" .
@@ -87,15 +87,16 @@ final class DefaultPromptTemplates
     public static function workflowAdjuster(): string
     {
         return "Improve only the selected target-step prompt pack.\n" .
-            "Workflow purpose: {{ workflow_purpose }}\n" .
-            "Selected step purpose: {{ prompt_objective }}\n" .
-            "Criteria: {{ criteria }}\n\n" .
-            "Use the evaluations, workflow context, and refinement history. You may shorten, add, remove, merge, reprioritize, or revert, especially when the current score regressed. Preserve Twig syntax and variable references exactly.\n\n" .
+            "Current goal: {{ criteria }}\n" .
+            "Workflow purpose (context): {{ workflow_purpose }}\n" .
+            "Selected step purpose (context): {{ prompt_objective }}\n\n" .
+            "Use evaluations, workflow context, and history to fulfil the current goal without drifting far from workflow or step purpose. You may shorten, add, remove, merge, reprioritize, or revert, especially after regression. Preserve Twig syntax and variable references exactly.\n\n" .
             "Return XML-style blocks, no markdown fences:\n" .
+            "<change_summary>\nReason briefly about the chosen changes.\n</change_summary>\n\n" .
             "<system_prompt>\nImproved system prompt text\n</system_prompt>\n\n" .
             "<user_message_template>\nImproved user message template text\n</user_message_template>\n\n" .
             "{% if adjust_expected_output_schema %}<expected_output_schema>\nImproved expected output schema as JSON object text or JSON schema text\n</expected_output_schema>\n\n{% endif %}" .
-            "Optional: <change_summary>one short sentence</change_summary>\n\n" .
+            "Additional context:\n\n" .
             "Workflow structure JSON:\n{{ workflow_structure_json }}\n\n" .
             "Target step context JSON:\n{{ target_step_context_json }}\n\n" .
             "Previous steps compact JSON:\n{{ previous_steps_json }}\n\n" .
