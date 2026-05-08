@@ -62,21 +62,7 @@ final class DefaultPromptTemplates
             "Workflow purpose (context): {{ workflow_purpose }}\n" .
             "Selected step purpose (context): {{ prompt_objective }}\n\n" .
             "Use the full context. Separate target-step prompt issues from other-step/tooling issues. Give evidence useful to an adjuster; shorter clearer prompts are preferred when they satisfy purpose and current goal.\n\n" .
-            "Workflow: {{ workflow_name }} ({{ workflow_id }})\n" .
-            "Workflow success: {{ workflow_success }}\n" .
-            "Source language: {{ source_language }}\n" .
-            "Target language: {{ target_language }}\n" .
-            "Target step: {{ target_step_name }} ({{ target_step_id }})\n\n" .
-            "Workflow structure JSON:\n{{ workflow_structure_json }}\n\n" .
-            "Target step context JSON:\n{{ target_step_context_json }}\n\n" .
-            "Previous steps compact JSON:\n{{ previous_steps_json }}\n\n" .
-            "Following steps compact JSON:\n{{ following_steps_json }}\n\n" .
-            "Target step interpolated system prompt:\n{{ target_interpolated_system_prompt }}\n\n" .
-            "Target step interpolated user message:\n{{ target_interpolated_user_message }}\n\n" .
-            "{% if include_expected_output_schema %}Target expected output schema:\n{{ expected_output_schema }}\n\n{% endif %}" .
-            "Target step assistant output:\n{{ target_assistant_output }}\n\n" .
-            "Final workflow output JSON:\n{{ final_output_json }}\n\n" .
-            "Workflow step summary JSON:\n{{ workflow_result_json }}";
+            "Workflow evidence JSON:\n{{ workflow_evidence_json }}";
     }
 
     public static function workflowAdjusterSystem(): string
@@ -96,11 +82,7 @@ final class DefaultPromptTemplates
             "<system_prompt>\nImproved system prompt text\n</system_prompt>\n\n" .
             "<user_message_template>\nImproved user message template text\n</user_message_template>\n\n" .
             "{% if adjust_expected_output_schema %}<expected_output_schema>\nImproved expected output schema as JSON object text or JSON schema text\n</expected_output_schema>\n\n{% endif %}" .
-            "Additional context:\n\n" .
-            "Workflow structure JSON:\n{{ workflow_structure_json }}\n\n" .
-            "Target step context JSON:\n{{ target_step_context_json }}\n\n" .
-            "Previous steps compact JSON:\n{{ previous_steps_json }}\n\n" .
-            "Following steps compact JSON:\n{{ following_steps_json }}\n\n" .
+            "Workflow context JSON:\n{{ workflow_evidence_json }}\n\n" .
             "Current system prompt:\n{{ non_interpolated_system_prompt }}\n\n" .
             "Current user message template:\n{{ non_interpolated_user_message_template }}\n\n" .
             "{% if adjust_expected_output_schema %}Current expected output schema:\n{{ non_interpolated_expected_output_schema }}\n\n{% endif %}" .

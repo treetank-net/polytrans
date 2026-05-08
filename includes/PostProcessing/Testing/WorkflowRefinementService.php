@@ -256,6 +256,7 @@ final class WorkflowRefinementService
 
         $workflow_context = is_array($evaluations[0]['workflow_context'] ?? null) ? $evaluations[0]['workflow_context'] : [];
         $refinement_history = $this->decodeRefinementHistory($refinementHistoryPayload);
+        $workflow_evidence_json = $this->encodeJsonForEvaluation($this->buildAdjusterWorkflowEvidence($workflow_context), 60000);
         $workflow_context_json = $this->encodeJsonForEvaluation($workflow_context, 60000);
         $workflow_structure_json = $this->encodeJsonForEvaluation($workflow_context['steps'] ?? [], 35000);
         $target_step_context_json = $this->encodeJsonForEvaluation($workflow_context['target_step'] ?? [], 35000);
@@ -272,6 +273,7 @@ final class WorkflowRefinementService
             'non_interpolated_system_prompt' => $current_prompt_pack['system_prompt'],
             'non_interpolated_user_message_template' => $current_prompt_pack['user_message_template'],
             'non_interpolated_expected_output_schema' => $current_prompt_pack['expected_output_schema'],
+            'workflow_evidence_json' => $workflow_evidence_json,
             'workflow_context_json' => $workflow_context_json,
             'workflow_structure_json' => $workflow_structure_json,
             'target_step_context_json' => $target_step_context_json,
@@ -294,6 +296,7 @@ final class WorkflowRefinementService
             'current_system_prompt' => $current_prompt_pack['system_prompt'],
             'current_user_message_template' => $current_prompt_pack['user_message_template'],
             'current_expected_output_schema' => $current_prompt_pack['expected_output_schema'],
+            'workflow_evidence_json' => $workflow_evidence_json,
             'workflow_context_json' => $workflow_context_json,
             'workflow_structure_json' => $workflow_structure_json,
             'target_step_context_json' => $target_step_context_json,
@@ -855,6 +858,7 @@ final class WorkflowRefinementService
 
         $target_step_result = is_array($runPayload['target_step_result'] ?? null) ? $runPayload['target_step_result'] : [];
         $assistant_output = $this->formatStepOutputForEvaluation($target_step_result['data'] ?? '');
+        $workflow_evidence = $this->buildEvaluatorWorkflowEvidence($runPayload, (string) $assistant_output, $assistant);
 
         $evaluator_context = [
             'criteria' => $criteria,
@@ -877,6 +881,7 @@ final class WorkflowRefinementService
             'target_assistant_output' => (string) $assistant_output,
             'include_expected_output_schema' => PromptPackNormalizer::shouldAdjustExpectedOutputSchema($assistant),
             'expected_output_schema' => PromptPackNormalizer::normalizeExpectedOutputSchema($assistant['expected_output_schema'] ?? null),
+            'workflow_evidence_json' => $this->encodeJsonForEvaluation($workflow_evidence, 80000),
             'workflow_context_json' => $this->encodeJsonForEvaluation($runPayload['workflow_context'] ?? [], 60000),
             'workflow_structure_json' => $this->encodeJsonForEvaluation($runPayload['workflow_context']['steps'] ?? [], 35000),
             'target_step_context_json' => $this->encodeJsonForEvaluation($runPayload['workflow_context']['target_step'] ?? [], 35000),
@@ -968,6 +973,163 @@ final class WorkflowRefinementService
             'execution_time' => (float) ($workflowResult['execution_time'] ?? 0),
             'steps' => $steps,
         ];
+    }
+
+    /**
+     * Build one non-duplicated evidence object for the workflow evaluator prompt.
+     *
+     * @param array<string,mixed> $runPayload
+     * @param array<string,mixed> $assistant
+     * @return array<string,mixed>
+     */
+    private function buildEvaluatorWorkflowEvidence(array $runPayload, string $assistantOutput, array $assistant): array
+    {
+        $workflow_context = is_array($runPayload['workflow_context'] ?? null) ? $runPayload['workflow_context'] : [];
+        $target_step_result = is_array($runPayload['target_step_result'] ?? null) ? $runPayload['target_step_result'] : [];
+
+        return [
+            'workflow' => [
+                'id' => (string) ($runPayload['workflow_id'] ?? ''),
+                'name' => (string) ($runPayload['workflow_name'] ?? ''),
+                'success' => !empty($runPayload['workflow_result']['success']),
+                'steps_executed' => (int) ($runPayload['workflow_result']['steps_executed'] ?? 0),
+                'execution_time' => (float) ($runPayload['workflow_result']['execution_time'] ?? 0),
+            ],
+            'context' => [
+                'source_language' => (string) ($runPayload['context']['source_language'] ?? ''),
+                'target_language' => (string) ($runPayload['context']['target_language'] ?? ''),
+                'post_id' => (int) ($runPayload['post']['id'] ?? 0),
+                'post_title' => (string) ($runPayload['post']['title'] ?? ''),
+            ],
+            'steps_before_target' => $this->compactWorkflowStepsForPrompt($workflow_context['previous_steps'] ?? [], true),
+            'target_step' => $this->compactWorkflowStepForPrompt(
+                is_array($workflow_context['target_step'] ?? null) ? $workflow_context['target_step'] : [],
+                false
+            ),
+            'steps_after_target' => $this->compactWorkflowStepsForPrompt($workflow_context['following_steps'] ?? [], true),
+            'target_prompt' => [
+                'system_prompt' => (string) ($target_step_result['interpolated_system_prompt'] ?? ''),
+                'user_message' => (string) ($target_step_result['interpolated_user_message'] ?? ''),
+                'expected_output_schema' => PromptPackNormalizer::normalizeExpectedOutputSchema($assistant['expected_output_schema'] ?? null),
+            ],
+            'target_output' => $assistantOutput,
+            'final_output' => $this->buildFinalOutputForEvaluation(
+                is_array($runPayload['final_output'] ?? null) ? $runPayload['final_output'] : [],
+                $assistantOutput
+            ),
+            'step_results' => $this->buildPromptStepResultSummaries($runPayload['workflow_result_summary']['steps'] ?? []),
+        ];
+    }
+
+    /**
+     * Build one compact workflow context object for the adjuster prompt.
+     *
+     * @param array<string,mixed> $workflowContext
+     * @return array<string,mixed>
+     */
+    private function buildAdjusterWorkflowEvidence(array $workflowContext): array
+    {
+        return [
+            'workflow' => is_array($workflowContext['workflow'] ?? null) ? $workflowContext['workflow'] : [],
+            'steps_before_target' => $this->compactWorkflowStepsForPrompt($workflowContext['previous_steps'] ?? [], true),
+            'target_step' => $this->compactWorkflowStepForPrompt(
+                is_array($workflowContext['target_step'] ?? null) ? $workflowContext['target_step'] : [],
+                false
+            ),
+            'steps_after_target' => $this->compactWorkflowStepsForPrompt($workflowContext['following_steps'] ?? [], true),
+        ];
+    }
+
+    /**
+     * @param mixed $steps
+     * @return array<int,array<string,mixed>>
+     */
+    private function compactWorkflowStepsForPrompt($steps, bool $includeRun): array
+    {
+        if (!is_array($steps)) {
+            return [];
+        }
+
+        $result = [];
+        foreach ($steps as $step) {
+            if (is_array($step)) {
+                $result[] = $this->compactWorkflowStepForPrompt($step, $includeRun);
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * @param array<string,mixed> $step
+     * @return array<string,mixed>
+     */
+    private function compactWorkflowStepForPrompt(array $step, bool $includeRun): array
+    {
+        $summary = [
+            'position' => (int) ($step['position'] ?? 0),
+            'id' => (string) ($step['id'] ?? ''),
+            'name' => (string) ($step['name'] ?? ''),
+            'description' => (string) ($step['description'] ?? ''),
+            'type' => (string) ($step['type'] ?? ''),
+            'enabled' => !isset($step['enabled']) || !empty($step['enabled']),
+            'is_target' => !empty($step['is_target']),
+            'output_actions' => is_array($step['output_actions'] ?? null) ? $step['output_actions'] : [],
+            'provider' => (string) ($step['provider'] ?? ''),
+            'model' => (string) ($step['model'] ?? ''),
+            'expected_format' => (string) ($step['expected_format'] ?? ''),
+            'output_variables' => is_array($step['output_variables'] ?? null) ? $step['output_variables'] : [],
+        ];
+
+        if (isset($step['assistant_id'])) {
+            $summary['assistant_id'] = (int) $step['assistant_id'];
+            $summary['assistant_name'] = (string) ($step['assistant_name'] ?? '');
+        }
+        if (is_array($step['non_interpolated_prompt_pack_summary'] ?? null)) {
+            $summary['prompt_pack_summary'] = $step['non_interpolated_prompt_pack_summary'];
+        }
+        if ($includeRun && is_array($step['run'] ?? null)) {
+            $run = $step['run'];
+            $summary['run'] = [
+                'success' => !empty($run['success']),
+                'error' => $run['error'] ?? null,
+                'data' => $run['data'] ?? null,
+                'output_processing' => $run['output_processing'] ?? null,
+            ];
+        }
+
+        return array_filter($summary, static function ($value): bool {
+            return $value !== '' && $value !== [] && $value !== null;
+        });
+    }
+
+    /**
+     * @param mixed $steps
+     * @return array<int,array<string,mixed>>
+     */
+    private function buildPromptStepResultSummaries($steps): array
+    {
+        if (!is_array($steps)) {
+            return [];
+        }
+
+        $summaries = [];
+        foreach ($steps as $step) {
+            if (!is_array($step)) {
+                continue;
+            }
+            $summaries[] = [
+                'step_id' => (string) ($step['step_id'] ?? ''),
+                'step_name' => (string) ($step['step_name'] ?? ''),
+                'step_type' => (string) ($step['step_type'] ?? ''),
+                'success' => !empty($step['success']),
+                'error' => $step['error'] ?? null,
+                'data_summary' => $step['data_summary'] ?? null,
+                'output_processing_summary' => $step['output_processing_summary'] ?? null,
+            ];
+        }
+
+        return $summaries;
     }
 
     /**

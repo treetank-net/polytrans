@@ -5,6 +5,12 @@ All notable changes to the PolyTrans plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.14.7] - 2026-05-08
+
+### Changed
+- Workflow prompt refinement evaluator and adjuster prompts now receive a single compact workflow evidence JSON payload instead of repeated workflow, target-step, surrounding-step, final-output, and step-summary sections.
+- Workflow refinement keeps legacy template variables available for saved custom prompts while default prompts use the compact evidence payload.
+
 ## [1.14.6] - 2026-05-08
 
 ### Added

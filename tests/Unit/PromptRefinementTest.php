@@ -173,12 +173,16 @@ it('keeps refinement prompts compact while preserving regression and shortening 
 
     expect(DefaultPromptTemplates::assistantEvaluator())->toContain('Current goal');
     expect(DefaultPromptTemplates::workflowEvaluator())->toContain('Separate target-step prompt issues');
+    expect(DefaultPromptTemplates::workflowEvaluator())->toContain('{{ workflow_evidence_json }}');
+    expect(DefaultPromptTemplates::workflowEvaluator())->not->toContain('{{ workflow_structure_json }}');
 
     expect(DefaultPromptTemplates::assistantAdjuster())->toContain('after regression');
     expect(DefaultPromptTemplates::assistantAdjuster())->toContain('shorten, add, remove, merge');
     expect(DefaultPromptTemplates::workflowAdjuster())->toContain('Improve only the selected target-step prompt pack');
     expect(DefaultPromptTemplates::workflowAdjuster())->toContain('Current goal');
     expect(DefaultPromptTemplates::workflowAdjuster())->toContain('after regression');
+    expect(DefaultPromptTemplates::workflowAdjuster())->toContain('{{ workflow_evidence_json }}');
+    expect(DefaultPromptTemplates::workflowAdjuster())->not->toContain('{{ target_step_context_json }}');
 
     expect(DefaultPromptTemplates::promptAdjusterSystem())->toContain('smallest effective change');
     expect(DefaultPromptTemplates::promptAdjusterSystem())->toContain('{{ content }}');
