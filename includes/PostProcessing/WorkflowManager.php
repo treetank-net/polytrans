@@ -206,6 +206,7 @@ class WorkflowManager
             $context = [
                 'original_post_id' => $original_post_id,
                 'translated_post_id' => $translated_post_id,
+                'source_language' => $this->detect_source_language($original_post_id),
                 'target_language' => $target_language,
                 'trigger' => 'translation_completed'
             ];
@@ -473,6 +474,17 @@ class WorkflowManager
         }
     }
 
+    private function detect_source_language(int $original_post_id): string
+    {
+        if ($original_post_id > 0 && function_exists('pll_get_post_language')) {
+            $lang = pll_get_post_language($original_post_id);
+            if ($lang) {
+                return (string) $lang;
+            }
+        }
+        return '';
+    }
+
     /**
      * Build compact diagnostic context for workflow completion logs.
      */
@@ -637,6 +649,7 @@ class WorkflowManager
         $context = [
             'original_post_id' => $original_post_id,
             'translated_post_id' => $translated_post_id,
+            'source_language' => $this->detect_source_language($original_post_id),
             'target_language' => $target_language,
             'trigger' => 'manual'
         ];
@@ -887,6 +900,7 @@ class WorkflowManager
                     $context = [
                         'original_post_id' => $original_post_id,
                         'translated_post_id' => $translated_post_id,
+                        'source_language' => $this->detect_source_language($original_post_id),
                         'target_language' => $target_language,
                         'trigger' => 'manual'
                     ];

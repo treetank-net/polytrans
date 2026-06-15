@@ -806,9 +806,14 @@ class BackgroundProcessor
             }
 
             // Build context
+            $source_language = '';
+            if ($original_post_id > 0 && function_exists('pll_get_post_language')) {
+                $source_language = (string) pll_get_post_language($original_post_id);
+            }
             $context = [
                 'original_post_id' => $original_post_id,
                 'translated_post_id' => $translated_post_id,
+                'source_language' => $source_language,
                 'target_language' => $target_language,
                 'trigger' => 'manual'
             ];

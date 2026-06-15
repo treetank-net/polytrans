@@ -5,6 +5,11 @@ All notable changes to the PolyTrans plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.14.9] - 2026-06-15
+
+### Fixed
+- Workflow execution (automatic, manual, and background) now detects and passes `source_language` from the original post via Polylang, fixing empty `source_language` in prompts and incorrect article language context.
+
 ## [1.14.8] - 2026-06-15
 
 ### Added
