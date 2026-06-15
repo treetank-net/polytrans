@@ -33,6 +33,7 @@ class PostAutocomplete
     {
         add_action('wp_ajax_polytrans_search_posts', [$this, 'ajax_search_posts']);
         add_action('wp_ajax_polytrans_get_recent_posts', [$this, 'ajax_get_recent_posts']);
+        add_action('wp_ajax_polytrans_get_post_by_id', [$this, 'ajax_get_post_by_id']);
     }
 
     /**
@@ -252,6 +253,63 @@ class PostAutocomplete
         \set_transient($cache_key, $results, 5 * MINUTE_IN_SECONDS);
 
         wp_send_json_success(['posts' => $results]);
+    }
+
+    public function ajax_get_post_by_id()
+    {
+        check_ajax_referer('polytrans_workflows_nonce', 'nonce');
+
+        if (!current_user_can('edit_posts')) {
+            wp_die('Unauthorized', 403);
+        }
+
+        $post_id = intval($_POST['post_id'] ?? 0);
+        if ($post_id <= 0) {
+            wp_send_json_error(['message' => 'Invalid post ID']);
+            return;
+        }
+
+        $post = get_post($post_id);
+        if (!$post) {
+            wp_send_json_error(['message' => 'Post not found']);
+            return;
+        }
+
+        $excerpt = !empty($post->post_excerpt) ? $post->post_excerpt : wp_trim_words($post->post_content, 20);
+        $original_post_id = get_post_meta($post->ID, '_polytrans_original_post_id', true);
+        $post_language = function_exists('pll_get_post_language') ? pll_get_post_language($post->ID) : '';
+
+        $custom_fields = [];
+        $common_meta_keys = [
+            '_yoast_wpseo_title',
+            '_yoast_wpseo_metadesc',
+            'custom_field_example',
+            '_featured_text',
+            '_subtitle'
+        ];
+        foreach ($common_meta_keys as $meta_key) {
+            $meta_value = get_post_meta($post->ID, $meta_key, true);
+            if (!empty($meta_value)) {
+                $custom_fields[$meta_key] = $meta_value;
+            }
+        }
+
+        wp_send_json_success([
+            'post' => [
+                'id' => $post->ID,
+                'title' => $post->post_title,
+                'content' => $post->post_content,
+                'excerpt' => $excerpt,
+                'post_type' => $post->post_type,
+                'post_status' => $post->post_status,
+                'post_date' => $post->post_date,
+                'language' => $post_language,
+                'is_translation' => !empty($original_post_id),
+                'original_post_id' => $original_post_id,
+                'meta' => $custom_fields,
+                'description' => wp_trim_words($excerpt, 15) . '...'
+            ]
+        ]);
     }
 
     /**

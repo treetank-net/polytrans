@@ -5,6 +5,17 @@ All notable changes to the PolyTrans plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.14.8] - 2026-06-15
+
+### Added
+- Workflow tester now includes a source language field and a source article selector for correct language context during testing.
+- New AJAX endpoint `polytrans_get_post_by_id` to fetch a single post by ID (used when the detected original post is not in the recent posts list).
+
+### Fixed
+- Workflow tester with existing posts now derives `target_language` from the selected post's language instead of the workflow's fixed language, fixing incorrect language context for universal (language-agnostic) workflows.
+- Workflow tester now passes `source_language` to the test context, fixing empty `source_language` template variable in prompts.
+- Recent posts dropdown in workflow tester now shows language labels and translation status, and includes translations in the list.
+
 ## [1.14.7] - 2026-05-08
 
 ### Changed

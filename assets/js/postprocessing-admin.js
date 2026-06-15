@@ -1988,7 +1988,7 @@
                         </div>
                         
                         <div id="existing-post-selector" style="display:none; margin-top:10px;">
-                            <label for="recent-posts-dropdown">Select from Last 20 Posts (in workflow language):</label>
+                            <label for="recent-posts-dropdown">Select from recent posts:</label>
                             <select id="recent-posts-dropdown" style="width:100%; margin-bottom:10px;">
                                 <option value="">Loading posts...</option>
                             </select>
@@ -1996,6 +1996,19 @@
                                 <strong>Selected Post:</strong>
                                 <div id="selected-post-details"></div>
                             </div>
+                            <div id="test-source-article-selector" style="margin-top:10px; display:none;">
+                                <label for="test-source-article-dropdown"><strong>Source Article (original before translation):</strong></label>
+                                <select id="test-source-article-dropdown" style="width:100%; margin-top:4px;">
+                                    <option value="">None (use selected post as original)</option>
+                                </select>
+                                <p class="description">If the selected post is a translation, pick the original source article here. Otherwise leave empty.</p>
+                            </div>
+                        </div>
+
+                        <div style="margin-top:10px; margin-bottom:10px;">
+                            <label for="test-source-language"><strong>Source Language:</strong></label>
+                            <input type="text" id="test-source-language" class="small-text" value="" placeholder="auto" style="margin-left:6px;">
+                            <p class="description">Source language code (e.g. <code>en</code>, <code>pl</code>). Leave empty to auto-detect from the selected post or its original.</p>
                         </div>
                         
                         <div id="sample-post-data" style="margin-top:10px;">
@@ -2209,9 +2222,21 @@ However, the integration of AI in healthcare also raises important questions abo
                 const selectedPost = window.recentPostsData.find(p => p.id == selectedPostId);
                 if (selectedPost) {
                     displaySelectedPost(selectedPost);
+                    updateTestSourceArticleSelector(selectedPost);
                 }
             } else {
                 $('#selected-post-info').hide();
+                $('#test-source-article-selector').hide();
+            }
+        });
+
+        $('#test-source-article-dropdown').on('change', function () {
+            const sourceId = $(this).val();
+            if (sourceId && !$('#test-source-language').val().trim()) {
+                const sourcePost = (window.recentPostsData || []).find(p => p.id == sourceId);
+                if (sourcePost && sourcePost.language) {
+                    $('#test-source-language').val(sourcePost.language);
+                }
             }
         });
 
@@ -2304,18 +2329,21 @@ However, the integration of AI in healthcare also raises important questions abo
             data: {
                 action: 'polytrans_get_recent_posts',
                 nonce: polytransWorkflows.nonce,
-                language: workflow.language,
+                language: workflow.language || '',
+                include_translations: 'true',
                 limit: 20
             },
             success: function (response) {
                 if (response.success && response.data.posts) {
                     const posts = response.data.posts;
-                    window.recentPostsData = posts; // Store for later use
+                    window.recentPostsData = posts;
 
                     let options = '<option value="">Select a post...</option>';
                     posts.forEach(post => {
                         const dateStr = new Date(post.post_date).toLocaleDateString();
-                        options += `<option value="${post.id}">${escapeHtml(post.title)} (${dateStr})</option>`;
+                        const langLabel = post.language ? `[${String(post.language).toUpperCase()}] ` : '';
+                        const translationLabel = post.is_translation ? ' [Translation]' : '';
+                        options += `<option value="${post.id}">${escapeHtml(langLabel)}${escapeHtml(post.title)} (${dateStr})${escapeHtml(translationLabel)}</option>`;
                     });
 
                     dropdown.html(options);
@@ -2591,6 +2619,67 @@ However, the integration of AI in healthcare also raises important questions abo
             ${metaHtml}
         `);
         $('#selected-post-info').show();
+    }
+
+    function updateTestSourceArticleSelector(selectedPost) {
+        const $container = $('#test-source-article-selector');
+        const $dropdown = $('#test-source-article-dropdown');
+        const posts = window.recentPostsData || [];
+        const detectedOriginalId = selectedPost.is_translation && selectedPost.original_post_id
+            ? parseInt(selectedPost.original_post_id, 10)
+            : null;
+
+        function renderDropdown() {
+            const currentPosts = window.recentPostsData || [];
+            let options = '<option value="">None (use selected post as original)</option>';
+            currentPosts.forEach(post => {
+                if (post.id == selectedPost.id) return;
+                const langLabel = post.language ? `[${String(post.language).toUpperCase()}] ` : '';
+                const dateStr = new Date(post.post_date).toLocaleDateString();
+                const isDetected = detectedOriginalId && post.id === detectedOriginalId;
+                const selectedAttr = isDetected ? ' selected' : '';
+                const detectedLabel = isDetected ? ' [Detected Original]' : '';
+                options += `<option value="${post.id}"${selectedAttr}>${escapeHtml(langLabel)}${escapeHtml(post.title)} (${dateStr})${escapeHtml(detectedLabel)}</option>`;
+            });
+            $dropdown.html(options);
+        }
+
+        renderDropdown();
+        $container.show();
+
+        if (detectedOriginalId && !posts.find(p => p.id === detectedOriginalId)) {
+            $dropdown.append(`<option value="${detectedOriginalId}" selected>Loading Original Post #${detectedOriginalId}...</option>`);
+            $.ajax({
+                url: polytransWorkflows.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'polytrans_get_post_by_id',
+                    nonce: polytransWorkflows.nonce,
+                    post_id: detectedOriginalId
+                },
+                success: function (response) {
+                    if (response.success && response.data.post) {
+                        window.recentPostsData = (window.recentPostsData || []).concat([response.data.post]);
+                        renderDropdown();
+                        if (!$('#test-source-language').val().trim() && response.data.post.language) {
+                            $('#test-source-language').val(response.data.post.language);
+                        }
+                    } else {
+                        $dropdown.find(`option[value="${detectedOriginalId}"]`).text(`Original Post #${detectedOriginalId} (not found)`);
+                    }
+                },
+                error: function () {
+                    $dropdown.find(`option[value="${detectedOriginalId}"]`).text(`Original Post #${detectedOriginalId} (load failed)`);
+                }
+            });
+        }
+
+        if (detectedOriginalId) {
+            const originalInList = posts.find(p => p.id === detectedOriginalId);
+            if (originalInList && originalInList.language && !$('#test-source-language').val().trim()) {
+                $('#test-source-language').val(originalInList.language);
+            }
+        }
     }
 
     /**
@@ -4029,9 +4118,9 @@ However, the integration of AI in healthcare also raises important questions abo
     function runWorkflowTest() {
         const testDataType = $('input[name="test_data_type"]:checked').val();
         const workflow = window.polytransWorkflowTestData;
+        const userSourceLanguage = ($('#test-source-language').val() || '').trim();
 
         let testContext = {
-            target_language: workflow.language,
             trigger: 'test',
             articles_count: parseInt($('#articles-count').val()) || 20
         };
@@ -4078,9 +4167,8 @@ However, the integration of AI in healthcare also raises important questions abo
             };
             testContext.translated_post = testContext.original_post;
 
-            // Add translation context for more realistic testing
             testContext.target_language = workflow.language || 'en';
-            testContext.source_language = 'en';
+            testContext.source_language = userSourceLanguage || 'en';
             testContext.translation_service = 'test';
             testContext.quality_score = 0.85;
             testContext.word_count = testContext.original_post.content.split(' ').length;
@@ -4091,13 +4179,25 @@ However, the integration of AI in healthcare also raises important questions abo
                 return;
             }
 
-            // Use the selected post data directly and format it properly
+            const postLanguage = (selectedPostData.language || '').trim();
+            testContext.target_language = postLanguage || workflow.language || 'en';
+
+            const sourceArticleId = $('#test-source-article-dropdown').val();
+            let sourcePost = null;
+            if (sourceArticleId) {
+                sourcePost = (window.recentPostsData || []).find(p => p.id == sourceArticleId);
+            }
+            if (sourcePost) {
+                testContext.source_language = userSourceLanguage || (sourcePost.language || '').trim() || '';
+            } else {
+                testContext.source_language = userSourceLanguage || '';
+            }
+
             testContext.post_id = selectedPostData.id;
             testContext.title = selectedPostData.title;
             testContext.content = selectedPostData.content;
             testContext.excerpt = selectedPostData.excerpt;
 
-            // Format the post data to match what the post data provider expects
             testContext.translated_post = {
                 id: selectedPostData.id,
                 title: selectedPostData.title,
@@ -4127,8 +4227,39 @@ However, the integration of AI in healthcare also raises important questions abo
                 character_count: selectedPostData.content ? selectedPostData.content.length : 0
             };
 
-            // Also set the original_post for workflows that might need it
-            testContext.original_post = testContext.translated_post;
+            if (sourcePost) {
+                testContext.original_post = {
+                    id: sourcePost.id,
+                    title: sourcePost.title,
+                    content: sourcePost.content,
+                    excerpt: sourcePost.excerpt || '',
+                    slug: sourcePost.title.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+                    status: sourcePost.post_status,
+                    type: sourcePost.post_type,
+                    author_id: 1,
+                    author_name: 'Test Author',
+                    author_email: 'test@example.com',
+                    date: sourcePost.post_date || new Date().toISOString(),
+                    date_gmt: sourcePost.post_date || new Date().toISOString(),
+                    modified: sourcePost.post_date || new Date().toISOString(),
+                    modified_gmt: sourcePost.post_date || new Date().toISOString(),
+                    parent_id: 0,
+                    menu_order: 0,
+                    comment_status: 'open',
+                    ping_status: 'open',
+                    categories: [],
+                    tags: [],
+                    meta: sourcePost.meta || {},
+                    featured_image: null,
+                    permalink: '#',
+                    edit_link: '#',
+                    word_count: sourcePost.content ? sourcePost.content.split(' ').length : 0,
+                    character_count: sourcePost.content ? sourcePost.content.length : 0
+                };
+                testContext.original_post_id = sourcePost.id;
+            } else {
+                testContext.original_post = testContext.translated_post;
+            }
         }
 
         // Show loading state
