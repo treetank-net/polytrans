@@ -298,6 +298,135 @@ class UsageReport
     }
 
     /**
+     * Report one complete translation process per row.
+     *
+     * The run is the unit the dashboard uses for an article/target pair. Usage
+     * rows are joined without filtering them out, so a model/activity filter only
+     * selects runs that contain a matching call; the displayed totals still cover
+     * the whole process, including relay hops and post-translation workflows.
+     *
+     * @param array $args  Run/report filters.
+     * @param int   $limit Maximum rows.
+     * @return array
+     */
+    public static function translation_runs($args = [], $limit = 20)
+    {
+        global $wpdb;
+
+        if (!UsageRecorder::table_exists() || !TranslationRunManager::table_exists()) {
+            return [];
+        }
+
+        [$where, $params] = self::build_run_where($args);
+        $runs_table = TranslationRunManager::table_name();
+        $usage_table = self::table();
+        $limit = max(1, min(200, (int) $limit));
+
+        $sql = "SELECT
+                r.run_id,
+                r.created_at,
+                r.completed_at,
+                r.status,
+                r.source_post_id,
+                r.translated_post_id,
+                r.source_language,
+                r.target_language,
+                r.translation_path,
+                r.source_characters,
+                r.source_words,
+                COUNT(u.id) AS calls,
+                SUM(CASE WHEN u.activity = 'translation' THEN 1 ELSE 0 END) AS translation_calls,
+                SUM(CASE WHEN u.activity = 'workflow_step' THEN 1 ELSE 0 END) AS workflow_calls,
+                SUM(CASE WHEN u.id IS NOT NULL AND u.cost_usd IS NULL THEN 1 ELSE 0 END) AS unpriced_calls,
+                SUM(u.cost_usd) AS total_usd,
+                SUM(CASE WHEN u.activity = 'translation' THEN u.cost_usd ELSE 0 END) AS translation_usd,
+                SUM(CASE WHEN u.activity = 'workflow_step' THEN u.cost_usd ELSE 0 END) AS workflow_usd,
+                SUM(u.tokens_input) AS tokens_input,
+                SUM(u.tokens_output) AS tokens_output,
+                SUM(u.tokens_cached_read) AS tokens_cached_read,
+                SUM(u.tokens_reasoning) AS tokens_reasoning
+            FROM {$runs_table} r
+            LEFT JOIN {$usage_table} u ON u.run_id = r.run_id
+            {$where}
+            GROUP BY r.id, r.run_id, r.created_at, r.completed_at, r.status,
+                r.source_post_id, r.translated_post_id, r.source_language,
+                r.target_language, r.translation_path, r.source_characters, r.source_words
+            ORDER BY COALESCE(SUM(u.cost_usd), 0) DESC, r.created_at DESC
+            LIMIT {$limit}";
+
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared
+        $rows = $wpdb->get_results(self::prepare($sql, $params), ARRAY_A);
+
+        return array_map([self::class, 'normalize_run'], is_array($rows) ? $rows : []);
+    }
+
+    /**
+     * Aggregate the complete translation-process population for the dashboard.
+     *
+     * Usage is pre-aggregated by run before it is joined to the parent table. This
+     * matters for source characters and words: joining raw usage rows would count
+     * the same article once per AI call and inflate the denominators.
+     *
+     * @param array $args Run/report filters.
+     * @return array
+     */
+    public static function translation_run_totals($args = [])
+    {
+        global $wpdb;
+
+        if (!UsageRecorder::table_exists() || !TranslationRunManager::table_exists()) {
+            return self::normalize_run_totals([]);
+        }
+
+        [$where, $params] = self::build_run_where($args);
+        $runs_table = TranslationRunManager::table_name();
+        $usage_table = self::table();
+
+        $sql = "SELECT
+                COUNT(*) AS runs,
+                SUM(CASE WHEN r.status = 'completed' THEN 1 ELSE 0 END) AS completed_runs,
+                SUM(CASE WHEN r.status = 'running' THEN 1 ELSE 0 END) AS running_runs,
+                SUM(CASE WHEN r.status = 'failed' THEN 1 ELSE 0 END) AS failed_runs,
+                SUM(r.source_characters) AS source_characters,
+                SUM(r.source_words) AS source_words,
+                SUM(COALESCE(u.calls, 0)) AS calls,
+                SUM(COALESCE(u.translation_calls, 0)) AS translation_calls,
+                SUM(COALESCE(u.workflow_calls, 0)) AS workflow_calls,
+                SUM(COALESCE(u.unpriced_calls, 0)) AS unpriced_calls,
+                SUM(u.total_usd) AS total_usd,
+                SUM(u.translation_usd) AS translation_usd,
+                SUM(u.workflow_usd) AS workflow_usd,
+                SUM(COALESCE(u.tokens_input, 0)) AS tokens_input,
+                SUM(COALESCE(u.tokens_output, 0)) AS tokens_output,
+                SUM(COALESCE(u.tokens_cached_read, 0)) AS tokens_cached_read,
+                SUM(COALESCE(u.tokens_reasoning, 0)) AS tokens_reasoning
+            FROM {$runs_table} r
+            LEFT JOIN (
+                SELECT
+                    run_id,
+                    COUNT(*) AS calls,
+                    SUM(activity = 'translation') AS translation_calls,
+                    SUM(activity = 'workflow_step') AS workflow_calls,
+                    SUM(cost_usd IS NULL) AS unpriced_calls,
+                    SUM(cost_usd) AS total_usd,
+                    SUM(CASE WHEN activity = 'translation' THEN cost_usd ELSE 0 END) AS translation_usd,
+                    SUM(CASE WHEN activity = 'workflow_step' THEN cost_usd ELSE 0 END) AS workflow_usd,
+                    SUM(tokens_input) AS tokens_input,
+                    SUM(tokens_output) AS tokens_output,
+                    SUM(tokens_cached_read) AS tokens_cached_read,
+                    SUM(tokens_reasoning) AS tokens_reasoning
+                FROM {$usage_table}
+                GROUP BY run_id
+            ) u ON u.run_id = r.run_id
+            {$where}";
+
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared
+        $row = $wpdb->get_row(self::prepare($sql, $params), ARRAY_A);
+
+        return self::normalize_run_totals(is_array($row) ? $row : []);
+    }
+
+    /**
      * Distinct models seen in the table, for a filter dropdown.
      *
      * @return array
@@ -435,6 +564,55 @@ class UsageReport
     }
 
     /**
+     * Build filters for the run parent while preserving full-run aggregates.
+     *
+     * @param array $args Report filters.
+     * @return array [string $where, array $params]
+     */
+    private static function build_run_where($args)
+    {
+        $clauses = [];
+        $params = [];
+        $usage_table = self::table();
+
+        $days = isset($args['days']) ? (int) $args['days'] : 0;
+        if ($days > 0) {
+            $clauses[] = 'r.created_at >= DATE_SUB(NOW(), INTERVAL %d DAY)';
+            $params[] = $days;
+        }
+
+        if (!empty($args['language'])) {
+            $clauses[] = 'r.target_language = %s';
+            $params[] = (string) $args['language'];
+        }
+
+        if (!empty($args['post_id'])) {
+            $clauses[] = '(r.source_post_id = %d OR r.translated_post_id = %d)';
+            $params[] = (int) $args['post_id'];
+            $params[] = (int) $args['post_id'];
+        }
+
+        // These filters select a run, but deliberately do not constrain the LEFT
+        // JOIN. The reader asked for the full process cost, not a partial activity
+        // total that happens to match the filter.
+        if (!empty($args['model'])) {
+            $clauses[] = "EXISTS (SELECT 1 FROM {$usage_table} uf_model WHERE uf_model.run_id = r.run_id AND uf_model.model = %s)";
+            $params[] = (string) $args['model'];
+        }
+
+        if (!empty($args['activity'])) {
+            $clauses[] = "EXISTS (SELECT 1 FROM {$usage_table} uf_activity WHERE uf_activity.run_id = r.run_id AND uf_activity.activity = %s)";
+            $params[] = (string) $args['activity'];
+        }
+
+        if (!empty($args['relay_only'])) {
+            $clauses[] = "EXISTS (SELECT 1 FROM {$usage_table} uf_relay WHERE uf_relay.run_id = r.run_id AND uf_relay.final_language IS NOT NULL AND uf_relay.target_language <> uf_relay.final_language)";
+        }
+
+        return [empty($clauses) ? '' : 'WHERE ' . implode(' AND ', $clauses), $params];
+    }
+
+    /**
      * Apply $wpdb->prepare() only when there is something to bind.
      *
      * prepare() with no placeholders is an error in newer WordPress versions, and a
@@ -501,6 +679,139 @@ class UsageReport
         }
 
         return $row;
+    }
+
+    /**
+     * Normalize one complete run and derive comparable rates.
+     *
+     * @param array $row Raw run row.
+     * @return array
+     */
+    private static function normalize_run($row)
+    {
+        $row = is_array($row) ? $row : [];
+
+        foreach (
+            [
+                'source_post_id',
+                'translated_post_id',
+                'source_characters',
+                'source_words',
+                'calls',
+                'translation_calls',
+                'workflow_calls',
+                'unpriced_calls',
+                'tokens_input',
+                'tokens_output',
+                'tokens_cached_read',
+                'tokens_reasoning',
+            ] as $key
+        ) {
+            if (array_key_exists($key, $row)) {
+                $row[$key] = (int) $row[$key];
+            }
+        }
+
+        foreach (['total_usd', 'translation_usd', 'workflow_usd'] as $key) {
+            $row[$key] = isset($row[$key]) && $row[$key] !== null ? (string) $row[$key] : null;
+            $row[$key . '_display'] = self::format_usd($row[$key]);
+        }
+
+        // Names used by the run dashboard make the scope of each amount explicit.
+        $row['total_cost_display'] = $row['total_usd_display'];
+        $row['translation_cost_display'] = $row['translation_usd_display'];
+        $row['workflow_cost_display'] = $row['workflow_usd_display'];
+
+        $output = (int) ($row['tokens_output'] ?? 0);
+        $reasoning = (int) ($row['tokens_reasoning'] ?? 0);
+        $row['reasoning_share'] = $output > 0 ? min(100, (int) round($reasoning / $output * 100)) : 0;
+        $row['title'] = !empty($row['source_post_id']) ? get_the_title((int) $row['source_post_id']) : '';
+        $row['edit_link'] = !empty($row['source_post_id'])
+            ? get_edit_post_link((int) $row['source_post_id'], 'raw')
+            : '';
+
+        foreach (
+            [
+                'total_usd' => 'cost_per_1000',
+                'translation_usd' => 'translation_cost_per_1000',
+                'workflow_usd' => 'workflow_cost_per_1000',
+            ] as $cost_key => $rate_key
+        ) {
+            $row[$rate_key . '_characters'] = self::rate_per_1000(
+                $row[$cost_key],
+                $row['source_characters'] ?? 0
+            );
+            $row[$rate_key . '_characters_display'] = self::format_usd($row[$rate_key . '_characters']);
+            $row[$rate_key . '_words'] = self::rate_per_1000(
+                $row[$cost_key],
+                $row['source_words'] ?? 0
+            );
+            $row[$rate_key . '_words_display'] = self::format_usd($row[$rate_key . '_words']);
+        }
+
+        return $row;
+    }
+
+    /**
+     * Normalize the aggregate used by the process summary cards.
+     *
+     * @param array $row Raw aggregate row.
+     * @return array
+     */
+    private static function normalize_run_totals($row)
+    {
+        $row = is_array($row) ? $row : [];
+
+        foreach (
+            [
+                'runs',
+                'completed_runs',
+                'running_runs',
+                'failed_runs',
+                'source_characters',
+                'source_words',
+                'calls',
+                'translation_calls',
+                'workflow_calls',
+                'unpriced_calls',
+                'tokens_input',
+                'tokens_output',
+                'tokens_cached_read',
+                'tokens_reasoning',
+            ] as $key
+        ) {
+            $row[$key] = (int) ($row[$key] ?? 0);
+        }
+
+        foreach (['total_usd', 'translation_usd', 'workflow_usd'] as $key) {
+            $row[$key] = isset($row[$key]) && $row[$key] !== null ? (string) $row[$key] : null;
+            $row[$key . '_display'] = self::format_usd($row[$key]);
+        }
+
+        $row['total_cost_display'] = $row['total_usd_display'];
+        $row['translation_cost_display'] = $row['translation_usd_display'];
+        $row['workflow_cost_display'] = $row['workflow_usd_display'];
+        $row['cost_per_1000_characters'] = self::rate_per_1000($row['total_usd'], $row['source_characters']);
+        $row['cost_per_1000_words'] = self::rate_per_1000($row['total_usd'], $row['source_words']);
+        $row['cost_per_1000_characters_display'] = self::format_usd($row['cost_per_1000_characters']);
+        $row['cost_per_1000_words_display'] = self::format_usd($row['cost_per_1000_words']);
+        $row['workflow_share'] = self::share_of($row['workflow_usd'], $row['total_usd']);
+
+        return $row;
+    }
+
+    /**
+     * @param string|null $cost Cost amount.
+     * @param int $units Number of source units.
+     * @return string|null Cost per 1,000 units.
+     */
+    private static function rate_per_1000($cost, $units)
+    {
+        if ($cost === null || $cost === '' || (int) $units <= 0) {
+            return null;
+        }
+
+        return number_format(((float) $cost * 1000) / (int) $units, 10, '.', '');
     }
 
     /**

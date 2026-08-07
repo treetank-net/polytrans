@@ -32,6 +32,7 @@ includes/Menu/TagTranslation_temp.php
 
 # Extra markdown files
 CLAUDE.md
+CONTEXT.md
 QUICK_START.md
 TODO-CRITICAL.md
 

@@ -35,6 +35,14 @@
     border-left-color: #2271b1;
 }
 
+.polytrans-usage-card--process {
+    border-left-color: #646970;
+}
+
+.polytrans-usage-card--workflow {
+    border-left-color: #dba617;
+}
+
 .polytrans-usage-card__label {
     font-size: 12px;
     text-transform: uppercase;

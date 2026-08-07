@@ -119,7 +119,7 @@ class WorkflowManager
     private function register_hooks()
     {
         // Hook into translation completion
-        add_action('polytrans_translation_completed', [$this, 'trigger_workflows'], 10, 3);
+        add_action('polytrans_translation_completed', [$this, 'trigger_workflows'], 10, 4);
 
         // Hook for manual workflow execution (old - synchronous)
         add_action('wp_ajax_polytrans_execute_workflow', [$this, 'ajax_execute_workflow']);
@@ -183,8 +183,9 @@ class WorkflowManager
      * @param int $original_post_id
      * @param int $translated_post_id
      * @param string $target_language
+     * @param string|null $run_id TranslationRun identifier.
      */
-    public function trigger_workflows($original_post_id, $translated_post_id, $target_language)
+    public function trigger_workflows($original_post_id, $translated_post_id, $target_language, $run_id = null)
     {
         try {
 
@@ -208,6 +209,7 @@ class WorkflowManager
                 'translated_post_id' => $translated_post_id,
                 'source_language' => $this->detect_source_language($original_post_id),
                 'target_language' => $target_language,
+                'run_id' => \PolyTrans\Core\TranslationRunManager::normalize_id($run_id),
                 'trigger' => 'translation_completed'
             ];
 

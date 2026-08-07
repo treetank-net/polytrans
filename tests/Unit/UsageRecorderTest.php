@@ -261,6 +261,7 @@ describe('table row', function () {
             'post_id' => 22,
             'source_post_id' => 11,
             'target_language' => 'de',
+            'run_id' => '11111111-1111-4111-8111-111111111111',
         ]);
 
         expect($this->wpdb->inserted)->toHaveCount(1);
@@ -271,6 +272,7 @@ describe('table row', function () {
         expect($row['tokens_output'])->toBe(500);
         expect($row['tokens_reasoning'])->toBe(400);
         expect($row['target_language'])->toBe('de');
+        expect($row['run_id'])->toBe('11111111-1111-4111-8111-111111111111');
         expect($row['activity'])->toBe('translation');
         expect($row['pricing_source'])->toBe(ModelPricing::SOURCE_CATALOG);
 

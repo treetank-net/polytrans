@@ -9,6 +9,7 @@ namespace PolyTrans\Menu;
 
 use PolyTrans\Core\UsageRecorder;
 use PolyTrans\Core\UsageReport;
+use PolyTrans\Core\TranslationRunManager;
 use PolyTrans\Templating\TemplateRenderer;
 
 if (!defined('ABSPATH')) {
@@ -87,6 +88,7 @@ class UsageMenu
         // Creates the table on first view, so the page works on an installation that
         // was updated rather than reactivated.
         UsageRecorder::initialize();
+        TranslationRunManager::initialize();
 
         $filters = $this->read_filters();
 
@@ -109,6 +111,8 @@ class UsageMenu
             'by_path' => UsageReport::by('translation_path', $filters),
             'daily' => UsageReport::daily($filters),
             'top_posts' => UsageReport::top_posts($filters, 20),
+            'translation_run_totals' => UsageReport::translation_run_totals($filters),
+            'translation_runs' => UsageReport::translation_runs($filters, 20),
             'known_models' => UsageReport::known_models(),
             'activities' => $this->activity_choices(),
         ];

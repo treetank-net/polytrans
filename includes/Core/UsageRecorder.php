@@ -36,7 +36,7 @@ class UsageRecorder
      * being reactivated. An insert naming a column the table lacks is dropped by
      * wpdb with nothing but a database error to show for it.
      */
-    const SCHEMA_VERSION = 2;
+    const SCHEMA_VERSION = 3;
 
     const OPTION_SCHEMA = 'polytrans_usage_schema_version';
 
@@ -105,6 +105,7 @@ class UsageRecorder
         // "not priced", which must stay distinguishable from a genuine zero.
         $sql = "CREATE TABLE {$table} (
             id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+            run_id char(36) DEFAULT NULL,
             created_at datetime NOT NULL,
             post_id bigint(20) unsigned DEFAULT NULL,
             source_post_id bigint(20) unsigned DEFAULT NULL,
@@ -129,6 +130,7 @@ class UsageRecorder
             cost_usd decimal(18,10) DEFAULT NULL,
             pricing_source varchar(20) NOT NULL DEFAULT 'unknown',
             PRIMARY KEY  (id),
+            KEY run_id (run_id),
             KEY post_id (post_id),
             KEY source_post_id (source_post_id),
             KEY model (model),
@@ -196,6 +198,7 @@ class UsageRecorder
      *     @type int    $path_step       1-based position of this call within that path.
      *     @type string $surface         API surface used.
      *     @type string $effort          Reasoning effort used.
+     *     @type string $run_id          TranslationRun this call belongs to.
      * }
      * @return array The priced record, as stored.
      */
@@ -209,6 +212,7 @@ class UsageRecorder
 
         $record = [
             'created_at' => current_time('mysql'),
+            'run_id' => TranslationRunManager::normalize_id($event['run_id'] ?? null),
             'post_id' => !empty($event['post_id']) ? (int) $event['post_id'] : null,
             'source_post_id' => !empty($event['source_post_id']) ? (int) $event['source_post_id'] : null,
             'source_language' => !empty($event['source_language']) ? (string) $event['source_language'] : null,

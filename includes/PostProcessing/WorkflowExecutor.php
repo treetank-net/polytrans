@@ -482,6 +482,7 @@ class WorkflowExecutor
             'provider' => $step_result['provider'] ?? '',
             'model' => $step_result['model'] ?? '',
             'usage' => $usage,
+            'run_id' => $context['run_id'] ?? null,
             'effort' => $step_result['effort'] ?? null,
             'activity' => 'workflow_step',
             'step' => $step_config['name'] ?? ($step_config['id'] ?? ($step_config['type'] ?? 'step')),

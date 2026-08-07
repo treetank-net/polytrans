@@ -92,6 +92,100 @@
         </div>
     </div>
 
+    {% if translation_run_totals.runs > 0 %}
+        <h2>{{ __('Translation process totals', 'polytrans') }}</h2>
+        <p class="description">
+            {{ __('These figures cover complete article runs in the selected period. Source characters and words are denominators for comparison; provider billing remains token-based.', 'polytrans') }}
+        </p>
+        <div class="polytrans-usage-cards">
+            <div class="polytrans-usage-card polytrans-usage-card--process">
+                <span class="polytrans-usage-card__label">{{ __('Translation runs', 'polytrans') }}</span>
+                <span class="polytrans-usage-card__value">{{ translation_run_totals.runs|number_format(0, '.', ' ') }}</span>
+                <span class="polytrans-usage-card__note">
+                    {{ translation_run_totals.completed_runs }} {{ __('completed', 'polytrans') }}{% if translation_run_totals.failed_runs %}, {{ translation_run_totals.failed_runs }} {{ __('failed', 'polytrans') }}{% endif %}
+                </span>
+            </div>
+
+            <div class="polytrans-usage-card polytrans-usage-card--process">
+                <span class="polytrans-usage-card__label">{{ __('Source volume', 'polytrans') }}</span>
+                <span class="polytrans-usage-card__value">{{ translation_run_totals.source_characters|number_format(0, '.', ' ') }}</span>
+                <span class="polytrans-usage-card__note">
+                    {{ translation_run_totals.source_words|number_format(0, '.', ' ') }} {{ __('words', 'polytrans') }} · {{ translation_run_totals.calls|number_format(0, '.', ' ') }} {{ __('AI calls', 'polytrans') }}
+                </span>
+            </div>
+
+            <div class="polytrans-usage-card polytrans-usage-card--primary">
+                <span class="polytrans-usage-card__label">{{ __('Full process cost', 'polytrans') }}</span>
+                <span class="polytrans-usage-card__value">{{ translation_run_totals.total_cost_display }}</span>
+                <span class="polytrans-usage-card__note">
+                    {{ translation_run_totals.cost_per_1000_characters_display }} / 1k {{ __('chars', 'polytrans') }} · {{ translation_run_totals.cost_per_1000_words_display }} / 1k {{ __('words', 'polytrans') }}
+                </span>
+            </div>
+
+            <div class="polytrans-usage-card polytrans-usage-card--workflow">
+                <span class="polytrans-usage-card__label">{{ __('Workflow share', 'polytrans') }}</span>
+                <span class="polytrans-usage-card__value">{{ translation_run_totals.workflow_cost_display }}</span>
+                <span class="polytrans-usage-card__note">
+                    {{ translation_run_totals.workflow_share }}% {{ __('of priced process cost', 'polytrans') }} · {{ translation_run_totals.translation_cost_display }} {{ __('translation', 'polytrans') }}
+                </span>
+            </div>
+        </div>
+    {% endif %}
+
+    {% if translation_runs|length > 0 %}
+        <h2>{{ __('By translation process', 'polytrans') }}</h2>
+        <p class="description">
+            {{ __('One row is one translation run for one article and target language. The total includes every relay hop and post-translation workflow attached to that run. Source characters and words are visible-text metrics, useful for comparing engines but not provider billing units.', 'polytrans') }}
+        </p>
+        <table class="widefat striped polytrans-usage-table">
+            <thead>
+                <tr>
+                    <th>{{ __('Article', 'polytrans') }}</th>
+                    <th>{{ __('Target / path', 'polytrans') }}</th>
+                    <th class="num">{{ __('Source text', 'polytrans') }}</th>
+                    <th class="num">{{ __('Calls', 'polytrans') }}</th>
+                    <th class="num">{{ __('Translation', 'polytrans') }}</th>
+                    <th class="num">{{ __('Workflows', 'polytrans') }}</th>
+                    <th class="num">{{ __('Total', 'polytrans') }}</th>
+                    <th class="num">{{ __('Cost / 1k source', 'polytrans') }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in translation_runs %}
+                    <tr>
+                        <td>
+                            {% if row.edit_link %}
+                                <a href="{{ row.edit_link|esc_url }}">{{ row.title ?: __('(untitled)', 'polytrans') }}</a>
+                            {% else %}
+                                {{ row.title ?: __('(post %d)', 'polytrans')|format(row.source_post_id) }}
+                            {% endif %}
+                            <br><small>{{ row.status }}</small>
+                        </td>
+                        <td>
+                            {{ row.target_language ?: __('not reported', 'polytrans') }}
+                            <br><small>{{ row.translation_path ?: __('direct', 'polytrans') }}</small>
+                        </td>
+                        <td class="num">
+                            {{ row.source_characters|number_format(0, '.', ' ') }} {{ __('chars', 'polytrans') }}<br>
+                            {{ row.source_words|number_format(0, '.', ' ') }} {{ __('words', 'polytrans') }}
+                        </td>
+                        <td class="num">
+                            {{ row.calls|number_format(0, '.', ' ') }}<br>
+                            <small>{{ row.translation_calls }} {{ __('tr', 'polytrans') }} / {{ row.workflow_calls }} {{ __('wf', 'polytrans') }}</small>
+                        </td>
+                        <td class="num">{{ row.translation_cost_display }}</td>
+                        <td class="num">{{ row.workflow_cost_display }}</td>
+                        <td class="num">{{ row.total_cost_display }}</td>
+                        <td class="num">
+                            {{ row.cost_per_1000_characters_display }} {{ __('chars', 'polytrans') }}<br>
+                            {{ row.cost_per_1000_words_display }} {{ __('words', 'polytrans') }}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+
     {% if totals.calls == 0 %}
         <div class="notice notice-info">
             <p>{{ __('No AI calls recorded for this period yet.', 'polytrans') }}</p>

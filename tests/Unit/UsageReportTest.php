@@ -312,6 +312,86 @@ describe('result handling', function () {
         expect($row['languages'])->toBe(3);
         expect($row['edit_link'])->toContain('post=11');
     });
+
+    it('aggregates the complete process per translation run', function () {
+        $this->wpdb->rows = [[
+            'run_id' => '11111111-1111-4111-8111-111111111111',
+            'created_at' => '2026-08-07 12:00:00',
+            'completed_at' => '2026-08-07 12:03:00',
+            'status' => 'completed',
+            'source_post_id' => '11',
+            'translated_post_id' => '22',
+            'source_language' => 'pl',
+            'target_language' => 'de',
+            'translation_path' => 'pl>en>de',
+            'source_characters' => '1000',
+            'source_words' => '200',
+            'calls' => '5',
+            'translation_calls' => '2',
+            'workflow_calls' => '3',
+            'unpriced_calls' => '0',
+            'total_usd' => '0.0123',
+            'translation_usd' => '0.0050',
+            'workflow_usd' => '0.0073',
+            'tokens_input' => '9000',
+            'tokens_output' => '4000',
+            'tokens_cached_read' => '0',
+            'tokens_reasoning' => '2000',
+        ]];
+
+        $rows = UsageReport::translation_runs(['days' => 30, 'activity' => 'workflow_step']);
+        $row = $rows[0];
+
+        expect($this->wpdb->last_data_query())
+            ->toContain('LEFT JOIN wp_polytrans_usage u ON u.run_id = r.run_id')
+            ->toContain('EXISTS (SELECT 1 FROM wp_polytrans_usage uf_activity')
+            ->toContain('r.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)');
+        expect($row['title'])->toBe('Artykuł o cłach');
+        expect($row['calls'])->toBe(5);
+        expect($row['translation_calls'])->toBe(2);
+        expect($row['workflow_calls'])->toBe(3);
+        expect($row['source_characters'])->toBe(1000);
+        expect($row['source_words'])->toBe(200);
+        expect($row['total_cost_display'])->toBe('$0.0123');
+        expect($row['cost_per_1000_characters_display'])->toBe('$0.0123');
+        expect($row['cost_per_1000_words_display'])->toBe('$0.0615');
+    });
+
+    it('aggregates source volume once per run for process summary statistics', function () {
+        $this->wpdb->row = [
+            'runs' => '2',
+            'completed_runs' => '2',
+            'running_runs' => '0',
+            'failed_runs' => '0',
+            'source_characters' => '3000',
+            'source_words' => '600',
+            'calls' => '10',
+            'translation_calls' => '4',
+            'workflow_calls' => '6',
+            'unpriced_calls' => '0',
+            'total_usd' => '0.0246',
+            'translation_usd' => '0.0100',
+            'workflow_usd' => '0.0146',
+            'tokens_input' => '18000',
+            'tokens_output' => '8000',
+            'tokens_cached_read' => '0',
+            'tokens_reasoning' => '4000',
+        ];
+
+        $totals = UsageReport::translation_run_totals(['days' => 30]);
+
+        expect($this->wpdb->last_data_query())
+            ->toContain('LEFT JOIN (')
+            ->toContain('GROUP BY run_id')
+            ->toContain('r.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)');
+        expect($totals['runs'])->toBe(2);
+        expect($totals['source_characters'])->toBe(3000);
+        expect($totals['source_words'])->toBe(600);
+        expect($totals['calls'])->toBe(10);
+        expect($totals['cost_per_1000_characters_display'])->toBe('$0.0082');
+        expect($totals['cost_per_1000_words_display'])->toBe('$0.0410');
+        expect($totals['workflow_share'])->toBe(59);
+    });
 });
 
 describe('display formatting', function () {

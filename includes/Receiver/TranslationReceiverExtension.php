@@ -42,6 +42,28 @@ class TranslationReceiverExtension
         $original_post_id = $params['original_post_id'] ?? 0;
         $target_language = $params['target_language'] ?? '';
         $source_language = $params['source_language'] ?? '';
+        $source_metrics = is_array($params['source_metrics'] ?? null)
+            ? $params['source_metrics']
+            : \PolyTrans\Core\TextMetrics::from_payload($params['translated'] ?? []);
+        $run_id = \PolyTrans\Core\TranslationRunManager::normalize_id($params['run_id'] ?? null);
+        $run_id = $run_id
+            ? \PolyTrans\Core\TranslationRunManager::ensure(
+                $run_id,
+                [
+                    'source_post_id' => $original_post_id,
+                    'source_language' => $source_language,
+                    'target_language' => $target_language,
+                ],
+                $source_metrics
+            )
+            : \PolyTrans\Core\TranslationRunManager::start(
+                [
+                    'source_post_id' => $original_post_id,
+                    'source_language' => $source_language,
+                    'target_language' => $target_language,
+                ],
+                $source_metrics
+            );
 
         // Use global class with leading backslash (not namespaced)
         LogsManager::log("Received translation data for post $original_post_id from $source_language to $target_language", "info");
@@ -50,12 +72,14 @@ class TranslationReceiverExtension
         $result = $this->coordinator->process_translation($params);
 
         if (!$result['success']) {
+            \PolyTrans\Core\TranslationRunManager::fail($run_id);
             $status_code = (isset($result['code']) && $result['code'] === 'missing_data') ? 400 : 500;
             error_log("[polytrans] Translation processing failed: " . $result['error']); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
             return new \WP_REST_Response(['error' => $result['error']], $status_code);
         }
 
         error_log("[polytrans] Translation processing succeeded, created post ID: " . $result['created_post_id']); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+        \PolyTrans\Core\TranslationRunManager::attach_post($run_id, $result['created_post_id']);
 
         // Check if we should trigger workflows for received translations
         $settings = get_option('polytrans_settings', []);
@@ -76,7 +100,7 @@ class TranslationReceiverExtension
             LogsManager::log("Set post_processing status, triggering workflows for post {$result['created_post_id']}", "info");
 
             // Fire action for post-processing workflows (synchronous)
-            do_action('polytrans_translation_completed', $original_post_id, $result['created_post_id'], $target_language);
+            do_action('polytrans_translation_completed', $original_post_id, $result['created_post_id'], $target_language, $run_id);
             LogsManager::log("Workflows completed for received translation (post {$result['created_post_id']})", "info");
         } elseif ($workflows_already_executed) {
             LogsManager::log("Skipped workflows - already executed by sender (post {$result['created_post_id']})", "info");
@@ -99,12 +123,15 @@ class TranslationReceiverExtension
             LogsManager::log("Sent after-workflows notifications for post {$result['created_post_id']}", "info");
         }
 
+        \PolyTrans\Core\TranslationRunManager::complete($run_id);
+
         // Include detailed information in the response for the sender to update status
         return new \WP_REST_Response([
             'created_post_id' => $result['created_post_id'],
             'status' => $result['status'],
             'original_post_id' => $original_post_id,
             'target_language' => $target_language,
+            'run_id' => $run_id,
             /* translators: %d: the ID of the newly created translated post */
             'message' => sprintf(__('Translation successfully created with post ID %d', 'polytrans'), $result['created_post_id'])
         ], 201);

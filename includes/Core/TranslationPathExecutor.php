@@ -25,9 +25,10 @@ class TranslationPathExecutor
      * @param string $source_lang Source language code
      * @param string $target_lang Target language code
      * @param array $settings Translation settings
-     * @param array $usage_context Post context for usage accounting: 'source_post_id',
-     *                             optionally 'post_id'. Without it the cost of a step
-     *                             is still recorded, just not attributed to a post.
+     * @param array $usage_context Post/run context for usage accounting: 'source_post_id',
+     *                             optionally 'post_id' and 'run_id'. Without it the cost
+     *                             of a step is still recorded, just not attributed to a
+     *                             post or translation run.
      * @return array Translation result ['success' => bool, 'translated_content' => array, 'error' => string]
      */
     public static function execute($content, $source_lang, $target_lang, $settings, $usage_context = [])
@@ -43,6 +44,10 @@ class TranslationPathExecutor
             "TranslationPathExecutor: Resolved path: " . implode(' -> ', $path),
             "info"
         );
+
+        if (!empty($usage_context['run_id'])) {
+            TranslationRunManager::update_path($usage_context['run_id'], implode('>', $path));
+        }
         
         // Validate entire path before execution (optional - shows all errors at once)
         $path_validation = \PolyTrans\Core\PathValidator::validate_path($path, $assistants_mapping, $settings);
@@ -176,6 +181,7 @@ class TranslationPathExecutor
             'provider' => $result['provider'] ?? '',
             'model' => $result['model'] ?? '',
             'usage' => $usage,
+            'run_id' => $usage_context['run_id'] ?? null,
             'activity' => 'translation',
             'step' => $usage_context['step'] ?? null,
             // The translated post does not exist yet at this point, so the cost is
@@ -189,6 +195,30 @@ class TranslationPathExecutor
             'path_step' => (int) $step_number,
             'skip_post_meta' => !empty($usage_context['skip_post_meta']),
         ]);
+    }
+
+    /**
+     * Record usage for a direct provider call that bypasses configured path rules.
+     *
+     * Keeping this beside path recording prevents the fallback provider branch from
+     * silently disappearing from both the usage ledger and its TranslationRun.
+     *
+     * @param array $result Provider result.
+     * @param string $source_lang Source language.
+     * @param string $target_lang Target language.
+     * @param array $usage_context Post/run context.
+     * @return void
+     */
+    public static function record_direct_usage($result, $source_lang, $target_lang, $usage_context = [])
+    {
+        self::record_step_usage(
+            $result,
+            $source_lang,
+            $target_lang,
+            [$source_lang, $target_lang],
+            1,
+            $usage_context
+        );
     }
 
     /**
@@ -420,4 +450,3 @@ class TranslationPathExecutor
         return $client->execute_assistant($assistant_id, $content, $source_lang, $target_lang);
     }
 }
-

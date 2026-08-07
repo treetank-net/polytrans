@@ -482,6 +482,8 @@ class BackgroundProcessor
         ];
         update_post_meta($post_id, $log_key, $log);
 
+        $run_id = null;
+
         try {
             // Get post content and metadata
             $all_meta = get_post_meta($post_id);
@@ -509,6 +511,14 @@ class BackgroundProcessor
             }
 
             $content_to_translate = TranslationPayloadBuilder::build($post, $meta, $settings);
+            $run_id = \PolyTrans\Core\TranslationRunManager::start(
+                [
+                    'source_post_id' => $post_id,
+                    'source_language' => $source_lang,
+                    'target_language' => $target_lang,
+                ],
+                \PolyTrans\Core\TextMetrics::from_payload($content_to_translate)
+            );
             
             if ($has_paths) {
                 // Use TranslationPathExecutor to respect path rules and provider/assistant mappings
@@ -525,7 +535,10 @@ class BackgroundProcessor
                     $source_lang,
                     $target_lang,
                     $settings,
-                    ['source_post_id' => $post_id]
+                    [
+                        'source_post_id' => $post_id,
+                        'run_id' => $run_id,
+                    ]
                 );
             } else {
                 // Fallback to default provider if no paths configured
@@ -555,6 +568,15 @@ class BackgroundProcessor
             ]);
 
             $translation_result = $provider->translate($content_to_translate, $source_lang, $target_lang, $settings);
+            \PolyTrans\Core\TranslationPathExecutor::record_direct_usage(
+                $translation_result,
+                $source_lang,
+                $target_lang,
+                [
+                    'source_post_id' => $post_id,
+                    'run_id' => $run_id,
+                ]
+            );
             }
 
             if (!$translation_result['success']) {
@@ -581,7 +603,8 @@ class BackgroundProcessor
                 'source_language' => $source_lang,
                 'target_language' => $target_lang,
                 'original_post_id' => $post_id,
-                'translated' => $translation_result['translated_content']
+                'translated' => $translation_result['translated_content'],
+                'run_id' => $run_id,
             ];
 
             // Process the translation - this creates the translated post
@@ -615,9 +638,10 @@ class BackgroundProcessor
 
             // Store the created post ID
             update_post_meta($post_id, '_polytrans_translation_post_id_' . $target_lang, $result['created_post_id']);
+            \PolyTrans\Core\TranslationRunManager::attach_post($run_id, $result['created_post_id']);
 
             // Fire action for post-processing workflows
-            do_action('polytrans_translation_completed', $post_id, $result['created_post_id'], $target_lang);
+            do_action('polytrans_translation_completed', $post_id, $result['created_post_id'], $target_lang, $run_id);
 
             // Send notifications after workflows complete (if timing is set to 'after_workflows')
             $settings = get_option('polytrans_settings', []);
@@ -632,6 +656,8 @@ class BackgroundProcessor
                 self::log("Sent after-workflows notifications for post {$result['created_post_id']}", "info");
             }
 
+            \PolyTrans\Core\TranslationRunManager::complete($run_id);
+
             self::log("Translation completed successfully", "info", [
                 'post_id' => $post_id,
                 'created_post_id' => $result['created_post_id'],
@@ -639,6 +665,8 @@ class BackgroundProcessor
                 'target_lang' => $target_lang
             ]);
         } catch (\Exception $e) {
+            \PolyTrans\Core\TranslationRunManager::fail($run_id);
+
             // Update error status and log
             update_post_meta($post_id, $status_key, 'failed');
 
