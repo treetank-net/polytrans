@@ -524,7 +524,8 @@ class BackgroundProcessor
                     $content_to_translate,
                     $source_lang,
                     $target_lang,
-                    $settings
+                    $settings,
+                    ['source_post_id' => $post_id]
                 );
             } else {
                 // Fallback to default provider if no paths configured

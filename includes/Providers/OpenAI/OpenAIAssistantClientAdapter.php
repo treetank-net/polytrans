@@ -88,7 +88,8 @@ class OpenAIAssistantClientAdapter implements AIAssistantClientInterface
         sleep(10);
         $max_attempts = 30;
         $attempt = 0;
-        
+        $completed_run = [];
+
         while ($attempt < $max_attempts) {
             $status_result = $this->client->get_run_status($thread_id, $run_id);
             
@@ -103,6 +104,8 @@ class OpenAIAssistantClientAdapter implements AIAssistantClientInterface
             $status = $status_result['status'];
             
             if ($status === 'completed') {
+                // The finished run object is the only place the token counts appear.
+                $completed_run = is_array($status_result['data'] ?? null) ? $status_result['data'] : [];
                 break;
             } elseif (in_array($status, ['failed', 'cancelled', 'expired'])) {
                 return [
@@ -159,7 +162,11 @@ class OpenAIAssistantClientAdapter implements AIAssistantClientInterface
             return [
                 'success' => false,
                 'translated_content' => null,
-                'error' => 'Failed to parse OpenAI response: ' . $parse_result['error']
+                'error' => 'Failed to parse OpenAI response: ' . $parse_result['error'],
+                // Billed regardless of whether we could use the answer.
+                'usage' => $completed_run['usage'] ?? [],
+                'provider' => 'openai',
+                'model' => $completed_run['model'] ?? ''
             ];
         }
         
@@ -174,7 +181,10 @@ class OpenAIAssistantClientAdapter implements AIAssistantClientInterface
         return [
             'success' => true,
             'translated_content' => $parse_result['data'],
-            'error' => null
+            'error' => null,
+            'usage' => $completed_run['usage'] ?? [],
+            'provider' => 'openai',
+            'model' => $completed_run['model'] ?? ''
         ];
     }
 }

@@ -25,9 +25,12 @@ class TranslationPathExecutor
      * @param string $source_lang Source language code
      * @param string $target_lang Target language code
      * @param array $settings Translation settings
+     * @param array $usage_context Post context for usage accounting: 'source_post_id',
+     *                             optionally 'post_id'. Without it the cost of a step
+     *                             is still recorded, just not attributed to a post.
      * @return array Translation result ['success' => bool, 'translated_content' => array, 'error' => string]
      */
-    public static function execute($content, $source_lang, $target_lang, $settings)
+    public static function execute($content, $source_lang, $target_lang, $settings, $usage_context = [])
     {
         // Use universal names with backward compatibility
         $path_rules = $settings['translation_path_rules'] ?? $settings['openai_path_rules'] ?? [];
@@ -114,6 +117,11 @@ class TranslationPathExecutor
             
             // Execute translation step
             $result = self::execute_step($content_to_translate, $step_source, $step_target, $assistant_id, $settings);
+
+            // Recorded before the success check: a step that failed while parsing the
+            // reply was still billed for it. Intermediate hops in a multi-step path
+            // are recorded separately, so a relay through English shows both legs.
+            self::record_step_usage($result, $step_target, $usage_context);
             
             if (!$result['success']) {
                 \PolyTrans_Logs_Manager::log(
@@ -137,6 +145,40 @@ class TranslationPathExecutor
         ];
     }
     
+    /**
+     * Record one translation step's token usage and estimated cost.
+     *
+     * Steps handled by a provider that reports no tokens (machine translation, for
+     * instance) carry no usage payload and are skipped.
+     *
+     * @param array  $result        Step result.
+     * @param string $target_lang   Language this step produced.
+     * @param array  $usage_context Post context passed into execute().
+     * @return void
+     */
+    private static function record_step_usage($result, $target_lang, $usage_context)
+    {
+        $usage = is_array($result) ? ($result['usage'] ?? null) : null;
+
+        if (empty($usage) || !is_array($usage)) {
+            return;
+        }
+
+        UsageRecorder::record([
+            'provider' => $result['provider'] ?? '',
+            'model' => $result['model'] ?? '',
+            'usage' => $usage,
+            'activity' => 'translation',
+            'step' => $usage_context['step'] ?? null,
+            // The translated post does not exist yet at this point, so the cost is
+            // attributed to the original, bucketed by the language being produced.
+            'post_id' => $usage_context['post_id'] ?? null,
+            'source_post_id' => $usage_context['source_post_id'] ?? null,
+            'target_language' => $target_lang,
+            'skip_post_meta' => !empty($usage_context['skip_post_meta']),
+        ]);
+    }
+
     /**
      * Resolve translation path using path rules
      * Returns an array of language codes representing the path
@@ -297,7 +339,15 @@ class TranslationPathExecutor
         }
         
         $ai_output = $result['output'] ?? '';
-        
+
+        // Carried on every outcome below so the call is billed even when its output
+        // turns out to be unusable.
+        $usage_fields = [
+            'usage' => $result['usage'] ?? [],
+            'provider' => $result['provider'] ?? 'openai',
+            'model' => $result['model'] ?? '',
+        ];
+
         // Parse JSON output if needed
         if (!empty($assistant['expected_output_schema']) && $assistant['expected_format'] === 'json') {
             if (is_string($ai_output)) {
@@ -310,28 +360,28 @@ class TranslationPathExecutor
         
         // If output is already an array, use it directly
         if (is_array($ai_output)) {
-            return [
+            return array_merge([
                 'success' => true,
                 'translated_content' => $ai_output
-            ];
+            ], $usage_fields);
         }
         
         // Otherwise, try to parse as JSON
         if (is_string($ai_output)) {
             $decoded = json_decode($ai_output, true);
             if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-                return [
+                return array_merge([
                     'success' => true,
                     'translated_content' => $decoded
-                ];
+                ], $usage_fields);
             }
         }
-        
-        return [
+
+        return array_merge([
             'success' => false,
             'error' => 'Invalid output format from Managed Assistant',
             'error_code' => 'invalid_output_format'
-        ];
+        ], $usage_fields);
     }
     
     /**

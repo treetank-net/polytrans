@@ -114,6 +114,40 @@ if (!function_exists('apply_filters')) {
     }
 }
 
+if (!defined('DAY_IN_SECONDS')) {
+    define('DAY_IN_SECONDS', 86400);
+}
+
+// $wpdb result formats.
+if (!defined('ARRAY_A')) {
+    define('ARRAY_A', 'ARRAY_A');
+}
+
+if (!defined('ARRAY_N')) {
+    define('ARRAY_N', 'ARRAY_N');
+}
+
+// Transient stubs are intentionally NOT defined here. Individual test files
+// declare their own, each with its own backing store, so a shared definition
+// here would win the function_exists() race and break them. Seed and read
+// transients through set_transient()/get_transient() rather than a global array.
+
+if (!function_exists('wp_remote_get')) {
+    /**
+     * Offline by default: tests must seed a transient or a filter rather than
+     * reaching the network. Set $GLOBALS['polytrans_test_http_get'] to override.
+     */
+    function wp_remote_get($url, $args = []) {
+        $handler = $GLOBALS['polytrans_test_http_get'] ?? null;
+
+        if (is_callable($handler)) {
+            return call_user_func($handler, $url, $args);
+        }
+
+        return new WP_Error('http_request_failed', 'Network disabled in unit tests: ' . $url);
+    }
+}
+
 if (!function_exists('wp_remote_retrieve_response_code')) {
     function wp_remote_retrieve_response_code($response) {
         return is_array($response) && isset($response['response']['code']) ? (int) $response['response']['code'] : 0;

@@ -121,7 +121,10 @@ class PredefinedAssistantStep implements WorkflowStepInterface
                     'raw_response' => $ai_output,
                     'interpolated_user_message' => $interpolated_user_message,
                     'assistant_id' => $assistant_id,
-                    'tokens_used' => 0
+                    'tokens_used' => $result['usage'] ?? 0,
+                    'usage' => $result['usage'] ?? [],
+                    'provider' => $result['provider'] ?? null,
+                    'model' => $result['model'] ?? null
                 ];
             } elseif (strpos($assistant_id, 'provider_') === 0) {
                 // Translation Provider - not supported in workflow steps
@@ -184,7 +187,10 @@ class PredefinedAssistantStep implements WorkflowStepInterface
                 'raw_response' => $ai_response['data'],
                 'interpolated_user_message' => $interpolated_user_message,
                 'assistant_id' => $assistant_id,
-                'tokens_used' => $ai_response['tokens_used'] ?? 0
+                'tokens_used' => $ai_response['tokens_used'] ?? 0,
+                'usage' => $ai_response['usage'] ?? [],
+                'provider' => $ai_response['provider'] ?? null,
+                'model' => $ai_response['model'] ?? null
             ];
         } catch (\Exception $e) {
             return [
@@ -348,10 +354,18 @@ class PredefinedAssistantStep implements WorkflowStepInterface
                 ];
             }
 
+            // The completed run object carries the token counts and the model that
+            // actually served it - the assistant config only names a default.
+            $run = $completion_response['data'] ?? [];
+            $usage = is_array($run) ? ($run['usage'] ?? []) : [];
+
             return [
                 'success' => true,
                 'data' => $message_response['content'],
-                'tokens_used' => 0 // Could be extracted from completion_response if needed
+                'tokens_used' => (int) ($usage['total_tokens'] ?? 0),
+                'usage' => $usage,
+                'provider' => 'openai',
+                'model' => is_array($run) ? ($run['model'] ?? '') : ''
             ];
         } catch (\Exception $e) {
             return [

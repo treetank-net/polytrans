@@ -1010,6 +1010,19 @@ class AssistantsMenu
             ];
         }
 
+        // A test call is billed like any other. Recorded against no post, since
+        // nothing was published, but it still belongs in the cost totals.
+        \PolyTrans\Core\UsageRecorder::record([
+            'provider' => $result['provider'] ?? ($assistant['provider'] ?? ''),
+            'model' => $result['model'] ?? ($assistant['api_parameters']['model'] ?? ''),
+            'usage' => $result['usage'] ?? [],
+            'activity' => 'assistant_test',
+            'step' => $assistant['name'] ?? null,
+            'source_post_id' => $selected_post_id > 0 ? $selected_post_id : null,
+            'target_language' => $target_language,
+            'skip_post_meta' => true,
+        ]);
+
         if (empty($result['success'])) {
             return [
                 'success' => false,

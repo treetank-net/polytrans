@@ -139,10 +139,95 @@ grep -E "Version:|POLYTRANS_VERSION" polytrans.php
 
 ## Architecture Notes
 
+- **PSR-4, always**: `composer.json` maps `PolyTrans\` → `includes/`, loaded via
+  `includes/Bootstrap.php`. New code goes in a namespaced class under `includes/`.
+  Do **not** add procedural functions to `polytrans.php` — it holds only the plugin
+  header, constants and the WordPress lifecycle hooks.
 - **Twig Templates**: All admin UI uses Twig templates in `templates/`
 - **Provider System**: Pluggable AI providers via `PolyTrans_Provider_Registry`
 - **Workflows**: Post-processing workflows in `includes/PostProcessing/`
 - **Settings**: Stored in `polytrans_settings` WordPress option
+
+### Database tables
+
+Each table is owned by its class, which exposes `initialize()` / `create_table()`
+using `dbDelta`, and is registered in `polytrans_activate()` in `polytrans.php`:
+
+| Table | Owner |
+|---|---|
+| `polytrans_logs` | `Core\LogsManager` |
+| `polytrans_workflows` | `PostProcessing\Managers\WorkflowStorageManager` |
+| `polytrans_assistants` | `Assistants\AssistantManager` |
+| `polytrans_usage` | `Core\UsageRecorder` |
+
+Prefer a lazy `initialize()` before the first write as well, so updating the plugin
+without reactivating it does not silently drop data.
+
+**Trap**: `polytrans_create_tables()` in `polytrans.php` is dead code — nothing
+calls it. Adding table creation there has no effect.
+
+### Long-running admin actions
+
+Anything that waits on a model must go through `Core\AsyncJobRunner`
+(`dispatch()` → transient + loopback worker, then `poll()`), not one held-open AJAX
+request. High reasoning effort runs for minutes, which outlives proxy and PHP
+limits, and a dropped connection carries no error message. The worker also has a
+shutdown handler, so a fatal becomes a reported failure.
+
+Each menu registers its own `dispatch`/`poll` actions with its own nonce and adds a
+`polytrans_async_job_execute` filter handling only its own job types, passing
+everything else through. Existing users: workflow refinement, assistant tests.
+
+### Model capabilities and cost
+
+- `Core\ModelCapabilities` — which reasoning effort levels and temperature a
+  `(model, endpoint)` pair accepts, plus `resolve_surface()` routing between
+  OpenAI's `/chat/completions` and `/responses`. See
+  `docs/developer/MODEL_CAPABILITIES.md`.
+- `Core\ModelPricing` — per-token prices. **No provider publishes prices via its
+  API** (verified); the catalogue comes from OpenRouter, cached in a transient.
+  Reasoning tokens are inside the output count for OpenAI/Anthropic but separate
+  for Gemini — billing them twice is the easy mistake.
+- `Core\UsageRecorder` — writes a row to `polytrans_usage`, post meta on the
+  translated post, and a per-language breakdown on the original. Costs are frozen
+  at write time, since prices change.
+
+`record()` is called from the places that know both the usage payload and the post
+it belongs to:
+
+| Call site | `activity` |
+|---|---|
+| `Core\TranslationPathExecutor` (per path step) | `translation` |
+| `PostProcessing\WorkflowExecutor` (per step) | `workflow_step` |
+| `Menu\AssistantsMenu` (test runs) | `assistant_test` |
+
+To make a new AI call show up, return the provider's raw `usage` block — not a
+single token total, which cannot be priced — alongside `provider` and `model`, and
+let the caller that knows the post record it. `skip_post_meta` writes the row but
+leaves post totals alone; use it for test runs, which cost money without producing
+a post. Usage is recorded even when the step later fails, because a reply that
+could not be parsed was still billed.
+
+`OpenAI\OpenAIProvider::translate()` duplicates the path logic and is effectively
+unreachable — any configured assistant makes `$has_paths` true, routing through
+`TranslationPathExecutor` instead — so it is deliberately not instrumented.
+
+Reporting: `Core\UsageReport` (SQL aggregations), `Menu\UsageMenu` (dashboard) and
+`Core\UsageMetaBox` (per-post panel, reads the meta so no query runs on an edit
+screen). A group column cannot be a prepared value, so `UsageReport::by()` takes
+only names from its allow-list — the dashboard passes request input into it.
+
+### Gotchas
+
+- **OpenAI settings are saved through an explicit key list**, not a merge
+  (`Core\TranslationSettings`). A new `openai_*` setting is silently discarded
+  until it is added to that list. Claude and Gemini use `array_merge`.
+- `ChatClientFactory` only knows the provider, not the model, so
+  `OpenAIChatClientAdapter` is the single entry point for OpenAI and delegates to
+  the `/responses` adapter when the model or effort requires it.
+- Reasoning models reject `max_tokens` (they want `max_completion_tokens`), and on
+  `/responses` the token budget covers reasoning tokens, so a limit carried over
+  from Chat Completions can starve the answer entirely.
 
 ## Translation Flow
 

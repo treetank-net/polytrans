@@ -1,0 +1,44 @@
+{# Cost of the AI work on this post, read straight from the summary meta. #}
+
+<div class="polytrans-usage-metabox">
+    <span class="polytrans-usage-metabox__total">{{ total_display }}</span>
+
+    {% if summary.unpriced_calls > 0 %}
+        <p class="polytrans-usage-metabox__note">
+            {# Stated plainly: the figure above is short by whatever these cost. #}
+            {{ summary.unpriced_calls }} {{ __('calls had no price available', 'polytrans') }}
+        </p>
+    {% endif %}
+
+    {% if languages|length > 0 %}
+        <table>
+            <tbody>
+                {% for row in languages %}
+                    <tr>
+                        <td><strong>{{ row.label|upper }}</strong></td>
+                        <td class="num">{{ row.cost_display }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+
+    {% if models|length > 0 %}
+        <p class="polytrans-usage-metabox__note">
+            {{ __('Models', 'polytrans') }}:
+            {% for row in models %}{{ row.label }}{% if not loop.last %}, {% endif %}{% endfor %}
+        </p>
+    {% endif %}
+
+    <p class="polytrans-usage-metabox__note">
+        {{ summary.calls }} {{ __('calls', 'polytrans') }},
+        {{ (summary.tokens_input + summary.tokens_output)|number_format(0, '.', ' ') }} {{ __('tokens', 'polytrans') }}
+        {% if reasoning_share > 0 %}
+            &middot; {{ reasoning_share }}% {{ __('reasoning', 'polytrans') }}
+        {% endif %}
+    </p>
+
+    <p class="polytrans-usage-metabox__note">
+        <a href="{{ dashboard_url|esc_url }}">{{ __('All AI costs', 'polytrans') }} &rarr;</a>
+    </p>
+</div>

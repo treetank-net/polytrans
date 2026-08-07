@@ -119,18 +119,26 @@ class GeminiAssistantClientAdapter implements AIAssistantClientInterface
             ];
         }
         
+        // Token counts and the model that actually served the request. Gemini reports
+        // thinking tokens outside the candidate count, so pricing needs the raw block.
+        $usage_fields = [
+            'usage' => $body_data['usageMetadata'] ?? [],
+            'provider' => 'gemini',
+            'model' => $body_data['modelVersion'] ?? $agent_path,
+        ];
+
         // Extract content from response
         $translated_text = null;
         if (isset($body_data['candidates'][0]['content']['parts'][0]['text'])) {
             $translated_text = $body_data['candidates'][0]['content']['parts'][0]['text'];
         }
-        
+
         if (empty($translated_text)) {
-            return [
+            return array_merge([
                 'success' => false,
                 'translated_content' => null,
                 'error' => 'No content returned from Gemini agent'
-            ];
+            ], $usage_fields);
         }
         
         // Parse JSON response
@@ -138,17 +146,17 @@ class GeminiAssistantClientAdapter implements AIAssistantClientInterface
         $parsed = $parser->parse($translated_text);
         
         if (!$parsed['success']) {
-            return [
+            return array_merge([
                 'success' => false,
                 'translated_content' => null,
                 'error' => 'Failed to parse Gemini agent response: ' . ($parsed['error'] ?? 'Invalid JSON')
-            ];
+            ], $usage_fields);
         }
-        
-        return [
+
+        return array_merge([
             'success' => true,
             'translated_content' => $parsed['data'],
             'error' => null
-        ];
+        ], $usage_fields);
     }
 }

@@ -165,6 +165,10 @@ class WorkflowExecutor
 
                 $steps_executed++;
 
+                // Record what the step spent. Done for failed steps too: a step that
+                // errored after the model replied still cost money.
+                $this->record_step_usage($step_result, $step_config, $execution_context, $workflow, $test_mode);
+
                 // Process output actions if step succeeded
                 $output_processing_info = '';
                 $output_processing_errors = [];
@@ -454,8 +458,46 @@ class WorkflowExecutor
     }
 
     /**
+     * Record a step's token usage and estimated cost.
+     *
+     * Steps that do not call a model return no usage payload, and nothing is
+     * recorded for them.
+     *
+     * @param array $step_config Step configuration.
+     * @param array $step_result Result returned by the step.
+     * @param array $context     Execution context.
+     * @param array $workflow    Workflow definition.
+     * @param bool  $test_mode   Whether this is a test run.
+     * @return void
+     */
+    private function record_step_usage($step_result, $step_config, $context, $workflow, $test_mode)
+    {
+        $usage = $step_result['usage'] ?? null;
+
+        if (empty($usage) || !is_array($usage)) {
+            return;
+        }
+
+        \PolyTrans\Core\UsageRecorder::record([
+            'provider' => $step_result['provider'] ?? '',
+            'model' => $step_result['model'] ?? '',
+            'usage' => $usage,
+            'effort' => $step_result['effort'] ?? null,
+            'activity' => 'workflow_step',
+            'step' => $step_config['name'] ?? ($step_config['id'] ?? ($step_config['type'] ?? 'step')),
+            'workflow_id' => $workflow['id'] ?? null,
+            'post_id' => $context['translated_post_id'] ?? null,
+            'source_post_id' => $context['original_post_id'] ?? null,
+            'target_language' => $context['target_language'] ?? null,
+            // A test run costs real money, so the row is written; the post's own
+            // totals are left alone, since no published post came of it.
+            'skip_post_meta' => (bool) $test_mode,
+        ]);
+    }
+
+    /**
      * Check if a variable exists in the context (supports dot notation)
-     * 
+     *
      * @param string $var_name Variable name (supports dot notation like 'original_post.title')
      * @param array $context Execution context
      * @return bool

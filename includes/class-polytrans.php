@@ -43,6 +43,11 @@ class PolyTrans
         add_action('admin_enqueue_scripts', [$this, 'enqueue_admin_scripts']);
         add_action('wp_enqueue_scripts', [$this, 'enqueue_public_scripts']);
         add_action('add_meta_boxes', [$this, 'add_meta_boxes']);
+        // Registered separately because it needs the post to decide whether there is
+        // anything to show, which the two-argument form of the hook provides.
+        add_action('add_meta_boxes', function ($post_type, $post) {
+            \PolyTrans\Core\UsageMetaBox::get_instance()->register($post_type, $post);
+        }, 10, 2);
         add_action('save_post', [$this, 'save_post_meta']);
 
         // AJAX handlers
@@ -144,7 +149,10 @@ class PolyTrans
         // 6. Execute Workflow (both added by Postprocessing Menu)
         PolyTrans_Postprocessing_Menu::get_instance()->add_admin_menu();
         
-        // 7. Logs
+        // 7. AI Costs
+        \PolyTrans\Menu\UsageMenu::get_instance()->add_admin_menu();
+
+        // 8. Logs
         PolyTrans_Logs_Menu::get_instance()->add_logs_submenu();
     }
 
@@ -160,6 +168,8 @@ class PolyTrans
         PolyTrans_Translation_Scheduler::get_instance()->enqueue_admin_scripts($hook);
         PolyTrans_Postprocessing_Menu::get_instance()->enqueue_assets($hook);
         PolyTrans_Assistants_Menu::get_instance()->enqueue_assets($hook);
+        \PolyTrans\Menu\UsageMenu::get_instance()->add_scripts($hook);
+        \PolyTrans\Core\UsageMetaBox::get_instance()->add_scripts($hook);
     }
 
     /**

@@ -141,7 +141,11 @@ class AiAssistantStep implements WorkflowStepInterface
                 'raw_response' => $ai_response['data'],
                 'interpolated_system_prompt' => $interpolated_system_prompt,
                 'interpolated_user_message' => $interpolated_user_message,
-                'tokens_used' => $ai_response['tokens_used'] ?? 0
+                'tokens_used' => $ai_response['tokens_used'] ?? 0,
+                'usage' => $ai_response['usage'] ?? [],
+                'provider' => $ai_response['provider'] ?? null,
+                'model' => $ai_response['model'] ?? null,
+                'effort' => $ai_response['effort'] ?? null
             ];
         } catch (\Exception $e) {
             return [
@@ -601,11 +605,19 @@ class AiAssistantStep implements WorkflowStepInterface
                 $tokens_used = (int) ($response['data']['usage']['input_tokens'] ?? 0) + (int) ($response['data']['usage']['output_tokens'] ?? 0);
             }
         }
-        
+
         return [
             'success' => true,
             'data' => $content,
-            'tokens_used' => $tokens_used
+            // Kept as a single number for the existing log fields; the raw usage
+            // payload below is what pricing needs, since a total cannot be priced.
+            'tokens_used' => $tokens_used,
+            'usage' => $response['data']['usage'] ?? [],
+            'provider' => $provider_id,
+            // The response reports the exact snapshot served, which may be more
+            // specific than the alias we asked for.
+            'model' => $response['data']['model'] ?? ($request['model'] ?? ''),
+            'effort' => $request['reasoning_effort'] ?? null,
         ];
     }
 

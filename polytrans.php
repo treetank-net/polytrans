@@ -4,7 +4,7 @@
  * Plugin Name: PolyTrans
  * Plugin URI: https://github.com/treetank-net/polytrans
  * Description: Advanced multilingual translation management system with AI-powered translation, scheduling, and review workflow
- * Version: 1.16.1
+ * Version: 1.17.0
  * Author: treetank
  * Author URI: https://treetank.net
  * Text Domain: polytrans
@@ -21,7 +21,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('POLYTRANS_VERSION', '1.16.1');
+define('POLYTRANS_VERSION', '1.17.0');
 define('POLYTRANS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('POLYTRANS_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('POLYTRANS_PLUGIN_FILE', __FILE__);
@@ -276,6 +276,9 @@ function polytrans_activate()
 
     // Initialize prompt refinement runtime storage table
     \PolyTrans\PromptRefinement\RefinementRunStorage::initialize();
+
+    // Initialize token usage / cost table
+    \PolyTrans\Core\UsageRecorder::initialize();
 
     // Run migration from ai_assistant to managed_assistant (one-time)
     if (\PolyTrans\Assistants\AssistantMigration::is_migration_needed()) {

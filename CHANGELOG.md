@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.17.0] - 2026-08-07
+
+### Added
+- **Token and cost accounting for every AI call.** Each call now records its token breakdown and an estimated cost to the new `polytrans_usage` table, to the plugin log, and to post meta: the translated post carries what producing it cost, and the original carries a per-language breakdown, so "what did translating this article into the other markets cost" is a single meta read rather than a query. Recorded from the translation path (per step, so a relay through an intermediate language shows both legs), from every workflow step, and from assistant tests.
+- **AI Costs dashboard** (PolyTrans → AI Costs) with totals and breakdowns by model, target language, activity and workflow, a daily trend, and a ranking of the most expensive articles. Filterable by period, activity and model.
+- **AI Cost meta box** on posts that have recorded usage, showing the total, the split per target language, and the share of output tokens spent on reasoning. Reads the stored summary, so opening an editor runs no aggregate query.
+- `Core\ModelPricing` - per-token prices, since **no provider publishes prices through its API** (verified against OpenAI's `/v1/models`, which carries no price fields at all). The catalogue is fetched from OpenRouter and cached for a day; when a refresh fails the previous copy is served rather than losing pricing entirely. Overridable through the `polytrans_model_pricing` filter.
+
+### Fixed
+- Reasoning tokens are no longer at risk of being billed twice. OpenAI and Anthropic count them inside the output total, while Gemini reports thinking separately, so only Gemini's are added on top. This matters more than it sounds: measured on `gpt-5.6-luna` at `max` effort, reasoning was 75% of the bill for one article, and the same post at `none` cost 14× less.
+- A model that is not in the price list is recorded with no cost and counted as an unpriced call, rather than as costing zero - a zero would quietly understate every total it was summed into. Unpriced calls are shown alongside each figure.
+- Workflow steps reported `tokens_used` as a single number, which cannot be priced: the same total costs different amounts depending on how it splits between input, output and cache. Steps now carry the provider's raw usage block along with the provider and the model the response reports actually serving the request.
+
 ## [1.16.1] - 2026-08-07
 
 ### Changed

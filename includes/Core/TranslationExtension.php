@@ -137,7 +137,8 @@ class TranslationExtension
                 $to_translate,
                 $source_lang,
                 $target_lang,
-                $settings
+                $settings,
+                ['source_post_id' => $original_post_id]
             );
         } else {
             // Fallback to default provider if no paths configured
