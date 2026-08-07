@@ -3,6 +3,7 @@
 namespace PolyTrans\Providers\Gemini;
 
 use PolyTrans\Providers\ChatClientInterface;
+use PolyTrans\Core\ModelCapabilities;
 use PolyTrans\Core\Http\HttpClient;
 use PolyTrans\Core\Http\HttpResponse;
 
@@ -100,21 +101,38 @@ class GeminiChatClientAdapter implements ChatClientInterface
             ];
         }
         
+        // Resolve temperature / reasoning effort for this specific model.
+        // Gemini expresses effort as thinkingConfig.thinkingLevel (older
+        // configurations may still resolve to a thinkingBudget).
+        $prepared = ModelCapabilities::prepare_chat_parameters('gemini', $model, $parameters);
+        $resolved = $prepared['parameters'];
+        $reasoning = $prepared['reasoning'];
+
         // Add generation config (temperature, maxOutputTokens, etc.)
         $generation_config = [];
-        if (isset($parameters['temperature'])) {
-            $generation_config['temperature'] = $parameters['temperature'];
+        if (isset($resolved['temperature'])) {
+            $generation_config['temperature'] = $resolved['temperature'];
         }
-        if (isset($parameters['max_tokens'])) {
-            $generation_config['maxOutputTokens'] = $parameters['max_tokens'];
+        if (isset($resolved['max_tokens'])) {
+            $generation_config['maxOutputTokens'] = $resolved['max_tokens'];
         }
-        if (isset($parameters['top_p'])) {
-            $generation_config['topP'] = $parameters['top_p'];
+        if (isset($resolved['top_p'])) {
+            $generation_config['topP'] = $resolved['top_p'];
         }
-        if (isset($parameters['top_k'])) {
-            $generation_config['topK'] = $parameters['top_k'];
+        if (isset($resolved['top_k'])) {
+            $generation_config['topK'] = $resolved['top_k'];
         }
-        
+
+        if ($reasoning !== null) {
+            $thinking_config = [];
+            if ($reasoning['mode'] === ModelCapabilities::MODE_THINKING_BUDGET) {
+                $thinking_config['thinkingBudget'] = (int) $reasoning['value'];
+            } else {
+                $thinking_config[$reasoning['param']] = $reasoning['value'];
+            }
+            $generation_config['thinkingConfig'] = $thinking_config;
+        }
+
         if (!empty($generation_config)) {
             $body['generationConfig'] = $generation_config;
         }

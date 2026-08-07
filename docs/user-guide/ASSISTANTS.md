@@ -136,10 +136,27 @@ Provide optimized version with:
 
 ### Step 4: Configuration
 
-- **Temperature** (0.0 - 2.0)
+- **Temperature** (range depends on the model)
   - `0.0`: Focused, deterministic responses
   - `0.7`: Balanced (default)
-  - `2.0`: Creative, varied responses
+  - Upper bound is `2.0` for OpenAI/Gemini, `1.0` for Claude
+
+- **Reasoning Effort** (shown instead of, or next to, Temperature)
+  - Reasoning models (OpenAI `gpt-5`/`o`-series, Claude 4.7 and newer) do not
+    accept a temperature. PolyTrans hides the temperature field for them and
+    shows an effort selector instead. Gemini and Claude 4.5/4.6 accept both, so
+    both controls are shown there.
+  - On OpenAI `gpt-5.1` and newer the two are mutually exclusive: a temperature
+    only applies when effort is set to `none`. If you set a temperature without
+    choosing an effort, PolyTrans turns reasoning off for you rather than letting
+    the request fail.
+  - The options are labelled with the value the provider itself expects, e.g.
+    `Medium (medium)` for OpenAI `reasoning_effort`, `High (high)` for Gemini
+    `thinkingLevel` and Claude `output_config.effort`, or
+    `Medium (8,192 thinking tokens)` for an older Claude thinking budget.
+  - **Provider default** leaves the parameter out of the request entirely.
+  - The control switches automatically when you pick a different model, and the
+    setting is kept when you switch between models that both support effort.
 
 - **Max Tokens** (1 - 32000)
   - Maximum length of response
@@ -236,6 +253,7 @@ The test uses sample variables:
 ### 4. Performance
 
 - **Temperature**: Lower for consistent results, higher for creative tasks
+- **Reasoning Effort**: Higher effort costs more tokens and latency - use `low`/`minimal` for mechanical tasks (formatting, extraction), `high` for analysis, and `xhigh`/`max` only where a model offers them and the task really needs it
 - **Max Tokens**: Set appropriately to avoid unnecessary costs
 - **Model Selection**: Use gpt-3.5-turbo for simple tasks, gpt-4 for complex analysis
 

@@ -576,6 +576,16 @@ class AssistantManager
 			if (isset($sanitized['api_parameters']['top_p'])) {
 				$sanitized['api_parameters']['top_p'] = (float) $sanitized['api_parameters']['top_p'];
 			}
+			// Reasoning effort is stored as a canonical level (none/minimal/low/medium/high)
+			// and translated to the provider-native parameter at request time.
+			if (isset($sanitized['api_parameters']['reasoning_effort'])) {
+				$effort = sanitize_text_field((string) $sanitized['api_parameters']['reasoning_effort']);
+				if ($effort === '' || !in_array($effort, \PolyTrans\Core\ModelCapabilities::LEVELS, true)) {
+					unset($sanitized['api_parameters']['reasoning_effort']);
+				} else {
+					$sanitized['api_parameters']['reasoning_effort'] = $effort;
+				}
+			}
 		} else {
 			$sanitized['api_parameters'] = array();
 		}

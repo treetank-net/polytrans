@@ -536,6 +536,9 @@ final class WorkflowRefinementService
             if (isset($targetStep['temperature'])) {
                 $api_parameters['temperature'] = (float) $targetStep['temperature'];
             }
+            if (!empty($targetStep['reasoning_effort'])) {
+                $api_parameters['reasoning_effort'] = (string) $targetStep['reasoning_effort'];
+            }
 
             return [
                 'id' => 0,

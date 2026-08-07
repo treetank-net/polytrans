@@ -15,6 +15,7 @@ if (!defined('POLYTRANS_PLUGIN_DIR')) {
 }
 
 $GLOBALS['polytrans_test_options'] = [];
+$GLOBALS['polytrans_test_filters'] = [];
 
 // Mock WordPress functions for unit tests
 if (!function_exists('__')) {
@@ -80,7 +81,19 @@ if (!function_exists('absint')) {
 }
 
 if (!function_exists('apply_filters')) {
+    /**
+     * Minimal apply_filters() stub.
+     *
+     * Tests may register a callback in $GLOBALS['polytrans_test_filters'][$hook_name]
+     * to exercise filterable code paths.
+     */
     function apply_filters($hook_name, $value, ...$args) {
+        $filters = $GLOBALS['polytrans_test_filters'] ?? [];
+
+        if (isset($filters[$hook_name]) && is_callable($filters[$hook_name])) {
+            return call_user_func($filters[$hook_name], $value, ...$args);
+        }
+
         return $value;
     }
 }

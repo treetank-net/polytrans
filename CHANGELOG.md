@@ -5,6 +5,25 @@ All notable changes to the PolyTrans plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+## [1.15.0] - 2026-08-07
+
+### Added
+- Provider-independent model capability layer (`PolyTrans\Core\ModelCapabilities`) that knows which models accept `temperature` and which expect a reasoning effort, including each provider's own effort naming (OpenAI `reasoning_effort`, Gemini `thinkingConfig.thinkingLevel`, Claude `output_config.effort`, older Claude `thinking.budget_tokens`).
+- Assistant editor and workflow AI step now swap the Temperature field for a Reasoning Effort selector when the selected model is a reasoning model, with options labelled using the provider-native values.
+- Effort is stored as a canonical level (`none`/`minimal`/`low`/`medium`/`high`/`xhigh`/`max`) and translated to the provider-native parameter at request time, so configurations survive model and provider switches.
+- Models where temperature and reasoning are mutually exclusive (OpenAI `gpt-5.1`+) now send `reasoning_effort: none` alongside a temperature instead of relying on the provider default effort, which differs between model generations and would otherwise fail.
+- Claude model loading reads the machine-readable `capabilities` object from `GET /v1/models` (per-level effort support and thinking modes), so newly released models get the correct effort levels without a plugin update.
+- Gemini model loading harvests `temperature`, `maxTemperature` and `thinking` from the `/models` endpoint to refine the capability knowledge base.
+- Filters `polytrans_model_capability_rules` and `polytrans_model_capabilities` to extend or correct model knowledge without touching the plugin; documented in `docs/developer/MODEL_CAPABILITIES.md`.
+
+### Fixed
+- OpenAI reasoning models (`gpt-5`, `gpt-5-mini`, `gpt-5-nano`, `o*`) no longer receive an unsupported `temperature` parameter, which previously made requests fail.
+- Effort level tables corrected against the live provider APIs: OpenAI Chat Completions has no `max` level at all (the ceiling is `xhigh`), the o-series does accept `xhigh`, `gpt-5.2`+ adds `xhigh`, and Gemini 2.5 rejects `thinkingLevel` and keeps using `thinkingBudget`.
+- Claude models that deprecated `temperature` (Opus 4.7/4.8, Opus 5, Sonnet 5, Fable 5) no longer receive it; they get `output_config.effort` instead.
+- Claude requests using an explicit thinking budget no longer send `temperature`/`top_p`/`top_k`, clamp the budget to the API minimum of 1024 tokens, and automatically raise `max_tokens` above the budget.
+
 ## [1.14.9] - 2026-06-15
 
 ### Fixed

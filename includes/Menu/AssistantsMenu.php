@@ -138,13 +138,22 @@ class AssistantsMenu
             }
         }
 
+        $models_for_provider = $this->get_model_options($current_provider, $current_model);
+        $capability_payload = $this->build_capability_payload($current_provider, $models_for_provider);
+
         // Localize script
         wp_localize_script('polytrans-assistants', 'polytransAssistants', [
             'ajaxUrl' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce('polytrans_assistants'),
-            'models' => $this->get_model_options($current_provider, $current_model),
+            'models' => $models_for_provider,
             'selected_model' => $current_model,
             'current_provider' => $current_provider,
+            'modelCapabilities' => [
+                $current_provider => $capability_payload['capabilities'],
+            ],
+            'defaultModels' => [
+                $current_provider => $capability_payload['default_model'],
+            ],
             'strings' => [
                 'confirmDelete' => __('Are you sure you want to delete this assistant?', 'polytrans'),
                 'saveSuccess' => __('Assistant saved successfully.', 'polytrans'),
@@ -153,6 +162,8 @@ class AssistantsMenu
                 'deleteError' => __('Failed to delete assistant.', 'polytrans'),
                 'loading' => __('Loading...', 'polytrans'),
                 'requiredField' => __('This field is required.', 'polytrans'),
+                'effortProviderDefault' => __('Provider default', 'polytrans'),
+                'temperatureUnsupported' => __('This model does not accept a temperature parameter.', 'polytrans'),
             ],
             'providers' => [
                 'openai' => [
@@ -192,6 +203,8 @@ class AssistantsMenu
      */
     private function enqueue_editor_assets($assistant, $models, $current_provider, $current_model, $provider_manifests, $providers_js)
     {
+        $editor_capability_payload = $this->build_capability_payload($current_provider, $models);
+
         // Enqueue prompt editor module (reusable component)
         wp_enqueue_script(
             'polytrans-prompt-editor',
@@ -232,6 +245,12 @@ class AssistantsMenu
             'selected_model' => $current_model,
             'current_provider' => $current_provider,
             'providerManifests' => $provider_manifests,
+            'modelCapabilities' => [
+                $current_provider => $editor_capability_payload['capabilities'],
+            ],
+            'defaultModels' => [
+                $current_provider => $editor_capability_payload['default_model'],
+            ],
             'strings' => [
                 'confirmDelete' => __('Are you sure you want to delete this assistant?', 'polytrans'),
                 'saveSuccess' => __('Assistant saved successfully.', 'polytrans'),
@@ -240,6 +259,8 @@ class AssistantsMenu
                 'deleteError' => __('Failed to delete assistant.', 'polytrans'),
                 'loading' => __('Loading...', 'polytrans'),
                 'requiredField' => __('This field is required.', 'polytrans'),
+                'effortProviderDefault' => __('Provider default', 'polytrans'),
+                'temperatureUnsupported' => __('This model does not accept a temperature parameter.', 'polytrans'),
             ],
             'providers' => $providers_js,
             'responseFormats' => [
@@ -371,7 +392,8 @@ class AssistantsMenu
                 'response_format' => 'text',
                 'expected_output_schema' => null,
                 'config' => [
-                    'temperature' => 0.7
+                    'temperature' => 0.7,
+                    'reasoning_effort' => '',
                 ]
             ];
         } else {
@@ -388,7 +410,8 @@ class AssistantsMenu
             // Map api_parameters to config for UI consistency
             if (isset($assistant['api_parameters']) && is_array($assistant['api_parameters'])) {
                 $assistant['config'] = [
-                    'temperature' => $assistant['api_parameters']['temperature'] ?? 0.7
+                    'temperature' => $assistant['api_parameters']['temperature'] ?? 0.7,
+                    'reasoning_effort' => $assistant['api_parameters']['reasoning_effort'] ?? '',
                 ];
                 // Also map model for easier access
                 if (isset($assistant['api_parameters']['model'])) {
@@ -444,6 +467,22 @@ class AssistantsMenu
         $current_model = $assistant['model'] ?? '';
         $models = $this->get_model_options($current_provider, $current_model);
 
+        // Resolve how this model expects its "creativity" to be controlled:
+        // classic temperature or provider-specific reasoning effort.
+        // "Use Global Setting" falls back to the provider's configured model.
+        $effective_model = $current_model !== ''
+            ? $current_model
+            : (string) ($settings[$current_provider . '_model'] ?? '');
+
+        $capabilities = \PolyTrans\Core\ModelCapabilities::get_model_capabilities($current_provider, $effective_model);
+        $effort_levels = \PolyTrans\Core\ModelCapabilities::get_effort_levels($current_provider, $effective_model);
+        $current_effort = \PolyTrans\Core\ModelCapabilities::normalize_effort(
+            $current_provider,
+            $effective_model,
+            $assistant['config']['reasoning_effort'] ?? ''
+        );
+        $capability_summary = \PolyTrans\Core\ModelCapabilities::describe($current_provider, $effective_model);
+
         // Prepare providers list for JS (legacy format)
         $providers_js = [
             'openai' => [
@@ -490,6 +529,10 @@ class AssistantsMenu
             'models' => $models,
             'current_provider' => $current_provider,
             'current_model' => $current_model,
+            'model_capabilities' => $capabilities,
+            'effort_levels' => $effort_levels,
+            'current_effort' => $current_effort,
+            'capability_summary' => $capability_summary,
             'providers' => $providers_js,
             'expected_output_schema_json' => $expected_output_schema_json,
             'polytrans_plugin_url' => POLYTRANS_PLUGIN_URL,
@@ -558,11 +601,27 @@ class AssistantsMenu
             wp_send_json_error(['message' => __('System Instructions are required for this provider.', 'polytrans')]);
         }
 
-        // Prepare API parameters
-        $api_parameters = [
-            'model' => $model,
-            'temperature' => $config['temperature'] ?? 0.7
-        ];
+        // Prepare API parameters - only store the knob the model actually accepts.
+        // An empty model means "use global setting", so judge capabilities by that model.
+        $api_parameters = ['model' => $model];
+        $effective_model = $model !== '' ? $model : (string) ($settings[$provider . '_model'] ?? '');
+
+        if (\PolyTrans\Core\ModelCapabilities::supports_temperature($provider, $effective_model)) {
+            $api_parameters['temperature'] = isset($config['temperature'])
+                ? (float) $config['temperature']
+                : 0.7;
+        }
+
+        if (\PolyTrans\Core\ModelCapabilities::supports_reasoning_effort($provider, $effective_model)) {
+            $effort = \PolyTrans\Core\ModelCapabilities::normalize_effort(
+                $provider,
+                $effective_model,
+                $config['reasoning_effort'] ?? ''
+            );
+            if ($effort !== null) {
+                $api_parameters['reasoning_effort'] = $effort;
+            }
+        }
 
         // Prepare assistant data matching Assistant Manager structure
         $assistant_data = [
@@ -770,6 +829,31 @@ class AssistantsMenu
     }
 
     /**
+     * Build the temperature / reasoning-effort capability payload for a provider.
+     *
+     * The provider's globally configured model is included so the "Use Global
+     * Setting" option resolves to real capabilities instead of the generic fallback.
+     *
+     * @param string $provider_id Provider ID
+     * @param array  $models      Grouped models shown in the dropdown
+     * @return array ['capabilities' => payload, 'default_model' => string]
+     */
+    private function build_capability_payload($provider_id, array $models)
+    {
+        $settings = get_option('polytrans_settings', []);
+        $default_model = (string) ($settings[$provider_id . '_model'] ?? '');
+
+        if ($default_model !== '') {
+            $models[__('Global setting', 'polytrans')][$default_model] = $default_model;
+        }
+
+        return [
+            'capabilities' => \PolyTrans\Core\ModelCapabilities::get_capabilities_payload($provider_id, $models),
+            'default_model' => $default_model,
+        ];
+    }
+
+    /**
      * Get API key setting key for provider
      *
      * @param string $provider_id Provider ID
@@ -828,10 +912,14 @@ class AssistantsMenu
 
         // Get models for the specified provider
         $models = $this->get_model_options($provider_id, $selected_model, $force_refresh);
+        $capability_payload = $this->build_capability_payload($provider_id, $models);
 
         wp_send_json_success([
             'models' => $models,
-            'selected_model' => $selected_model
+            'selected_model' => $selected_model,
+            'provider_id' => $provider_id,
+            'capabilities' => $capability_payload['capabilities'],
+            'default_model' => $capability_payload['default_model'],
         ]);
     }
 

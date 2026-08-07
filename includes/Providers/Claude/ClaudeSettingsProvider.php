@@ -349,6 +349,9 @@ class ClaudeSettingsProvider implements SettingsProviderInterface
             
             // Group models by family (similar to OpenAI approach)
             $grouped = [];
+
+            // Capability hints reported by the API (effort levels, thinking modes)
+            $api_metadata = [];
             $one_year_ago = new \DateTime();
             $one_year_ago->modify('-1 year');
             
@@ -364,7 +367,12 @@ class ClaudeSettingsProvider implements SettingsProviderInterface
                 }
                 
                 $models_processed++;
-                
+
+                $model_meta = $this->extract_capability_metadata($model);
+                if (!empty($model_meta)) {
+                    $api_metadata[strtolower($model_id)] = $model_meta;
+                }
+
                 // Only include Claude 3.0+ models (filter out Claude 2.x)
                 // Accept: claude-3-*, claude-opus-*, claude-sonnet-*, claude-haiku-*
                 if (strpos($model_id, 'claude-3') === false && 
@@ -429,7 +437,12 @@ class ClaudeSettingsProvider implements SettingsProviderInterface
             foreach ($grouped as $group => &$models) {
                 krsort($models);
             }
-            
+            unset($models);
+
+            if (!empty($api_metadata)) {
+                \PolyTrans\Core\ModelCapabilities::store_api_metadata('claude', $api_metadata);
+            }
+
             // Cache models for 1 hour
             if (!empty($grouped)) {
                 set_transient($cache_key, $grouped, HOUR_IN_SECONDS);
@@ -447,8 +460,78 @@ class ClaudeSettingsProvider implements SettingsProviderInterface
     }
     
     /**
+     * Translate an Anthropic /v1/models entry into ModelCapabilities metadata.
+     *
+     * The API reports capabilities in a machine readable form, e.g.
+     *
+     *     "capabilities": {
+     *         "effort": {"supported": true, "low": {"supported": true}, ...},
+     *         "thinking": {"supported": true, "types": {
+     *             "enabled": {"supported": false}, "adaptive": {"supported": true}
+     *         }}
+     *     }
+     *
+     * @param array $model Raw model entry.
+     * @return array Metadata in the ModelCapabilities::store_api_metadata() schema.
+     */
+    private function extract_capability_metadata(array $model)
+    {
+        $capabilities = $model['capabilities'] ?? null;
+
+        if (!is_array($capabilities)) {
+            return [];
+        }
+
+        $meta = [];
+
+        if (isset($capabilities['effort']) && is_array($capabilities['effort'])) {
+            $effort = $capabilities['effort'];
+            $supported = !empty($effort['supported']);
+
+            $levels = [];
+            if ($supported) {
+                // Levels are nested objects keyed by the value the API expects.
+                foreach ($effort as $level => $flag) {
+                    if ($level === 'supported' || !is_array($flag)) {
+                        continue;
+                    }
+                    if (!empty($flag['supported'])) {
+                        $levels[] = $level;
+                    }
+                }
+            }
+
+            $meta['effort'] = [
+                'supported' => $supported && !empty($levels),
+                'levels' => $levels,
+                'param' => 'output_config.effort',
+            ];
+        }
+
+        if (isset($capabilities['thinking']) && is_array($capabilities['thinking'])) {
+            $thinking = $capabilities['thinking'];
+
+            if (empty($thinking['supported'])) {
+                $meta['thinking'] = false;
+            } else {
+                $types = isset($thinking['types']) && is_array($thinking['types']) ? $thinking['types'] : [];
+                $meta['thinking'] = [
+                    'adaptive' => !empty($types['adaptive']['supported']),
+                    'enabled' => !empty($types['enabled']['supported']),
+                ];
+            }
+        }
+
+        if (isset($model['max_tokens']) && is_numeric($model['max_tokens'])) {
+            $meta['max_tokens'] = (int) $model['max_tokens'];
+        }
+
+        return $meta;
+    }
+
+    /**
      * Get model group name based on model ID
-     * 
+     *
      * @param string $model_id Model ID (e.g., 'claude-3-5-sonnet-20241022', 'claude-opus-4.1')
      * @return string Group name or empty string
      */

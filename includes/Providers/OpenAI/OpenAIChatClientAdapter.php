@@ -2,6 +2,7 @@
 
 namespace PolyTrans\Providers\OpenAI;
 
+use PolyTrans\Core\ModelCapabilities;
 use PolyTrans\Providers\ChatClientInterface;
 
 /**
@@ -31,23 +32,16 @@ class OpenAIChatClientAdapter implements ChatClientInterface
     
     public function chat_completion($messages, $parameters)
     {
-        // Build request body
-        $body = array_merge(
-            [
-                'messages' => $messages,
-            ],
-            $parameters
-        );
-        
         // Model must be provided - no fallback
-        if (empty($body['model'])) {
+        $model = $parameters['model'] ?? '';
+        if (empty($model)) {
             // Try to get model from settings
             $settings = get_option('polytrans_settings', []);
-            $body['model'] = $settings['openai_model'] ?? '';
+            $model = $settings['openai_model'] ?? '';
         }
-        
+
         // Model is required - return error if not set
-        if (empty($body['model'])) {
+        if (empty($model)) {
             return [
                 'success' => false,
                 'data' => null,
@@ -55,7 +49,23 @@ class OpenAIChatClientAdapter implements ChatClientInterface
                 'error_code' => 'model_not_selected',
             ];
         }
-        
+
+        // Reasoning models reject temperature and expect reasoning_effort instead.
+        $prepared = ModelCapabilities::prepare_chat_parameters('openai', $model, $parameters);
+
+        // Build request body
+        $body = array_merge(
+            [
+                'messages' => $messages,
+            ],
+            $prepared['parameters'],
+            ['model' => $model]
+        );
+
+        if ($prepared['reasoning'] !== null) {
+            $body[$prepared['reasoning']['param']] = $prepared['reasoning']['value'];
+        }
+
         // Get API timeout from settings (default: 180 seconds)
         $settings = get_option('polytrans_settings', []);
         $api_timeout = absint($settings['api_timeout'] ?? 180);

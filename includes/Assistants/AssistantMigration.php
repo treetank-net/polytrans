@@ -220,6 +220,11 @@ class AssistantMigration
             'temperature' => $config['temperature']
         ];
 
+        // Carry over reasoning effort for models that use it instead of temperature
+        if (!empty($step['reasoning_effort'])) {
+            $api_parameters['reasoning_effort'] = (string) $step['reasoning_effort'];
+        }
+
         $assistant_data = [
             'name' => $assistant_name,
             'provider' => 'openai',

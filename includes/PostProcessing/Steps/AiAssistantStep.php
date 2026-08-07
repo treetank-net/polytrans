@@ -293,11 +293,27 @@ class AiAssistantStep implements WorkflowStepInterface
             'temperature' => [
                 'type' => 'number',
                 'label' => __('Temperature', 'polytrans'),
-                'description' => __('AI creativity level (0.0 = focused, 1.0 = creative)', 'polytrans'),
+                'description' => __('AI creativity level (0.0 = focused, 1.0 = creative). Ignored by reasoning models.', 'polytrans'),
                 'min' => 0.0,
                 'max' => 1.0,
                 'step' => 0.1,
                 'default' => 0.7
+            ],
+            'reasoning_effort' => [
+                'type' => 'select',
+                'label' => __('Reasoning Effort', 'polytrans'),
+                'description' => __('Used instead of temperature by reasoning models. Translated to the provider-native parameter (OpenAI reasoning_effort, Gemini thinkingConfig.thinkingLevel, Claude output_config.effort).', 'polytrans'),
+                'options' => [
+                    '' => __('Provider default', 'polytrans'),
+                    'none' => __('None', 'polytrans'),
+                    'minimal' => __('Minimal', 'polytrans'),
+                    'low' => __('Low', 'polytrans'),
+                    'medium' => __('Medium', 'polytrans'),
+                    'high' => __('High', 'polytrans'),
+                    'xhigh' => __('Extra high', 'polytrans'),
+                    'max' => __('Maximum', 'polytrans'),
+                ],
+                'default' => ''
             ]
         ];
     }
@@ -459,15 +475,23 @@ class AiAssistantStep implements WorkflowStepInterface
      */
     private function prepare_ai_request($system_prompt, $user_message, $step_config, $provider_settings)
     {
-        // Ensure temperature is a float
-        $temperature = $step_config['temperature'] ?? 0.7;
-        if (is_string($temperature)) {
-            $temperature = floatval($temperature);
-        }
-        // Clamp temperature to valid range (provider-specific)
+        // Resolve temperature / reasoning effort against the target model:
+        // reasoning models reject temperature and expect an effort level instead.
         $provider_id = $provider_settings['provider'] ?? 'openai';
-        $max_temp = ($provider_id === 'openai') ? 2.0 : 1.0;
-        $temperature = max(0.0, min($max_temp, $temperature));
+        $model_id = $provider_settings['model'] ?? '';
+
+        $reasoning_effort = \PolyTrans\Core\ModelCapabilities::normalize_effort(
+            $provider_id,
+            $model_id,
+            $step_config['reasoning_effort'] ?? ''
+        );
+
+        $temperature = \PolyTrans\Core\ModelCapabilities::resolve_temperature(
+            $provider_id,
+            $model_id,
+            $step_config['temperature'] ?? 0.7,
+            $reasoning_effort !== null
+        );
 
         // Build messages array
         $messages = [];
@@ -499,6 +523,7 @@ class AiAssistantStep implements WorkflowStepInterface
         return [
             'messages' => $messages,
             'temperature' => $temperature,
+            'reasoning_effort' => $reasoning_effort,
             'model' => $provider_settings['model'] ?? '',
             'max_tokens' => $step_config['max_tokens'] ?? null,
         ];
@@ -523,10 +548,17 @@ class AiAssistantStep implements WorkflowStepInterface
         }
         
         // Prepare parameters for chat_completion
-        $parameters = [
-            'temperature' => $request['temperature'] ?? 0.7,
-        ];
-        
+        // Temperature/effort were already resolved for this model - send only what applies.
+        $parameters = [];
+
+        if (isset($request['temperature']) && $request['temperature'] !== null) {
+            $parameters['temperature'] = $request['temperature'];
+        }
+
+        if (!empty($request['reasoning_effort'])) {
+            $parameters['reasoning_effort'] = $request['reasoning_effort'];
+        }
+
         // Add model if provided
         if (!empty($request['model'])) {
             $parameters['model'] = $request['model'];

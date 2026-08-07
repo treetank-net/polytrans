@@ -3,6 +3,7 @@
 namespace PolyTrans\Providers\Claude;
 
 use PolyTrans\Providers\ChatClientInterface;
+use PolyTrans\Core\ModelCapabilities;
 use PolyTrans\Core\Http\HttpClient;
 use PolyTrans\Core\Http\HttpResponse;
 
@@ -86,28 +87,61 @@ class ClaudeChatClientAdapter implements ChatClientInterface
             ];
         }
         
+        // Resolve temperature / reasoning effort for this specific model.
+        // Newer models take `output_config.effort`; models without effort support
+        // express it as an extended-thinking token budget instead.
+        $prepared = ModelCapabilities::prepare_chat_parameters('claude', $model, $parameters);
+        $resolved = $prepared['parameters'];
+        $reasoning = $prepared['reasoning'];
+
+        $max_tokens = absint($resolved['max_tokens'] ?? 4096);
+        if ($max_tokens <= 0) {
+            $max_tokens = 4096;
+        }
+
         $body = [
             'model' => $model,
-            'max_tokens' => $parameters['max_tokens'] ?? 4096,
+            'max_tokens' => $max_tokens,
             'messages' => $claude_messages,
         ];
-        
+
         // Add system message if present
         if (!empty($system_message)) {
             $body['system'] = $system_message;
         }
-        
+
+        if ($reasoning !== null) {
+            if ($reasoning['mode'] === ModelCapabilities::MODE_THINKING_BUDGET) {
+                // Extended thinking: budget_tokens must leave room inside max_tokens.
+                $budget = (int) $reasoning['value'];
+                if ($budget > 0) {
+                    $body['thinking'] = [
+                        'type' => 'enabled',
+                        'budget_tokens' => max(1024, $budget),
+                    ];
+                    if ($body['max_tokens'] <= $body['thinking']['budget_tokens']) {
+                        $body['max_tokens'] = $body['thinking']['budget_tokens'] + $max_tokens;
+                    }
+                }
+            } else {
+                // Effort is a nested field: {"output_config": {"effort": "high"}}.
+                $body = $this->set_nested_parameter($body, $reasoning['param'], $reasoning['value']);
+            }
+        }
+
         // Add other parameters (temperature, top_p, etc.)
-        if (isset($parameters['temperature'])) {
-            $body['temperature'] = $parameters['temperature'];
+        if (isset($resolved['temperature'])) {
+            $body['temperature'] = $resolved['temperature'];
         }
-        if (isset($parameters['top_p'])) {
-            $body['top_p'] = $parameters['top_p'];
+        $thinking_enabled = isset($body['thinking']);
+        if (isset($resolved['top_p']) && !$thinking_enabled) {
+            $body['top_p'] = $resolved['top_p'];
         }
-        if (isset($parameters['top_k'])) {
-            $body['top_k'] = $parameters['top_k'];
+        if (isset($resolved['top_k']) && !$thinking_enabled) {
+            // Claude rejects top_k while extended thinking is enabled.
+            $body['top_k'] = $resolved['top_k'];
         }
-        
+
         // Get API timeout from settings (default: 180 seconds)
         $settings = get_option('polytrans_settings', []);
         $api_timeout = absint($settings['api_timeout'] ?? 180);
@@ -139,6 +173,36 @@ class ClaudeChatClientAdapter implements ChatClientInterface
         ];
     }
     
+    /**
+     * Write a possibly dotted parameter path into a request body.
+     *
+     * @param array  $body  Request body.
+     * @param string $path  Parameter path, e.g. "output_config.effort".
+     * @param mixed  $value Value to set.
+     * @return array
+     */
+    private function set_nested_parameter(array $body, $path, $value)
+    {
+        $segments = explode('.', (string) $path);
+        $target = &$body;
+
+        foreach ($segments as $index => $segment) {
+            if ($index === count($segments) - 1) {
+                $target[$segment] = $value;
+                break;
+            }
+
+            if (!isset($target[$segment]) || !is_array($target[$segment])) {
+                $target[$segment] = [];
+            }
+
+            $target = &$target[$segment];
+        }
+        unset($target);
+
+        return $body;
+    }
+
     public function extract_content($response)
     {
         // Claude format: content[0].text

@@ -141,14 +141,34 @@ class PostprocessingMenu
             $selected_model = $settings['openai_model'] ?? 'gpt-4o-mini';
             // Get available chat providers for AI Assistant step
             $chat_providers = $this->get_chat_providers_for_js();
-            
+            $openai_models = $this->get_openai_models($selected_model);
+
+            // Temperature vs reasoning effort knowledge for the step editor
+            $model_capabilities = [];
+            $default_models = [];
+            $capability_providers = array_unique(array_merge(['openai'], array_keys($chat_providers)));
+            foreach ($capability_providers as $provider_id) {
+                $provider_models = ($provider_id === 'openai') ? $openai_models : [];
+                $default_model = $settings[$provider_id . '_model'] ?? '';
+                if (!empty($default_model)) {
+                    $provider_models[__('Global setting', 'polytrans')][$default_model] = $default_model;
+                    $default_models[$provider_id] = $default_model;
+                }
+                $model_capabilities[$provider_id] = \PolyTrans\Core\ModelCapabilities::get_capabilities_payload(
+                    $provider_id,
+                    $provider_models
+                );
+            }
+
             wp_localize_script('polytrans-workflows', 'polytransWorkflows', [
                 'ajaxUrl' => admin_url('admin-ajax.php'),
                 'nonce' => wp_create_nonce('polytrans_workflows_nonce'),
                 'openai_nonce' => wp_create_nonce('polytrans_openai_nonce'),
-                'models' => $this->get_openai_models($selected_model),
+                'models' => $openai_models,
                 'selected_model' => $selected_model,
                 'chatProviders' => $chat_providers,
+                'modelCapabilities' => $model_capabilities,
+                'defaultModels' => $default_models,
                 'strings' => [
                     'confirmDelete' => __('Are you sure you want to delete this workflow?', 'polytrans'),
                     'confirmDuplicate' => __('Create a copy of this workflow?', 'polytrans'),
@@ -176,6 +196,10 @@ class PostprocessingMenu
                     'migrateWorkflow' => __('Migrate this workflow', 'polytrans'),
                     'migratingWorkflow' => __('Migrating...', 'polytrans'),
                     'migrationError' => __('Migration failed. Please check logs.', 'polytrans'),
+                    'temperature' => __('Temperature', 'polytrans'),
+                    'temperatureHint' => __('AI creativity level (lower = focused, higher = creative)', 'polytrans'),
+                    'reasoningEffort' => __('Reasoning Effort', 'polytrans'),
+                    'effortProviderDefault' => __('Provider default', 'polytrans'),
                 ],
                 'descriptionPrompts' => [
                     'system' => PromptRefinementSettings::descriptionGeneratorSystem(),
@@ -1715,7 +1739,16 @@ class PostprocessingMenu
                     $sanitized_step['model'] = $this->sanitize_model_field($step['model'] ?? '');
                     $sanitized_step['expected_format'] = sanitize_text_field($step['expected_format'] ?? 'text');
                     $sanitized_step['temperature'] = !empty($step['temperature']) ? floatval($step['temperature']) : 0.7;
-                    
+
+                    // Reasoning effort - canonical level, translated per provider at request time
+                    $reasoning_effort = isset($step['reasoning_effort'])
+                        ? sanitize_text_field($step['reasoning_effort'])
+                        : '';
+                    if (in_array($reasoning_effort, \PolyTrans\Core\ModelCapabilities::LEVELS, true)) {
+                        $sanitized_step['reasoning_effort'] = $reasoning_effort;
+                    }
+
+
                     // Handle max_tokens if provided
                     if (isset($step['max_tokens']) && !empty($step['max_tokens'])) {
                         $sanitized_step['max_tokens'] = absint($step['max_tokens']);

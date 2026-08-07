@@ -287,7 +287,10 @@ class GeminiSettingsProvider implements SettingsProviderInterface
             
             // Group models by family
             $grouped = [];
-            
+
+            // Capability hints reported by the API (temperature window, thinking support)
+            $api_metadata = [];
+
             foreach ($data['models'] as $model) {
                 $model_id = $model['name'] ?? '';
                 
@@ -346,13 +349,30 @@ class GeminiSettingsProvider implements SettingsProviderInterface
                 $display_name = $model['displayName'] ?? $model_id;
                 $label = $this->get_model_label($model_id, $display_name);
                 $grouped[$group][$model_id] = $label;
+
+                // Gemini's ListModels exposes the supported temperature window and,
+                // for newer models, whether the model thinks at all.
+                $model_meta = [];
+                foreach (['temperature', 'maxTemperature', 'topP', 'topK', 'thinking'] as $meta_key) {
+                    if (array_key_exists($meta_key, $model)) {
+                        $model_meta[$meta_key] = $model[$meta_key];
+                    }
+                }
+                if (!empty($model_meta)) {
+                    $api_metadata[strtolower($model_id)] = $model_meta;
+                }
             }
-            
+
             // Sort models within each group
             foreach ($grouped as $group => &$models) {
                 ksort($models);
             }
-            
+            unset($models);
+
+            if (!empty($api_metadata)) {
+                \PolyTrans\Core\ModelCapabilities::store_api_metadata('gemini', $api_metadata);
+            }
+
             // Cache models for 1 hour
             if (!empty($grouped)) {
                 set_transient($cache_key, $grouped, HOUR_IN_SECONDS);

@@ -695,7 +695,6 @@
         const userMessage = step.user_message || '';
         const expectedFormat = step.expected_format || 'text';
         const model = step.model || '';
-        const temperature = step.temperature !== undefined ? step.temperature : 0.7;
         const selectedProvider = step.provider || '';
 
         // Handle output_variables - it could be an array or a string
@@ -770,12 +769,144 @@
                 <input type="text" id="step-${index}-output-variables" name="steps[${index}][output_variables]" value="${escapeHtml(outputVariables)}">
                 <small>📊 <strong>Example:</strong> "reviewed_title, reviewed_content, quality_score, suggestions" - These will be available as {{ reviewed_title }}, etc. in subsequent steps</small>
             </div>
-            <div class="workflow-step-field">
-                <label for="step-${index}-temperature">Temperature</label>
-                <input type="number" id="step-${index}-temperature" name="steps[${index}][temperature]" value="${temperature}" min="0" max="1" step="0.1">
-                <small>AI creativity level (0.0 = focused, 1.0 = creative)</small>
+            ${renderModelParameterFields(step, index)}
+        `;
+    }
+
+    /**
+     * Render the temperature / reasoning effort control for a step.
+     *
+     * Reasoning models (OpenAI gpt-5/o-series, Gemini 3, Claude with extended
+     * thinking) do not take a temperature - they take an effort level whose
+     * accepted values differ per provider. The capability knowledge comes from
+     * PolyTrans\Core\ModelCapabilities.
+     */
+    function renderModelParameterFields(step, index) {
+        const temperature = step.temperature !== undefined ? step.temperature : 0.7;
+        const provider = step.provider || '';
+        const model = step.model || '';
+        const profile = getStepModelProfile(provider, model);
+        const strings = (typeof polytransWorkflows !== 'undefined' && polytransWorkflows.strings) ? polytransWorkflows.strings : {};
+
+        const temperatureSpec = (profile && profile.temperature) ? profile.temperature : { supported: true, min: 0, max: 2, step: 0.1, default: 0.7, note: '' };
+        const reasoning = profile ? profile.reasoning : null;
+
+        const temperatureStyle = temperatureSpec.supported ? '' : ' style="display: none;"';
+        const reasoningStyle = reasoning ? '' : ' style="display: none;"';
+
+        let effortOptions = `<option value="">${escapeHtml(strings.effortProviderDefault || 'Provider default')}</option>`;
+        if (reasoning && Array.isArray(reasoning.levels)) {
+            reasoning.levels.forEach((level) => {
+                const selected = (step.reasoning_effort === level.value) ? 'selected' : '';
+                effortOptions += `<option value="${escapeHtml(level.value)}" ${selected}>${escapeHtml(level.label)}</option>`;
+            });
+        }
+
+        return `
+            <div class="workflow-step-field workflow-temperature-field" data-step-index="${index}"${temperatureStyle}>
+                <label for="step-${index}-temperature">${escapeHtml(strings.temperature || 'Temperature')}</label>
+                <input type="number" id="step-${index}-temperature" name="steps[${index}][temperature]" value="${temperature}" min="${temperatureSpec.min}" max="${temperatureSpec.max}" step="${temperatureSpec.step}">
+                <small>${escapeHtml(strings.temperatureHint || 'AI creativity level (lower = focused, higher = creative)')} ${escapeHtml(temperatureSpec.note || '')}</small>
+            </div>
+            <div class="workflow-step-field workflow-reasoning-field" data-step-index="${index}"${reasoningStyle}>
+                <label for="step-${index}-reasoning-effort">${escapeHtml(strings.reasoningEffort || 'Reasoning Effort')}</label>
+                <select id="step-${index}-reasoning-effort" name="steps[${index}][reasoning_effort]">
+                    ${effortOptions}
+                </select>
+                <small class="workflow-reasoning-note">${escapeHtml(reasoning ? (reasoning.note || '') : '')}</small>
+            </div>
+            <div class="workflow-step-field workflow-capability-summary" data-step-index="${index}">
+                <small>${escapeHtml(profile ? (profile.summary || '') : '')}</small>
             </div>
         `;
+    }
+
+    /**
+     * Resolve the capability profile for a provider/model pair.
+     * Falls back to the provider's globally configured model when the step
+     * uses "Use Global Setting".
+     */
+    function getStepModelProfile(provider, model) {
+        if (typeof polytransWorkflows === 'undefined' || !polytransWorkflows.modelCapabilities) {
+            return null;
+        }
+
+        const providerId = provider || 'openai';
+        const capabilities = polytransWorkflows.modelCapabilities[providerId];
+        if (!capabilities || !capabilities.profiles) {
+            return null;
+        }
+
+        let effectiveModel = model || '';
+        if (!effectiveModel && polytransWorkflows.defaultModels) {
+            effectiveModel = polytransWorkflows.defaultModels[providerId] || '';
+        }
+        effectiveModel = effectiveModel.toLowerCase().replace(/^models\//, '');
+
+        const profileId = (capabilities.models || {})[effectiveModel] || capabilities.fallback;
+
+        return capabilities.profiles[profileId] || null;
+    }
+
+    /**
+     * Re-render the temperature / reasoning effort control after the step's
+     * provider or model changed.
+     */
+    function updateStepParameterControls(index) {
+        const provider = $(`#step-${index}-provider`).val() || '';
+        const model = $(`#step-${index}-model`).val() || '';
+        const profile = getStepModelProfile(provider, model);
+        const strings = (typeof polytransWorkflows !== 'undefined' && polytransWorkflows.strings) ? polytransWorkflows.strings : {};
+
+        const $temperatureField = $(`.workflow-temperature-field[data-step-index="${index}"]`);
+        const $reasoningField = $(`.workflow-reasoning-field[data-step-index="${index}"]`);
+        const $summary = $(`.workflow-capability-summary[data-step-index="${index}"] small`);
+        const $temperatureInput = $(`#step-${index}-temperature`);
+        const $effortSelect = $(`#step-${index}-reasoning-effort`);
+
+        if (!profile) {
+            $temperatureField.show();
+            $reasoningField.hide();
+            return;
+        }
+
+        const temperatureSpec = profile.temperature || {};
+        if (temperatureSpec.supported) {
+            $temperatureInput
+                .attr('min', temperatureSpec.min)
+                .attr('max', temperatureSpec.max)
+                .attr('step', temperatureSpec.step);
+            const current = parseFloat($temperatureInput.val());
+            if (isNaN(current)) {
+                $temperatureInput.val(temperatureSpec.default);
+            } else if (current < temperatureSpec.min || current > temperatureSpec.max) {
+                $temperatureInput.val(Math.min(temperatureSpec.max, Math.max(temperatureSpec.min, current)));
+            }
+            $temperatureField.show();
+        } else {
+            $temperatureField.hide();
+        }
+
+        if (profile.reasoning && Array.isArray(profile.reasoning.levels) && profile.reasoning.levels.length) {
+            const previous = $effortSelect.val();
+            const available = profile.reasoning.levels.map((level) => level.value);
+            $effortSelect.empty();
+            $effortSelect.append($('<option></option>')
+                .attr('value', '')
+                .text(strings.effortProviderDefault || 'Provider default'));
+            profile.reasoning.levels.forEach((level) => {
+                $effortSelect.append($('<option></option>')
+                    .attr('value', level.value)
+                    .text(level.label));
+            });
+            $effortSelect.val(available.indexOf(previous) !== -1 ? previous : '');
+            $reasoningField.find('.workflow-reasoning-note').text(profile.reasoning.note || '');
+            $reasoningField.show();
+        } else {
+            $reasoningField.hide();
+        }
+
+        $summary.text(profile.summary || '');
     }
 
     /**
@@ -1215,6 +1346,7 @@
                     stepData.expected_format = $(`#step-${index}-expected-format`).val();
                     stepData.output_variables = $(`#step-${index}-output-variables`).val();
                     stepData.temperature = parseFloat($(`#step-${index}-temperature`).val()) || 0.7;
+                    stepData.reasoning_effort = $(`#step-${index}-reasoning-effort`).val() || '';
                 }
                 if (currentType === 'predefined_assistant' || newType === 'predefined_assistant') {
                     stepData.assistant_id = $(`#step-${index}-assistant-id`).val();
@@ -1353,7 +1485,8 @@
             user_message: '',
             model: '',
             expected_format: 'text',
-            temperature: 0.7
+            temperature: 0.7,
+            reasoning_effort: ''
         };
 
         const stepHtml = renderWorkflowStep(newStep, index);
@@ -1471,6 +1604,7 @@
                 stepData.expected_format = $(`#step-${index}-expected-format`).val();
                 stepData.max_tokens = $(`#step-${index}-max-tokens`).val() || null;
                 stepData.temperature = parseFloat($(`#step-${index}-temperature`).val()) || 0.7;
+                stepData.reasoning_effort = $(`#step-${index}-reasoning-effort`).val() || '';
 
                 // Debug: Log model selection
                 console.log(`Step ${index} model:`, stepData.model);
@@ -4875,6 +5009,17 @@ ${escapeHtml(userMessage)}
             $warning.fadeOut();
         } else {
             $warning.fadeIn();
+        }
+
+        // Provider decides which effort names apply
+        updateStepParameterControls(stepIndex);
+    });
+
+    // Model change - swap temperature <-> reasoning effort control
+    $(document).on('change', 'select[id^="step-"][id$="-model"]', function () {
+        const match = /^step-(\d+)-model$/.exec($(this).attr('id') || '');
+        if (match) {
+            updateStepParameterControls(parseInt(match[1], 10));
         }
     });
 

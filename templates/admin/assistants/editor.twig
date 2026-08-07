@@ -138,13 +138,46 @@
                     </td>
                 </tr>
 
-                <tr>
+                <tr id="assistant-temperature-row" {% if not model_capabilities.temperature.supported %}style="display: none;"{% endif %}>
                     <th scope="row">
                         <label for="assistant-temperature">{{ __('Temperature', 'polytrans') }}</label>
                     </th>
                     <td>
-                        <input type="number" id="assistant-temperature" name="config[temperature]" class="small-text" min="0" max="2" step="0.1" value="{{ assistant.config.temperature|default(0.7)|esc_attr }}">
-                        <p class="description">{{ __('Controls randomness: 0 = focused, 2 = creative. Default: 0.7', 'polytrans') }}</p>
+                        <input type="number" id="assistant-temperature" name="config[temperature]" class="small-text"
+                               min="{{ model_capabilities.temperature.min|esc_attr }}"
+                               max="{{ model_capabilities.temperature.max|esc_attr }}"
+                               step="{{ model_capabilities.temperature.step|esc_attr }}"
+                               value="{{ assistant.config.temperature|default(model_capabilities.temperature.default)|esc_attr }}">
+                        <p class="description assistant-temperature-description" data-base-description="{{ __('Controls randomness: lower = focused, higher = creative.', 'polytrans')|esc_attr }}">
+                            {{ __('Controls randomness: lower = focused, higher = creative.', 'polytrans') }}
+                            {% if model_capabilities.temperature.note %}{{ model_capabilities.temperature.note }}{% endif %}
+                        </p>
+                    </td>
+                </tr>
+
+                <tr id="assistant-reasoning-effort-row" {% if not model_capabilities.reasoning %}style="display: none;"{% endif %}>
+                    <th scope="row">
+                        <label for="assistant-reasoning-effort">{{ __('Reasoning Effort', 'polytrans') }}</label>
+                    </th>
+                    <td>
+                        <select id="assistant-reasoning-effort" name="config[reasoning_effort]">
+                            <option value="">{{ __('Provider default', 'polytrans') }}</option>
+                            {% for level in effort_levels %}
+                                <option value="{{ level.value|esc_attr }}" {{ selected(current_effort|default(''), level.value) }}>{{ level.label|esc_html }}</option>
+                            {% endfor %}
+                        </select>
+                        <p class="description assistant-reasoning-description">
+                            {% if model_capabilities.reasoning %}
+                                {{ model_capabilities.reasoning.note }}
+                            {% endif %}
+                        </p>
+                    </td>
+                </tr>
+
+                <tr id="assistant-capability-summary-row">
+                    <th scope="row"></th>
+                    <td>
+                        <p class="description assistant-capability-summary">{{ capability_summary }}</p>
                     </td>
                 </tr>
 

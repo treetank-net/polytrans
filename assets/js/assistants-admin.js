@@ -34,6 +34,9 @@
             
             // Refresh models button
             $('#refresh-models').on('click', this.handleRefreshModels.bind(this));
+
+            // Model change - swap temperature <-> reasoning effort control
+            $('#assistant-model').on('change', this.handleModelChange.bind(this));
             $('#assistant-generate-description-btn').on('click', this.handleAssistantDescriptionGeneration.bind(this));
             $('#assistant-generate-objective-btn').on('click', this.handleAssistantObjectiveGeneration.bind(this));
 
@@ -129,6 +132,9 @@
             
             // Initialize variable pill click handlers
             this.initVariablePills();
+
+            // Sync temperature / reasoning effort controls with the selected model
+            this.updateModelParameterControls();
         },
 
         /**
@@ -204,11 +210,19 @@
                 },
                 success: (response) => {
                     if (response.success && response.data && response.data.models) {
+                        if (response.data.capabilities) {
+                            polytransAssistants.modelCapabilities = polytransAssistants.modelCapabilities || {};
+                            polytransAssistants.modelCapabilities[provider] = response.data.capabilities;
+                            polytransAssistants.defaultModels = polytransAssistants.defaultModels || {};
+                            polytransAssistants.defaultModels[provider] = response.data.default_model || '';
+                        }
                         this.populateModelSelect($modelField, response.data.models, currentModel);
+                        this.updateModelParameterControls();
                     } else {
                         // Fallback to empty select
                         $modelField.html('<option value="">Use Global Setting</option>');
                         console.error('Failed to load models:', response);
+                        this.updateModelParameterControls();
                     }
                     $modelField.prop('disabled', false);
                 },
@@ -216,8 +230,113 @@
                     console.error('AJAX error loading models:', error);
                     $modelField.html('<option value="">Use Global Setting</option>');
                     $modelField.prop('disabled', false);
+                    this.updateModelParameterControls();
                 }
             });
+        },
+
+        /**
+         * Handle model change - the selected model decides whether temperature
+         * or a provider-specific reasoning effort is configurable.
+         */
+        handleModelChange: function() {
+            this.updateModelParameterControls();
+        },
+
+        /**
+         * Resolve the capability profile for the currently selected provider/model.
+         *
+         * Returns null when no capability data is available (e.g. custom provider).
+         */
+        getModelProfile: function(provider, model) {
+            const capabilities = (polytransAssistants.modelCapabilities || {})[provider];
+            if (!capabilities || !capabilities.profiles) {
+                return null;
+            }
+
+            // "Use Global Setting" resolves to the provider's configured default model
+            let effectiveModel = model || '';
+            if (!effectiveModel && polytransAssistants.defaultModels) {
+                effectiveModel = polytransAssistants.defaultModels[provider] || '';
+            }
+
+            const normalizedModel = effectiveModel.toLowerCase().replace(/^models\//, '');
+            const profileId = (capabilities.models || {})[normalizedModel] || capabilities.fallback;
+
+            return capabilities.profiles[profileId] || null;
+        },
+
+        /**
+         * Show either the temperature input or the reasoning effort selector,
+         * depending on what the selected model actually accepts.
+         */
+        updateModelParameterControls: function() {
+            const provider = $('#assistant-provider').val() || polytransAssistants.current_provider || 'openai';
+            const model = $('#assistant-model').val() || '';
+            const profile = this.getModelProfile(provider, model);
+
+            const $temperatureRow = $('#assistant-temperature-row');
+            const $temperatureInput = $('#assistant-temperature');
+            const $effortRow = $('#assistant-reasoning-effort-row');
+            const $effortSelect = $('#assistant-reasoning-effort');
+            const $summary = $('.assistant-capability-summary');
+
+            if (!profile) {
+                $temperatureRow.show();
+                $effortRow.hide();
+                return;
+            }
+
+            // Temperature
+            const temperature = profile.temperature || {};
+            if (temperature.supported) {
+                $temperatureRow.show();
+                if ($temperatureInput.length) {
+                    $temperatureInput.attr('min', temperature.min);
+                    $temperatureInput.attr('max', temperature.max);
+                    $temperatureInput.attr('step', temperature.step);
+                    const current = parseFloat($temperatureInput.val());
+                    if (isNaN(current)) {
+                        $temperatureInput.val(temperature.default);
+                    } else if (current < temperature.min || current > temperature.max) {
+                        $temperatureInput.val(Math.min(temperature.max, Math.max(temperature.min, current)));
+                    }
+                }
+                const $description = $('.assistant-temperature-description');
+                const baseDescription = $description.data('base-description') || '';
+                $description.text([baseDescription, temperature.note || ''].filter(Boolean).join(' '));
+            } else {
+                $temperatureRow.hide();
+            }
+
+            // Reasoning effort - option labels use each provider's own naming
+            if (profile.reasoning && Array.isArray(profile.reasoning.levels) && profile.reasoning.levels.length) {
+                const previous = $effortSelect.val();
+                const levels = profile.reasoning.levels;
+                const available = levels.map((level) => level.value);
+                let selected = available.indexOf(previous) !== -1 ? previous : '';
+
+                $effortSelect.empty();
+                $effortSelect.append($('<option></option>')
+                    .attr('value', '')
+                    .text(polytransAssistants.strings.effortProviderDefault || 'Provider default'));
+
+                levels.forEach((level) => {
+                    $effortSelect.append($('<option></option>')
+                        .attr('value', level.value)
+                        .text(level.label));
+                });
+
+                $effortSelect.val(selected);
+                $('.assistant-reasoning-description').text(profile.reasoning.note || '');
+                $effortRow.show();
+            } else {
+                $effortRow.hide();
+            }
+
+            if ($summary.length) {
+                $summary.text(profile.summary || '');
+            }
         },
 
         /**
@@ -434,7 +553,8 @@
                 response_format: responseFormat,
                 expected_output_schema: expectedOutputSchema || null,
                 config: {
-                    temperature: parseFloat($('#assistant-temperature').val()) || 0.7
+                    temperature: parseFloat($('#assistant-temperature').val()) || 0.7,
+                    reasoning_effort: $('#assistant-reasoning-effort').val() || ''
                 }
             };
 
