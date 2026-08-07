@@ -59,6 +59,12 @@ class ModelCapabilities
     const MODE_THINKING_BUDGET = 'thinking_budget'; // integer token budget (Claude <= 4.5 extended thinking)
 
     /**
+     * API surfaces a model can be called through.
+     */
+    const SURFACE_CHAT = 'chat';           // OpenAI-style /chat/completions (also Claude/Gemini messages)
+    const SURFACE_RESPONSES = 'responses'; // OpenAI /responses
+
+    /**
      * Transient prefix used for capability hints harvested from provider /models endpoints.
      */
     const API_METADATA_TRANSIENT = 'polytrans_model_api_meta_';
@@ -138,6 +144,108 @@ class ModelCapabilities
         self::$resolved[$cache_key] = $capabilities;
 
         return $capabilities;
+    }
+
+    /**
+     * Which API surfaces can this model be called through?
+     *
+     * A model listed by /v1/models is not necessarily usable: OpenAI serves the
+     * `-pro` and `-codex` models only through /responses, the search models only
+     * through /chat/completions, and the list also contains TTS, transcription,
+     * image, embedding and moderation models that are not chat models at all.
+     * Verified by probing every model returned by /v1/models on both endpoints.
+     *
+     * @param string $provider_id Provider ID.
+     * @param string $model_id    Model ID.
+     * @return array List of self::SURFACE_* values; empty when the model cannot be used for chat at all.
+     */
+    public static function get_api_surfaces($provider_id, $model_id)
+    {
+        $provider_id = self::normalize_id($provider_id);
+        $model_id = self::normalize_model_id($model_id);
+
+        $surfaces = self::resolve_api_surfaces($provider_id, $model_id);
+
+        /**
+         * Filter the API surfaces a model supports.
+         *
+         * @param array  $surfaces    List of surfaces.
+         * @param string $provider_id Provider ID.
+         * @param string $model_id    Model ID.
+         */
+        return apply_filters('polytrans_model_api_surfaces', $surfaces, $provider_id, $model_id);
+    }
+
+    /**
+     * Can PolyTrans actually send a request for this model?
+     *
+     * True when at least one surface the model supports is one PolyTrans has an
+     * adapter for. Used to keep unusable models out of the model pickers.
+     *
+     * @param string $provider_id Provider ID.
+     * @param string $model_id    Model ID.
+     * @return bool
+     */
+    public static function is_model_usable($provider_id, $model_id)
+    {
+        $surfaces = self::get_api_surfaces($provider_id, $model_id);
+
+        return (bool) array_intersect($surfaces, self::get_implemented_surfaces());
+    }
+
+    /**
+     * Surfaces PolyTrans has a client adapter for.
+     *
+     * @return array
+     */
+    public static function get_implemented_surfaces()
+    {
+        /**
+         * Filter the API surfaces PolyTrans can talk to.
+         *
+         * @param array $surfaces List of self::SURFACE_* values.
+         */
+        return apply_filters('polytrans_implemented_api_surfaces', [self::SURFACE_CHAT]);
+    }
+
+    /**
+     * Resolve API surfaces from the static pattern table.
+     *
+     * @param string $provider_id Provider ID.
+     * @param string $model_id    Model ID.
+     * @return array
+     */
+    private static function resolve_api_surfaces($provider_id, $model_id)
+    {
+        if ($provider_id !== 'openai' || $model_id === '') {
+            // Other providers expose a single messages endpoint.
+            return [self::SURFACE_CHAT];
+        }
+
+        // Not text-generation models: TTS, STT, realtime, image, embeddings,
+        // moderation, video, and the legacy /completions models.
+        $non_chat = '/(tts|transcribe|whisper|realtime|image|embedding|moderation|sora|audio'
+            . '|davinci|babbage|instruct|computer-use|live-|deep-research)/';
+        if (preg_match($non_chat, $model_id)) {
+            return [];
+        }
+
+        // Reasoning-heavy and coding models OpenAI serves only through /responses.
+        if (preg_match('/-pro($|-\d)/', $model_id) || strpos($model_id, '-codex') !== false) {
+            return [self::SURFACE_RESPONSES];
+        }
+
+        // Search-grounded models exist only on /chat/completions.
+        if (preg_match('/(search-preview|search-api)/', $model_id)) {
+            return [self::SURFACE_CHAT];
+        }
+
+        // Legacy GPT-3.5 is not served by /responses.
+        if (strpos($model_id, 'gpt-3.5') === 0) {
+            return [self::SURFACE_CHAT];
+        }
+
+        return [self::SURFACE_CHAT, self::SURFACE_RESPONSES];
     }
 
     /**

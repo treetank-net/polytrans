@@ -380,6 +380,67 @@ describe('provider API metadata', function () {
     });
 });
 
+describe('API surfaces', function () {
+    it('serves the -pro and -codex models only through /responses', function () {
+        foreach (['gpt-5-pro', 'gpt-5.5-pro', 'gpt-5.4-pro-2026-03-05', 'gpt-5.3-codex', 'o1-pro', 'o3-pro'] as $model) {
+            expect(ModelCapabilities::get_api_surfaces('openai', $model))
+                ->toBe([ModelCapabilities::SURFACE_RESPONSES]);
+        }
+    });
+
+    it('serves the search models only through /chat/completions', function () {
+        foreach (['gpt-4o-search-preview', 'gpt-5-search-api', 'gpt-3.5-turbo-16k'] as $model) {
+            expect(ModelCapabilities::get_api_surfaces('openai', $model))
+                ->toBe([ModelCapabilities::SURFACE_CHAT]);
+        }
+    });
+
+    it('reports no surface for models that are not chat models', function () {
+        $models = ['gpt-4o-mini-tts', 'gpt-4o-transcribe', 'gpt-realtime', 'gpt-image-1',
+                   'gpt-audio', 'gpt-3.5-turbo-instruct', 'o3-deep-research'];
+
+        foreach ($models as $model) {
+            expect(ModelCapabilities::get_api_surfaces('openai', $model))->toBe([]);
+        }
+    });
+
+    it('serves ordinary models through both surfaces', function () {
+        foreach (['gpt-5.4', 'gpt-5.6-sol', 'gpt-4o', 'o3', 'o4-mini'] as $model) {
+            expect(ModelCapabilities::get_api_surfaces('openai', $model))
+                ->toBe([ModelCapabilities::SURFACE_CHAT, ModelCapabilities::SURFACE_RESPONSES]);
+        }
+    });
+
+    it('treats other providers as a single messages endpoint', function () {
+        expect(ModelCapabilities::get_api_surfaces('claude', 'claude-opus-5'))
+            ->toBe([ModelCapabilities::SURFACE_CHAT]);
+        expect(ModelCapabilities::get_api_surfaces('gemini', 'gemini-3.6-flash'))
+            ->toBe([ModelCapabilities::SURFACE_CHAT]);
+    });
+
+    it('marks models unusable when PolyTrans has no adapter for their surface', function () {
+        // Only the chat surface is implemented for now.
+        expect(ModelCapabilities::is_model_usable('openai', 'gpt-5.4'))->toBeTrue();
+        expect(ModelCapabilities::is_model_usable('openai', 'o3'))->toBeTrue();
+        expect(ModelCapabilities::is_model_usable('openai', 'gpt-5.5-pro'))->toBeFalse();
+        expect(ModelCapabilities::is_model_usable('openai', 'gpt-4o-mini-tts'))->toBeFalse();
+    });
+
+    it('lets a filter declare a new implemented surface', function () {
+        $GLOBALS['polytrans_test_filters']['polytrans_implemented_api_surfaces'] = function ($surfaces) {
+            $surfaces[] = ModelCapabilities::SURFACE_RESPONSES;
+
+            return $surfaces;
+        };
+
+        expect(ModelCapabilities::is_model_usable('openai', 'gpt-5.5-pro'))->toBeTrue();
+        // Still nothing to talk to for a TTS model.
+        expect(ModelCapabilities::is_model_usable('openai', 'gpt-4o-mini-tts'))->toBeFalse();
+
+        unset($GLOBALS['polytrans_test_filters']['polytrans_implemented_api_surfaces']);
+    });
+});
+
 describe('extensibility', function () {
     it('can be corrected through the capabilities filter', function () {
         $GLOBALS['polytrans_test_filters']['polytrans_model_capabilities'] = function ($capabilities, $provider, $model) {

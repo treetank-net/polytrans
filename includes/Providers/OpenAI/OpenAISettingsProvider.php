@@ -481,8 +481,15 @@ class OpenAISettingsProvider implements SettingsProviderInterface
                     continue;
                 }
 
-                // Only include chat completion models (gpt-*)
-                if (strpos($model_id, 'gpt-') !== 0) {
+                // Include chat models (gpt-*) and the o-series reasoning models.
+                if (strpos($model_id, 'gpt-') !== 0 && !preg_match('/^o[1-9]($|-)/', $model_id)) {
+                    continue;
+                }
+
+                // /v1/models also lists TTS, transcription, image, search and
+                // /responses-only models. Offering those would let an admin pick
+                // a model that can never answer a translation request.
+                if (!\PolyTrans\Core\ModelCapabilities::is_model_usable('openai', $model_id)) {
                     continue;
                 }
 
@@ -524,6 +531,11 @@ class OpenAISettingsProvider implements SettingsProviderInterface
      */
     private function get_model_group($model_id)
     {
+        // o-series reasoning models (o1, o3, o3-mini, o4-mini, ...)
+        if (preg_match('/^o[1-9]($|-)/', $model_id)) {
+            return 'o-series Reasoning Models';
+        }
+
         // Check GPT-5 models first (before GPT-4o to avoid conflicts)
         if (strpos($model_id, 'gpt-5o') === 0) {
             return 'GPT-5o Models';

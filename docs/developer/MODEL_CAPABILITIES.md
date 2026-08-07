@@ -25,10 +25,12 @@ where it is deprecated) or require it to be left at its default while they think
 Everything above was verified against the live APIs, which corrected several
 assumptions taken from the docs:
 
-- **`max` does not exist in OpenAI Chat Completions.** No model accepts it; the
-  ceiling is `xhigh`.
-- **The o-series does accept `xhigh`**, contrary to the three-level enum the
-  reasoning guide describes.
+- **`max` does not exist in OpenAI Chat Completions.** No model accepts it there;
+  the ceiling is `xhigh`. It *does* exist on `/responses` for the `gpt-5.6`
+  family - see *The same model can differ per surface* below.
+- **The o-series does accept `xhigh`** on Chat Completions, contrary to the
+  three-level enum the reasoning guide describes (and it loses `xhigh` on
+  `/responses`).
 - **GPT-5.1+ does accept a temperature** - but only while reasoning is off. With
   any effort other than `none` the API answers *"Only the default (1) value is
   supported"*. See `requires_effort_none` below.
@@ -219,3 +221,59 @@ ModelCapabilities::get_capabilities_payload('openai', $grouped_models);
 
 `ModelCapabilities::describe($provider, $model)` returns the one-line summary
 shown under the control in the admin UI.
+
+## API surfaces
+
+A model listed by `/v1/models` is not necessarily usable. Probing every model
+OpenAI returns against both endpoints gives three groups:
+
+| Group | Surface | Examples |
+|---|---|---|
+| `-pro`, `-codex` | `/responses` only | `gpt-5.5-pro`, `gpt-5.3-codex`, `o1-pro`, `o3-pro` |
+| search-grounded, legacy GPT-3.5 | `/chat/completions` only | `gpt-4o-search-preview`, `gpt-5-search-api`, `gpt-3.5-turbo-16k` |
+| not text generation | neither | TTS, transcribe, realtime, image, audio, embeddings, moderation, `*-instruct` |
+| everything else | both | `gpt-5.4`, `gpt-5.6-sol`, `gpt-4o`, `o3` |
+
+`get_api_surfaces()` encodes this and `is_model_usable()` intersects it with
+`get_implemented_surfaces()` (the endpoints PolyTrans has an adapter for), which
+keeps unusable models out of the pickers. Both are filterable
+(`polytrans_model_api_surfaces`, `polytrans_implemented_api_surfaces`).
+
+Deprecated models are **not** detectable this way - `/v1/models` still lists
+them with no marker (e.g. `gpt-5-chat-latest`, `gpt-5.1-codex-mini`), and only a
+real request reveals it. They are left in the list rather than hardcoding a list
+that would go stale.
+
+## The same model can differ per surface
+
+Effort levels are a property of the **(model, endpoint)** pair, not of the model
+alone. Probed per level on both endpoints:
+
+| Model | `/chat/completions` | `/responses` |
+|---|---|---|
+| `gpt-5`, `-mini`, `-nano` | `minimal`, `low`, `medium`, `high` | `low`, `medium`, `high` |
+| `gpt-5.1` | `none`, `low`, `medium`, `high` | same |
+| `gpt-5.2` … `gpt-5.5` | `none` … `xhigh` | same |
+| `gpt-5.6-sol/terra/luna` | `none` … `xhigh` | `none` … `xhigh`, **plus `max`** |
+| `o1`, `o3`, `o3-mini`, `o4-mini` | `low`, `medium`, `high`, **`xhigh`** | `low`, `medium`, `high` |
+| `gpt-5-pro` | n/a | `high` only |
+| `gpt-5.2-pro`, `5.4-pro`, `5.5-pro` | n/a | `medium`, `high`, `xhigh` |
+
+So `max` *does* exist - but only on `/responses`, and so far only for the
+`gpt-5.6` family. Conversely the o-series loses `xhigh` when called through
+`/responses`. Note that `/responses` reports the full enum in its error message
+regardless of model (`none, minimal, low, medium, high, xhigh, max`), so the
+message cannot be used to infer per-model support the way the Chat Completions
+message can - each level has to be probed.
+
+Payload shape also differs:
+
+| | `/chat/completions` | `/responses` |
+|---|---|---|
+| Effort | `reasoning_effort: "high"` | `reasoning: {effort: "high"}` |
+| Length control | `max_completion_tokens` | `max_output_tokens` |
+| Verbosity | - | `text: {verbosity: low\|medium\|high}` |
+
+Temperature behaves consistently across both: allowed only while reasoning is
+off, and `gpt-5.4` + `effort: none` + `temperature` is accepted on either
+endpoint.

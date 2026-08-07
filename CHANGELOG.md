@@ -7,7 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [1.15.0] - 2026-08-07
+## [1.15.1] - 2026-08-07
+
+### Added
+- `ModelCapabilities::get_api_surfaces()` knows which endpoint a model is served through, verified by probing every model returned by OpenAI's `/v1/models` against both `/chat/completions` and `/responses`. Filters `polytrans_model_api_surfaces` and `polytrans_implemented_api_surfaces` allow overriding it.
+- OpenAI o-series reasoning models (`o1`, `o3`, `o3-mini`, `o4-mini`) are now selectable - they were silently missing from the model picker because the grouping helper only recognised `gpt-*` names.
+
+### Fixed
+- The OpenAI model picker no longer offers models that can never answer a translation request. `/v1/models` also lists text-to-speech, transcription, realtime, image, audio and embedding models, plus the `-pro` and `-codex` models that exist only on `/responses`; picking any of those previously failed only at execution time. 55 of 114 listed models are now filtered out.
 
 ### Added
 - Provider-independent model capability layer (`PolyTrans\Core\ModelCapabilities`) that knows which models accept `temperature` and which expect a reasoning effort, including each provider's own effort naming (OpenAI `reasoning_effort`, Gemini `thinkingConfig.thinkingLevel`, Claude `output_config.effort`, older Claude `thinking.budget_tokens`).
