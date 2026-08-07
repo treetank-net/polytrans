@@ -86,22 +86,33 @@ class ModelCapabilities
     /**
      * Get full capability descriptor for a provider/model pair.
      *
-     * @param string $provider_id Provider ID (openai, claude, gemini, ...).
-     * @param string $model_id    Model ID. Empty means "provider default model".
+     * The same model can accept different effort levels depending on the endpoint
+     * it is called through - `max` exists for GPT-5.6 only on /responses, while the
+     * o-series loses `xhigh` there. Pass $surface to get the levels for a specific
+     * endpoint; omit it for the model's default surface.
+     *
+     * @param string      $provider_id Provider ID (openai, claude, gemini, ...).
+     * @param string      $model_id    Model ID. Empty means "provider default model".
+     * @param string|null $surface     One of self::SURFACE_*, or null for the default surface.
      * @return array {
      *     @type string      $profile     Rule ID that matched.
      *     @type string      $provider    Provider ID.
      *     @type string      $model       Model ID.
+     *     @type string      $surface     Surface these capabilities describe.
      *     @type array       $temperature ['supported', 'min', 'max', 'step', 'default', 'note']
      *     @type array|null  $reasoning   ['mode', 'param', 'default', 'levels', 'disables_temperature', 'note']
      * }
      */
-    public static function get_model_capabilities($provider_id, $model_id)
+    public static function get_model_capabilities($provider_id, $model_id, $surface = null)
     {
         $provider_id = self::normalize_id($provider_id);
         $model_id = self::normalize_model_id($model_id);
 
-        $cache_key = $provider_id . '|' . $model_id;
+        if ($surface === null) {
+            $surface = self::get_default_surface($provider_id, $model_id);
+        }
+
+        $cache_key = $provider_id . '|' . $model_id . '|' . $surface;
         if (isset(self::$resolved[$cache_key])) {
             return self::$resolved[$cache_key];
         }
@@ -121,13 +132,24 @@ class ModelCapabilities
             $matched = self::generic_rule($provider_id);
         }
 
+        // A rule describes its default surface; `surfaces` carries the deltas for
+        // any endpoint that accepts something different.
+        $overrides = $matched['surfaces'][$surface] ?? [];
+        $temperature_spec = array_key_exists('temperature', $overrides)
+            ? $overrides['temperature']
+            : ($matched['temperature'] ?? []);
+        $reasoning_spec = array_key_exists('reasoning', $overrides)
+            ? $overrides['reasoning']
+            : ($matched['reasoning'] ?? null);
+
         $capabilities = [
             'profile' => $matched['id'] ?? 'generic',
             'provider' => $provider_id,
             'model' => $model_id,
+            'surface' => $surface,
             'label' => $matched['label'] ?? '',
-            'temperature' => self::normalize_temperature_spec($matched['temperature'] ?? []),
-            'reasoning' => self::normalize_reasoning_spec($matched['reasoning'] ?? null),
+            'temperature' => self::normalize_temperature_spec($temperature_spec),
+            'reasoning' => self::normalize_reasoning_spec($reasoning_spec),
         ];
 
         $capabilities = self::apply_api_metadata($capabilities);
@@ -138,8 +160,9 @@ class ModelCapabilities
          * @param array  $capabilities Capability descriptor.
          * @param string $provider_id  Provider ID.
          * @param string $model_id     Model ID.
+         * @param string $surface      Surface being described.
          */
-        $capabilities = apply_filters('polytrans_model_capabilities', $capabilities, $provider_id, $model_id);
+        $capabilities = apply_filters('polytrans_model_capabilities', $capabilities, $provider_id, $model_id, $surface);
 
         self::$resolved[$cache_key] = $capabilities;
 
@@ -177,6 +200,130 @@ class ModelCapabilities
     }
 
     /**
+     * Surfaces PolyTrans can actually use for a model.
+     *
+     * @param string $provider_id Provider ID.
+     * @param string $model_id    Model ID.
+     * @return array
+     */
+    public static function get_usable_surfaces($provider_id, $model_id)
+    {
+        return array_values(array_intersect(
+            self::get_api_surfaces($provider_id, $model_id),
+            self::get_implemented_surfaces()
+        ));
+    }
+
+    /**
+     * The surface a model is called through when nothing else forces the choice.
+     *
+     * Chat Completions stays the default wherever it works: it is the long-serving
+     * path and every existing configuration was tuned against it. /responses is
+     * used when it is the only option (the `-pro` and `-codex` models).
+     *
+     * @param string $provider_id Provider ID.
+     * @param string $model_id    Model ID.
+     * @return string
+     */
+    public static function get_default_surface($provider_id, $model_id)
+    {
+        $usable = self::get_usable_surfaces($provider_id, $model_id);
+
+        if (in_array(self::SURFACE_CHAT, $usable, true)) {
+            return self::SURFACE_CHAT;
+        }
+
+        return $usable[0] ?? self::SURFACE_CHAT;
+    }
+
+    /**
+     * Pick the surface to send a specific request through.
+     *
+     * The requested effort can decide this: `max` on GPT-5.6 exists only on
+     * /responses, so asking for it routes the request there instead of failing on
+     * Chat Completions. Anything the default surface can serve stays there, so
+     * existing configurations keep their existing behaviour.
+     *
+     * @param string $provider_id Provider ID.
+     * @param string $model_id    Model ID.
+     * @param mixed  $effort      Requested effort level, if any.
+     * @return string One of self::SURFACE_*.
+     */
+    public static function resolve_surface($provider_id, $model_id, $effort = null)
+    {
+        $provider_id = self::normalize_id($provider_id);
+        $model_id = self::normalize_model_id($model_id);
+
+        $usable = self::get_usable_surfaces($provider_id, $model_id);
+        $surface = self::get_default_surface($provider_id, $model_id);
+
+        if (is_string($effort) && $effort !== '' && count($usable) > 1) {
+            $default_levels = self::get_model_capabilities($provider_id, $model_id, $surface)['reasoning']['levels'] ?? [];
+
+            if (!isset($default_levels[$effort])) {
+                // The default surface cannot honour this level - is there one that can?
+                foreach ($usable as $candidate) {
+                    if ($candidate === $surface) {
+                        continue;
+                    }
+                    $levels = self::get_model_capabilities($provider_id, $model_id, $candidate)['reasoning']['levels'] ?? [];
+                    if (isset($levels[$effort])) {
+                        $surface = $candidate;
+                        break;
+                    }
+                }
+            }
+        }
+
+        /**
+         * Filter the surface a request is sent through.
+         *
+         * @param string $surface     Chosen surface.
+         * @param string $provider_id Provider ID.
+         * @param string $model_id    Model ID.
+         * @param mixed  $effort      Requested effort.
+         * @param array  $usable      Surfaces available for this model.
+         */
+        return apply_filters('polytrans_resolved_api_surface', $surface, $provider_id, $model_id, $effort, $usable);
+    }
+
+    /**
+     * Every effort level a model accepts on any surface PolyTrans can use.
+     *
+     * What the UI must offer: hiding `max` for GPT-5.6 because Chat Completions
+     * lacks it would hide a level the model genuinely supports.
+     *
+     * @param string $provider_id Provider ID.
+     * @param string $model_id    Model ID.
+     * @return array List of ['value', 'native', 'label', 'surfaces'].
+     */
+    public static function get_effort_levels_across_surfaces($provider_id, $model_id)
+    {
+        $collected = [];
+
+        foreach (self::get_usable_surfaces($provider_id, $model_id) as $surface) {
+            foreach (self::get_effort_levels($provider_id, $model_id, $surface) as $level) {
+                $value = $level['value'];
+                if (!isset($collected[$value])) {
+                    $level['surfaces'] = [];
+                    $collected[$value] = $level;
+                }
+                $collected[$value]['surfaces'][] = $surface;
+            }
+        }
+
+        // Keep the canonical cheap-to-expensive ordering regardless of surface order.
+        $ordered = [];
+        foreach (self::LEVELS as $canonical) {
+            if (isset($collected[$canonical])) {
+                $ordered[] = $collected[$canonical];
+            }
+        }
+
+        return $ordered;
+    }
+
+    /**
      * Can PolyTrans actually send a request for this model?
      *
      * True when at least one surface the model supports is one PolyTrans has an
@@ -205,7 +352,10 @@ class ModelCapabilities
          *
          * @param array $surfaces List of self::SURFACE_* values.
          */
-        return apply_filters('polytrans_implemented_api_surfaces', [self::SURFACE_CHAT]);
+        return apply_filters(
+            'polytrans_implemented_api_surfaces',
+            [self::SURFACE_CHAT, self::SURFACE_RESPONSES]
+        );
     }
 
     /**
@@ -227,6 +377,14 @@ class ModelCapabilities
         $non_chat = '/(tts|transcribe|whisper|realtime|image|embedding|moderation|sora|audio'
             . '|davinci|babbage|instruct|computer-use|live-|deep-research)/';
         if (preg_match($non_chat, $model_id)) {
+            return [];
+        }
+
+        // Retired Codex generations: /v1/models still lists them, but /chat/completions
+        // reports them deprecated and /responses answers "Model not found". Newer ones
+        // (5.3-codex and up) work, so this is a snapshot, not a rule about `-codex` -
+        // override via `polytrans_model_api_surfaces` if OpenAI revives one.
+        if (preg_match('/^gpt-5(-|\.1-|\.2-)codex/', $model_id)) {
             return [];
         }
 
@@ -255,9 +413,9 @@ class ModelCapabilities
      * @param string $model_id    Model ID.
      * @return bool
      */
-    public static function supports_temperature($provider_id, $model_id)
+    public static function supports_temperature($provider_id, $model_id, $surface = null)
     {
-        $capabilities = self::get_model_capabilities($provider_id, $model_id);
+        $capabilities = self::get_model_capabilities($provider_id, $model_id, $surface);
 
         return !empty($capabilities['temperature']['supported']);
     }
@@ -269,9 +427,9 @@ class ModelCapabilities
      * @param string $model_id    Model ID.
      * @return bool
      */
-    public static function supports_reasoning_effort($provider_id, $model_id)
+    public static function supports_reasoning_effort($provider_id, $model_id, $surface = null)
     {
-        $capabilities = self::get_model_capabilities($provider_id, $model_id);
+        $capabilities = self::get_model_capabilities($provider_id, $model_id, $surface);
 
         return !empty($capabilities['reasoning']);
     }
@@ -283,9 +441,9 @@ class ModelCapabilities
      * @param string $model_id    Model ID.
      * @return array List of ['value' => canonical, 'native' => native value, 'label' => string].
      */
-    public static function get_effort_levels($provider_id, $model_id)
+    public static function get_effort_levels($provider_id, $model_id, $surface = null)
     {
-        $capabilities = self::get_model_capabilities($provider_id, $model_id);
+        $capabilities = self::get_model_capabilities($provider_id, $model_id, $surface);
 
         if (empty($capabilities['reasoning']['levels'])) {
             return [];
@@ -310,9 +468,9 @@ class ModelCapabilities
      * @param string $model_id    Model ID.
      * @return string|null
      */
-    public static function get_default_effort($provider_id, $model_id)
+    public static function get_default_effort($provider_id, $model_id, $surface = null)
     {
-        $capabilities = self::get_model_capabilities($provider_id, $model_id);
+        $capabilities = self::get_model_capabilities($provider_id, $model_id, $surface);
 
         return $capabilities['reasoning']['default'] ?? null;
     }
@@ -355,9 +513,9 @@ class ModelCapabilities
      * @param mixed  $value       Stored value.
      * @return string|null Canonical level or null when the model has no reasoning control.
      */
-    public static function normalize_effort($provider_id, $model_id, $value)
+    public static function normalize_effort($provider_id, $model_id, $value, $surface = null)
     {
-        $capabilities = self::get_model_capabilities($provider_id, $model_id);
+        $capabilities = self::get_model_capabilities($provider_id, $model_id, $surface);
 
         if (empty($capabilities['reasoning']['levels'])) {
             return null;
@@ -412,6 +570,40 @@ class ModelCapabilities
     }
 
     /**
+     * Normalize a stored effort against every surface PolyTrans can use.
+     *
+     * This is the right check when *storing* a configuration: `max` is valid for
+     * GPT-5.6 even though Chat Completions - the default surface - has no such
+     * level, and validating against that surface alone would silently downgrade it
+     * to `xhigh`. Requests validate against the single surface they are sent to.
+     *
+     * @param string $provider_id Provider ID.
+     * @param string $model_id    Model ID.
+     * @param mixed  $value       Stored value.
+     * @return string|null Canonical level, or null when no surface accepts it.
+     */
+    public static function normalize_effort_across_surfaces($provider_id, $model_id, $value)
+    {
+        $surfaces = self::get_usable_surfaces($provider_id, $model_id);
+        $fallback = null;
+
+        foreach ($surfaces as $surface) {
+            $levels = self::get_model_capabilities($provider_id, $model_id, $surface)['reasoning']['levels'] ?? [];
+
+            // An exact match on any surface is authoritative - keep it as stored.
+            if (is_string($value) && isset($levels[$value])) {
+                return $value;
+            }
+
+            if ($fallback === null) {
+                $fallback = self::normalize_effort($provider_id, $model_id, $value, $surface);
+            }
+        }
+
+        return $fallback;
+    }
+
+    /**
      * Resolve the provider-native reasoning payload for a canonical effort level.
      *
      * @param string $provider_id Provider ID.
@@ -419,15 +611,15 @@ class ModelCapabilities
      * @param mixed  $value       Stored effort value.
      * @return array|null ['mode', 'param', 'canonical', 'value'] or null when nothing should be sent.
      */
-    public static function resolve_reasoning($provider_id, $model_id, $value)
+    public static function resolve_reasoning($provider_id, $model_id, $value, $surface = null)
     {
-        $capabilities = self::get_model_capabilities($provider_id, $model_id);
+        $capabilities = self::get_model_capabilities($provider_id, $model_id, $surface);
 
         if (empty($capabilities['reasoning'])) {
             return null;
         }
 
-        $canonical = self::normalize_effort($provider_id, $model_id, $value);
+        $canonical = self::normalize_effort($provider_id, $model_id, $value, $surface);
         if ($canonical === null) {
             return null;
         }
@@ -478,9 +670,9 @@ class ModelCapabilities
      * @param bool   $reasoning_active  Whether a reasoning level will be sent.
      * @return float|null Clamped temperature or null when it must not be sent.
      */
-    public static function resolve_temperature($provider_id, $model_id, $value, $reasoning_active = false)
+    public static function resolve_temperature($provider_id, $model_id, $value, $reasoning_active = false, $surface = null)
     {
-        $capabilities = self::get_model_capabilities($provider_id, $model_id);
+        $capabilities = self::get_model_capabilities($provider_id, $model_id, $surface);
         $spec = $capabilities['temperature'];
 
         if (empty($spec['supported'])) {
@@ -508,15 +700,18 @@ class ModelCapabilities
      * Strips `reasoning_effort` from the parameter bag, resolves it to a native
      * plan, and normalizes (or removes) `temperature` for the target model.
      *
-     * @param string $provider_id Provider ID.
-     * @param string $model_id    Model ID.
-     * @param array  $parameters  Raw parameters.
-     * @return array ['parameters' => array, 'reasoning' => array|null, 'capabilities' => array]
+     * The surface is resolved from the requested effort unless one is forced, so a
+     * level that only exists on /responses routes the request there. The chosen
+     * surface is returned for the caller to dispatch on.
+     *
+     * @param string      $provider_id Provider ID.
+     * @param string      $model_id    Model ID.
+     * @param array       $parameters  Raw parameters.
+     * @param string|null $surface     Force a surface, or null to resolve one.
+     * @return array ['parameters' => array, 'reasoning' => array|null, 'capabilities' => array, 'surface' => string]
      */
-    public static function prepare_chat_parameters($provider_id, $model_id, array $parameters)
+    public static function prepare_chat_parameters($provider_id, $model_id, array $parameters, $surface = null)
     {
-        $capabilities = self::get_model_capabilities($provider_id, $model_id);
-
         $requested_effort = null;
         foreach (['reasoning_effort', 'effort', 'thinking_level'] as $key) {
             if (array_key_exists($key, $parameters)) {
@@ -529,11 +724,23 @@ class ModelCapabilities
 
         // Nothing asked for explicitly - fall back to the site-wide setting, so a
         // globally chosen effort reaches callers that only know about a model.
-        if ($requested_effort === null && !empty($capabilities['reasoning'])) {
+        // Resolved before the surface, since the level can decide the endpoint.
+        if ($requested_effort === null) {
             $configured = self::get_configured_effort($provider_id);
             if ($configured !== '') {
                 $requested_effort = $configured;
             }
+        }
+
+        if ($surface === null) {
+            $surface = self::resolve_surface($provider_id, $model_id, $requested_effort);
+        }
+
+        $capabilities = self::get_model_capabilities($provider_id, $model_id, $surface);
+
+        // A configured effort on a model with no reasoning control is meaningless.
+        if ($requested_effort !== null && empty($capabilities['reasoning'])) {
+            $requested_effort = null;
         }
 
         // Models such as GPT-5.1+ accept a temperature only while reasoning is off.
@@ -551,14 +758,15 @@ class ModelCapabilities
             $requested_effort = 'none';
         }
 
-        $reasoning = self::resolve_reasoning($provider_id, $model_id, $requested_effort);
+        $reasoning = self::resolve_reasoning($provider_id, $model_id, $requested_effort, $surface);
 
         if (array_key_exists('temperature', $parameters)) {
             $temperature = self::resolve_temperature(
                 $provider_id,
                 $model_id,
                 $parameters['temperature'],
-                self::is_reasoning_active($reasoning)
+                self::is_reasoning_active($reasoning),
+                $surface
             );
 
             if ($temperature === null) {
@@ -572,6 +780,7 @@ class ModelCapabilities
             'parameters' => $parameters,
             'reasoning' => $reasoning,
             'capabilities' => $capabilities,
+            'surface' => $surface,
         ];
     }
 
@@ -712,9 +921,9 @@ class ModelCapabilities
      * @param string $model_id    Model ID.
      * @return string
      */
-    public static function describe($provider_id, $model_id)
+    public static function describe($provider_id, $model_id, $surface = null)
     {
-        $capabilities = self::get_model_capabilities($provider_id, $model_id);
+        $capabilities = self::get_model_capabilities($provider_id, $model_id, $surface);
 
         $spec = $capabilities['temperature'];
 
@@ -781,13 +990,22 @@ class ModelCapabilities
         ];
 
         if (!empty($capabilities['reasoning'])) {
-            $levels = [];
-            foreach ($capabilities['reasoning']['levels'] as $canonical => $level) {
-                $levels[] = [
-                    'value' => $canonical,
-                    'native' => $level['native'],
-                    'label' => $level['label'],
-                ];
+            // Offer every level the model accepts on any surface PolyTrans can use.
+            // Hiding `max` for GPT-5.6 because Chat Completions lacks it would hide a
+            // level the model really has; picking it routes the request to /responses.
+            $levels = self::get_effort_levels_across_surfaces(
+                $capabilities['provider'],
+                $capabilities['model']
+            );
+
+            if (empty($levels)) {
+                foreach ($capabilities['reasoning']['levels'] as $canonical => $level) {
+                    $levels[] = [
+                        'value' => $canonical,
+                        'native' => $level['native'],
+                        'label' => $level['label'],
+                    ];
+                }
             }
 
             $profile['reasoning'] = [
@@ -996,6 +1214,81 @@ class ModelCapabilities
                     'reasoning' => null,
                 ],
                 [
+                    // GPT-5.6 is the first generation with `max`, and only on /responses.
+                    // Must precede the GPT-5.2+ rule, which also matches 5.6.
+                    'id' => 'openai-gpt-5-6',
+                    'match' => ['/^gpt-5\.6/', '/^gpt-5-6(-|\.|$)/'],
+                    'label' => 'OpenAI GPT-5.6 (reasoning)',
+                    'temperature' => $reasoning_off_temperature,
+                    'reasoning' => [
+                        'mode' => self::MODE_EFFORT,
+                        'param' => 'reasoning_effort',
+                        'default' => 'medium',
+                        'disables_temperature' => true,
+                        'levels' => [
+                            'none' => 'none',
+                            'low' => 'low',
+                            'medium' => 'medium',
+                            'high' => 'high',
+                            'xhigh' => 'xhigh',
+                        ],
+                        'note' => __('Chat Completions accepts none, low, medium, high, xhigh. The "max" level exists only on the /responses endpoint, which PolyTrans switches to automatically when you select it.', 'polytrans'),
+                    ],
+                    'surfaces' => [
+                        self::SURFACE_RESPONSES => [
+                            'reasoning' => [
+                                'mode' => self::MODE_EFFORT,
+                                'param' => 'reasoning.effort',
+                                'default' => 'medium',
+                                'disables_temperature' => true,
+                                'levels' => [
+                                    'none' => 'none',
+                                    'low' => 'low',
+                                    'medium' => 'medium',
+                                    'high' => 'high',
+                                    'xhigh' => 'xhigh',
+                                    'max' => 'max',
+                                ],
+                                'note' => __('Sent through /responses, which is the only endpoint offering the "max" level for this model.', 'polytrans'),
+                            ],
+                        ],
+                    ],
+                ],
+                [
+                    // The -pro models exist only on /responses and accept a narrower
+                    // range: gpt-5-pro takes high only, later -pro models medium and up.
+                    'id' => 'openai-gpt-5-pro-legacy',
+                    'match' => ['/^gpt-5-pro/'],
+                    'label' => 'OpenAI GPT-5 pro (reasoning)',
+                    'temperature' => ['supported' => false],
+                    'reasoning' => [
+                        'mode' => self::MODE_EFFORT,
+                        'param' => 'reasoning.effort',
+                        'default' => 'high',
+                        'levels' => [
+                            'high' => 'high',
+                        ],
+                        'note' => __('Served only through /responses and only at effort "high".', 'polytrans'),
+                    ],
+                ],
+                [
+                    'id' => 'openai-gpt-5-pro',
+                    'match' => ['/^gpt-5\.\d+-pro/', '/^gpt-5-\d+-pro/'],
+                    'label' => 'OpenAI GPT-5.x pro (reasoning)',
+                    'temperature' => ['supported' => false],
+                    'reasoning' => [
+                        'mode' => self::MODE_EFFORT,
+                        'param' => 'reasoning.effort',
+                        'default' => 'high',
+                        'levels' => [
+                            'medium' => 'medium',
+                            'high' => 'high',
+                            'xhigh' => 'xhigh',
+                        ],
+                        'note' => __('Served only through /responses. Accepts medium, high and xhigh - the cheaper levels are rejected.', 'polytrans'),
+                    ],
+                ],
+                [
                     // GPT-5.2 added the xhigh level.
                     'id' => 'openai-gpt-5-2-plus',
                     'match' => ['/^gpt-5\.[2-9]/', '/^gpt-5-[2-9](-|\.|$)/', '/^gpt-[6-9]/'],
@@ -1014,6 +1307,24 @@ class ModelCapabilities
                             'xhigh' => 'xhigh',
                         ],
                         'note' => __('Accepts reasoning_effort: none, low, medium, high, xhigh. Temperature only works together with effort "none".', 'polytrans'),
+                    ],
+                    'surfaces' => [
+                        self::SURFACE_RESPONSES => [
+                            'reasoning' => [
+                                'mode' => self::MODE_EFFORT,
+                                'param' => 'reasoning.effort',
+                                'default' => 'medium',
+                                'disables_temperature' => true,
+                                'levels' => [
+                                    'none' => 'none',
+                                    'low' => 'low',
+                                    'medium' => 'medium',
+                                    'high' => 'high',
+                                    'xhigh' => 'xhigh',
+                                ],
+                                'note' => __('Sent through /responses as reasoning.effort: none, low, medium, high, xhigh.', 'polytrans'),
+                            ],
+                        ],
                     ],
                 ],
                 [
@@ -1035,6 +1346,23 @@ class ModelCapabilities
                         ],
                         'note' => __('Accepts reasoning_effort: none, low, medium, high. Temperature only works together with effort "none".', 'polytrans'),
                     ],
+                    'surfaces' => [
+                        self::SURFACE_RESPONSES => [
+                            'reasoning' => [
+                                'mode' => self::MODE_EFFORT,
+                                'param' => 'reasoning.effort',
+                                'default' => 'medium',
+                                'disables_temperature' => true,
+                                'levels' => [
+                                    'none' => 'none',
+                                    'low' => 'low',
+                                    'medium' => 'medium',
+                                    'high' => 'high',
+                                ],
+                                'note' => __('Sent through /responses as reasoning.effort: none, low, medium, high.', 'polytrans'),
+                            ],
+                        ],
+                    ],
                 ],
                 [
                     'id' => 'openai-gpt-5',
@@ -1053,6 +1381,23 @@ class ModelCapabilities
                         ],
                         'note' => __('GPT-5 rejects temperature and accepts reasoning_effort: minimal, low, medium, high.', 'polytrans'),
                     ],
+                    'surfaces' => [
+                        self::SURFACE_RESPONSES => [
+                            'reasoning' => [
+                                'mode' => self::MODE_EFFORT,
+                                'param' => 'reasoning.effort',
+                                'default' => 'medium',
+                                'disables_temperature' => true,
+                                'levels' => [
+                                    'minimal' => 'minimal',
+                                    'low' => 'low',
+                                    'medium' => 'medium',
+                                    'high' => 'high',
+                                ],
+                                'note' => __('Sent through /responses as reasoning.effort: minimal, low, medium, high.', 'polytrans'),
+                            ],
+                        ],
+                    ],
                 ],
                 [
                     'id' => 'openai-o-series',
@@ -1070,6 +1415,22 @@ class ModelCapabilities
                             'xhigh' => 'xhigh',
                         ],
                         'note' => __('o-series reasoning models reject temperature and accept reasoning_effort: low, medium, high, xhigh.', 'polytrans'),
+                    ],
+                    'surfaces' => [
+                        self::SURFACE_RESPONSES => [
+                            'reasoning' => [
+                                'mode' => self::MODE_EFFORT,
+                                'param' => 'reasoning.effort',
+                                'default' => 'medium',
+                                'disables_temperature' => true,
+                                'levels' => [
+                                    'low' => 'low',
+                                    'medium' => 'medium',
+                                    'high' => 'high',
+                                ],
+                                'note' => __('Sent through /responses, which for the o-series accepts only low, medium and high - xhigh exists on Chat Completions.', 'polytrans'),
+                            ],
+                        ],
                     ],
                 ],
                 [

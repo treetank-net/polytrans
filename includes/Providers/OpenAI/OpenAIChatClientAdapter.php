@@ -18,13 +18,38 @@ class OpenAIChatClientAdapter implements ChatClientInterface
 {
     private $api_key;
     private $base_url;
-    
+
+    /**
+     * Lazily created delegate for models or effort levels that need /responses.
+     *
+     * @var OpenAIResponsesClientAdapter|null
+     */
+    private $responses_adapter = null;
+
     public function __construct($api_key, $base_url = 'https://api.openai.com/v1')
     {
         $this->api_key = $api_key;
         $this->base_url = rtrim($base_url, '/');
     }
-    
+
+    /**
+     * Get the /responses delegate.
+     *
+     * This adapter stays the single entry point for OpenAI - the factory only knows
+     * the provider, not the model, so the endpoint choice has to happen here, where
+     * the model and requested effort are both known.
+     *
+     * @return OpenAIResponsesClientAdapter
+     */
+    private function get_responses_adapter()
+    {
+        if ($this->responses_adapter === null) {
+            $this->responses_adapter = new OpenAIResponsesClientAdapter($this->api_key, $this->base_url);
+        }
+
+        return $this->responses_adapter;
+    }
+
     public function get_provider_id()
     {
         return 'openai';
@@ -51,14 +76,34 @@ class OpenAIChatClientAdapter implements ChatClientInterface
         }
 
         // Reasoning models reject temperature and expect reasoning_effort instead.
+        // The same call also decides the endpoint: the `-pro` and `-codex` models
+        // live only on /responses, and so does the `max` effort level.
         $prepared = ModelCapabilities::prepare_chat_parameters('openai', $model, $parameters);
+
+        if ($prepared['surface'] === ModelCapabilities::SURFACE_RESPONSES) {
+            return $this->get_responses_adapter()->chat_completion($messages, $parameters);
+        }
+
+        $parameters_out = $prepared['parameters'];
+
+        // Reasoning models rejected `max_tokens` outright ("use max_completion_tokens
+        // instead"), so a workflow step with a token limit failed with a 400 before
+        // the model ever ran. Classic models keep the original key.
+        if (
+            $prepared['reasoning'] !== null
+            && isset($parameters_out['max_tokens'])
+            && !isset($parameters_out['max_completion_tokens'])
+        ) {
+            $parameters_out['max_completion_tokens'] = $parameters_out['max_tokens'];
+            unset($parameters_out['max_tokens']);
+        }
 
         // Build request body
         $body = array_merge(
             [
                 'messages' => $messages,
             ],
-            $prepared['parameters'],
+            $parameters_out,
             ['model' => $model]
         );
 
@@ -159,10 +204,16 @@ class OpenAIChatClientAdapter implements ChatClientInterface
     
     public function extract_content($response)
     {
+        // A delegated request answers in the /responses shape (`output` items rather
+        // than `choices`), and the caller still holds this adapter.
+        if (is_array($response) && !isset($response['choices']) && isset($response['output'])) {
+            return $this->get_responses_adapter()->extract_content($response);
+        }
+
         if (!isset($response['choices'][0]['message']['content'])) {
             return null;
         }
-        
+
         return $response['choices'][0]['message']['content'];
     }
 }

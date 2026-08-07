@@ -29,8 +29,9 @@ describe('rendering', function () {
             expect($html)->toContain('value="' . $level . '"');
         }
 
-        // "max" exists only on OpenAI's /responses surface, which has no adapter yet.
-        expect($html)->not->toContain('value="max"');
+        // "max" exists only on /responses, but the model does support it, so the
+        // field must offer it - selecting it routes the request to that endpoint.
+        expect($html)->toContain('value="max"');
     });
 
     it('marks the stored level as selected', function () {
@@ -76,8 +77,12 @@ describe('sanitization', function () {
         expect(ReasoningEffortField::sanitize('openai', 'gpt-5.6-luna', 'xhigh'))->toBe('xhigh');
     });
 
-    it('snaps a level the model does not support', function () {
-        expect(ReasoningEffortField::sanitize('openai', 'gpt-5.6-luna', 'max'))->toBe('xhigh');
+    it('keeps a level that only one of the model\'s surfaces provides', function () {
+        expect(ReasoningEffortField::sanitize('openai', 'gpt-5.6-luna', 'max'))->toBe('max');
+    });
+
+    it('snaps a level no surface of the model provides', function () {
+        expect(ReasoningEffortField::sanitize('openai', 'gpt-5.1', 'max'))->toBe('high');
     });
 
     it('accepts an empty value as "provider default"', function () {

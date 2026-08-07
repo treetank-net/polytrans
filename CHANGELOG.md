@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.16.0] - 2026-08-07
+
+### Added
+- **OpenAI Responses API support** (`OpenAIResponsesClientAdapter`). This unlocks the `max` reasoning level, which exists only on `/responses` and only for the `gpt-5.6` family, and the models OpenAI serves exclusively there: 13 more models are now selectable (`gpt-5-pro`, `gpt-5.2-pro`, `gpt-5.4-pro`, `gpt-5.5-pro`, `gpt-5.3-codex`, `o1-pro`, `o3-pro` and their dated variants). Every one was verified end-to-end against the live API.
+- Effort levels are now a property of the **(model, endpoint)** pair rather than the model alone, since the same model differs between endpoints - `gpt-5.6` gains `max` on `/responses`, while the o-series loses `xhigh` there. `get_model_capabilities()` and the accessors around it take an optional surface argument.
+- `ModelCapabilities::resolve_surface()` picks the endpoint per request: a level missing from Chat Completions but available on `/responses` routes there, everything else stays on Chat Completions, so working configurations keep their behaviour. Filterable via `polytrans_resolved_api_surface`.
+- `ModelCapabilities::normalize_effort_across_surfaces()` validates stored configurations against every usable endpoint, and the pickers offer the union of levels - without it, selecting `max` would be silently downgraded to `xhigh` on save.
+
+### Fixed
+- Reasoning models rejected workflow steps that set a token limit: OpenAI answers *"Unsupported parameter: 'max_tokens' is not supported with this model. Use 'max_completion_tokens' instead"*, so any AI Assistant step with **Max Tokens** filled in failed with a 400 on every `gpt-5*` and `o*` model before the model ran. The chat adapter now sends the key those models expect.
+- Retired Codex models (`gpt-5-codex`, `gpt-5.1-codex`, `gpt-5.1-codex-mini`, `gpt-5.1-codex-max`, `gpt-5.2-codex`) are filtered out of the model picker. `/v1/models` still lists them, but Chat Completions reports them deprecated and `/responses` answers `404 Model not found`, so they cannot serve a request on either endpoint.
+
 ## [1.15.2] - 2026-08-07
 
 ### Added

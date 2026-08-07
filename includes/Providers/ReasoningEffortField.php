@@ -40,11 +40,13 @@ class ReasoningEffortField
      */
     public static function get_html($provider_id, $selected_model, $selected_effort)
     {
+        // Every level the model accepts on any endpoint PolyTrans can use, so `max`
+        // is offered for GPT-5.6 even though Chat Completions has no such level.
         $levels = $selected_model !== ''
-            ? ModelCapabilities::get_effort_levels($provider_id, $selected_model)
+            ? ModelCapabilities::get_effort_levels_across_surfaces($provider_id, $selected_model)
             : [];
         $current = $selected_model !== ''
-            ? ModelCapabilities::normalize_effort($provider_id, $selected_model, $selected_effort)
+            ? ModelCapabilities::normalize_effort_across_surfaces($provider_id, $selected_model, $selected_effort)
             : (is_string($selected_effort) ? $selected_effort : '');
         $capabilities = $selected_model !== ''
             ? ModelCapabilities::get_model_capabilities($provider_id, $selected_model)
@@ -116,7 +118,7 @@ class ReasoningEffortField
             return $value;
         }
 
-        $canonical = ModelCapabilities::normalize_effort($provider_id, $model_id, $value);
+        $canonical = ModelCapabilities::normalize_effort_across_surfaces($provider_id, $model_id, $value);
 
         return $canonical ?? '';
     }

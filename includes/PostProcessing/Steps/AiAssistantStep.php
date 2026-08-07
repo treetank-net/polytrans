@@ -480,7 +480,7 @@ class AiAssistantStep implements WorkflowStepInterface
         $provider_id = $provider_settings['provider'] ?? 'openai';
         $model_id = $provider_settings['model'] ?? '';
 
-        $reasoning_effort = \PolyTrans\Core\ModelCapabilities::normalize_effort(
+        $reasoning_effort = \PolyTrans\Core\ModelCapabilities::normalize_effort_across_surfaces(
             $provider_id,
             $model_id,
             $step_config['reasoning_effort'] ?? ''

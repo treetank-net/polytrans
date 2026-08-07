@@ -418,24 +418,23 @@ describe('API surfaces', function () {
             ->toBe([ModelCapabilities::SURFACE_CHAT]);
     });
 
-    it('marks models unusable when PolyTrans has no adapter for their surface', function () {
-        // Only the chat surface is implemented for now.
+    it('marks models unusable only when no adapter serves any of their surfaces', function () {
         expect(ModelCapabilities::is_model_usable('openai', 'gpt-5.4'))->toBeTrue();
         expect(ModelCapabilities::is_model_usable('openai', 'o3'))->toBeTrue();
-        expect(ModelCapabilities::is_model_usable('openai', 'gpt-5.5-pro'))->toBeFalse();
+        // Both surfaces have an adapter now, so the responses-only models are usable.
+        expect(ModelCapabilities::is_model_usable('openai', 'gpt-5.5-pro'))->toBeTrue();
+        expect(ModelCapabilities::is_model_usable('openai', 'gpt-5.3-codex'))->toBeTrue();
+        // Still nothing to talk to for a TTS model.
         expect(ModelCapabilities::is_model_usable('openai', 'gpt-4o-mini-tts'))->toBeFalse();
     });
 
-    it('lets a filter declare a new implemented surface', function () {
-        $GLOBALS['polytrans_test_filters']['polytrans_implemented_api_surfaces'] = function ($surfaces) {
-            $surfaces[] = ModelCapabilities::SURFACE_RESPONSES;
-
-            return $surfaces;
+    it('lets a filter withdraw an implemented surface', function () {
+        $GLOBALS['polytrans_test_filters']['polytrans_implemented_api_surfaces'] = function () {
+            return [ModelCapabilities::SURFACE_CHAT];
         };
 
-        expect(ModelCapabilities::is_model_usable('openai', 'gpt-5.5-pro'))->toBeTrue();
-        // Still nothing to talk to for a TTS model.
-        expect(ModelCapabilities::is_model_usable('openai', 'gpt-4o-mini-tts'))->toBeFalse();
+        expect(ModelCapabilities::is_model_usable('openai', 'gpt-5.5-pro'))->toBeFalse();
+        expect(ModelCapabilities::is_model_usable('openai', 'gpt-5.4'))->toBeTrue();
 
         unset($GLOBALS['polytrans_test_filters']['polytrans_implemented_api_surfaces']);
     });
@@ -539,15 +538,29 @@ describe('site-wide default effort', function () {
         expect($prepared['parameters']['temperature'])->toBe(0.7);
     });
 
-    it('snaps a configured level the model does not have to the nearest one', function () {
-        // "max" exists on Claude but not on OpenAI's chat surface.
+    it('routes to the surface that has the configured level', function () {
+        // "max" is absent from Chat Completions but present on /responses for 5.6.
         $GLOBALS['polytrans_test_options']['polytrans_settings'] = [
             'openai_reasoning_effort' => 'max',
         ];
 
         $prepared = ModelCapabilities::prepare_chat_parameters('openai', 'gpt-5.6-luna', []);
 
-        expect($prepared['reasoning']['value'])->toBe('xhigh');
+        expect($prepared['surface'])->toBe(ModelCapabilities::SURFACE_RESPONSES);
+        expect($prepared['reasoning']['value'])->toBe('max');
+        expect($prepared['reasoning']['param'])->toBe('reasoning.effort');
+    });
+
+    it('snaps a level no surface of the model provides', function () {
+        // GPT-5.1 tops out at high on both surfaces.
+        $GLOBALS['polytrans_test_options']['polytrans_settings'] = [
+            'openai_reasoning_effort' => 'max',
+        ];
+
+        $prepared = ModelCapabilities::prepare_chat_parameters('openai', 'gpt-5.1', []);
+
+        expect($prepared['surface'])->toBe(ModelCapabilities::SURFACE_CHAT);
+        expect($prepared['reasoning']['value'])->toBe('high');
     });
 
     it('is read per provider', function () {

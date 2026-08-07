@@ -12,7 +12,9 @@ where it is deprecated) or require it to be left at its default while they think
 |----------|-----------|-----------------|-------------|
 | OpenAI `gpt-5`, `-mini`, `-nano` | `reasoning_effort` | `minimal`, `low`, `medium`, `high` | rejected |
 | OpenAI `gpt-5.1` | `reasoning_effort` | `none`, `low`, `medium`, `high` | only with effort `none` |
-| OpenAI `gpt-5.2` … `gpt-5.6` | `reasoning_effort` | `none`, `low`, `medium`, `high`, `xhigh` | only with effort `none` |
+| OpenAI `gpt-5.2` … `gpt-5.5` | `reasoning_effort` | `none`, `low`, `medium`, `high`, `xhigh` | only with effort `none` |
+| OpenAI `gpt-5.6` | `reasoning_effort` / `reasoning.effort` | `none` … `xhigh`, plus `max` on `/responses` | only with effort `none` |
+| OpenAI `gpt-5.x-pro`, `-codex` | `reasoning.effort` (`/responses` only) | `medium`, `high`, `xhigh` (`gpt-5-pro`: `high` only) | rejected |
 | OpenAI `o1`, `o3`, `o3-mini`, `o4-mini` | `reasoning_effort` | `low`, `medium`, `high`, `xhigh` | rejected |
 | OpenAI `gpt-4*`, `gpt-3.5*` | - | - | `0.0`-`2.0` |
 | Gemini 3.x Flash / Flash Lite | `generationConfig.thinkingConfig.thinkingLevel` | `minimal`, `low`, `medium`, `high` | `0.0`-`2.0` |
@@ -27,7 +29,8 @@ assumptions taken from the docs:
 
 - **`max` does not exist in OpenAI Chat Completions.** No model accepts it there;
   the ceiling is `xhigh`. It *does* exist on `/responses` for the `gpt-5.6`
-  family - see *The same model can differ per surface* below.
+  family, which is why PolyTrans routes that level there - see *The same model can
+  differ per surface* and *Choosing the surface per request* below.
 - **The o-series does accept `xhigh`** on Chat Completions, contrary to the
   three-level enum the reasoning guide describes (and it loses `xhigh` on
   `/responses`).
@@ -257,10 +260,16 @@ OpenAI returns against both endpoints gives three groups:
 keeps unusable models out of the pickers. Both are filterable
 (`polytrans_model_api_surfaces`, `polytrans_implemented_api_surfaces`).
 
-Deprecated models are **not** detectable this way - `/v1/models` still lists
-them with no marker (e.g. `gpt-5-chat-latest`, `gpt-5.1-codex-mini`), and only a
-real request reveals it. They are left in the list rather than hardcoding a list
-that would go stale.
+Deprecated models are largely **not** detectable this way - `/v1/models` still
+lists them with no marker (e.g. `gpt-5-chat-latest`), and only a real request
+reveals it. They are left in the list rather than hardcoding one that would go
+stale.
+
+The exception is the retired Codex generations (`gpt-5-codex`, `gpt-5.1-codex*`,
+`gpt-5.2-codex`): `/chat/completions` calls them deprecated and `/responses`
+answers `404 Model not found`, so there is nowhere to send them at all. Since
+`gpt-5.3-codex` and later do work, this is matched by name as a snapshot rather
+than as a rule about `-codex`.
 
 ## The same model can differ per surface
 
@@ -269,7 +278,7 @@ alone. Probed per level on both endpoints:
 
 | Model | `/chat/completions` | `/responses` |
 |---|---|---|
-| `gpt-5`, `-mini`, `-nano` | `minimal`, `low`, `medium`, `high` | `low`, `medium`, `high` |
+| `gpt-5`, `-mini`, `-nano` | `minimal`, `low`, `medium`, `high` | same |
 | `gpt-5.1` | `none`, `low`, `medium`, `high` | same |
 | `gpt-5.2` … `gpt-5.5` | `none` … `xhigh` | same |
 | `gpt-5.6-sol/terra/luna` | `none` … `xhigh` | `none` … `xhigh`, **plus `max`** |
@@ -295,3 +304,40 @@ Payload shape also differs:
 Temperature behaves consistently across both: allowed only while reasoning is
 off, and `gpt-5.4` + `effort: none` + `temperature` is accepted on either
 endpoint.
+
+A caveat on probing `minimal`: on `/responses` the gpt-5 family answers a 500,
+not a 400, when the output budget is too small for the model to produce anything
+(16 tokens). With a realistic budget the level works. A 500 therefore means
+"retry bigger", not "unsupported".
+
+## Choosing the surface per request
+
+Both endpoints have an adapter (`OpenAIChatClientAdapter`,
+`OpenAIResponsesClientAdapter`), and `ChatClientFactory` only knows the provider -
+not the model - so the chat adapter is the single entry point and delegates when
+needed. `ModelCapabilities::resolve_surface()` decides:
+
+1. Only one usable surface (`-pro`, `-codex`) → that one.
+2. The requested effort is missing from the default surface but present on
+   another (`max` on GPT-5.6) → the surface that has it.
+3. Otherwise → `/chat/completions`, the long-serving path.
+
+So one model may use either endpoint depending on the effort selected. That is
+deliberate: it delivers `max` without changing the endpoint for any
+configuration that was already working. Override with
+`polytrans_resolved_api_surface`.
+
+Two consequences worth knowing:
+
+- **Storing vs sending.** A stored effort is validated with
+  `normalize_effort_across_surfaces()` (valid if *any* usable surface accepts it),
+  while a request validates against the single surface it goes to. Validating
+  storage against the default surface alone would downgrade `max` to `xhigh` and
+  silently lose it.
+- **UI offers the union.** `get_effort_levels_across_surfaces()` feeds the
+  pickers, so `max` is offered for GPT-5.6 even though Chat Completions has no
+  such level.
+
+`extract_content()` on the chat adapter recognises a `/responses` payload
+(`output` items instead of `choices`) and forwards it, because the caller still
+holds the chat adapter after a delegated request.

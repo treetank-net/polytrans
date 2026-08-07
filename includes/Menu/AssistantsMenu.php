@@ -476,7 +476,7 @@ class AssistantsMenu
 
         $capabilities = \PolyTrans\Core\ModelCapabilities::get_model_capabilities($current_provider, $effective_model);
         $effort_levels = \PolyTrans\Core\ModelCapabilities::get_effort_levels($current_provider, $effective_model);
-        $current_effort = \PolyTrans\Core\ModelCapabilities::normalize_effort(
+        $current_effort = \PolyTrans\Core\ModelCapabilities::normalize_effort_across_surfaces(
             $current_provider,
             $effective_model,
             $assistant['config']['reasoning_effort'] ?? ''
@@ -613,7 +613,7 @@ class AssistantsMenu
         }
 
         if (\PolyTrans\Core\ModelCapabilities::supports_reasoning_effort($provider, $effective_model)) {
-            $effort = \PolyTrans\Core\ModelCapabilities::normalize_effort(
+            $effort = \PolyTrans\Core\ModelCapabilities::normalize_effort_across_surfaces(
                 $provider,
                 $effective_model,
                 $config['reasoning_effort'] ?? ''
