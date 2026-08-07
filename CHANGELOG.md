@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.18.1] - 2026-08-07
+
+### Fixed
+- Disabled the one-off `MetaCleanup` migration on `admin_init`, so it no longer runs on every admin or AJAX request.
+- Fixed the assistant table schema format passed to `dbDelta()`, preventing invalid `DESCRIBE IF` and empty-index `ALTER TABLE` queries.
+
 ## [1.18.0] - 2026-08-07
 
 ### Added

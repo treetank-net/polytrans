@@ -114,25 +114,26 @@ class AssistantManager
 		$charset_collate = $wpdb->get_charset_collate();
 
 		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.SchemaChange -- Plugin installation/upgrade
-		$sql = "CREATE TABLE IF NOT EXISTS {$table_name} (
-			id bigint(20) unsigned AUTO_INCREMENT PRIMARY KEY,
+		// dbDelta() parses the table name from CREATE TABLE itself; including
+		// IF NOT EXISTS makes it inspect a table named "IF" (DESCRIBE IF).
+		// Keep every field/index on a non-empty line and define the primary
+		// key separately; dbDelta() treats the schema as line-based input.
+		$sql = "CREATE TABLE {$table_name} (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
 			name varchar(255) NOT NULL,
 			description text,
 			provider varchar(50) DEFAULT 'openai',
 			status varchar(20) DEFAULT 'active',
-
 			system_prompt text NOT NULL,
 			user_message_template text,
-
 			api_parameters text NOT NULL,
 			expected_format varchar(20) DEFAULT 'text',
 			expected_output_schema text,
 			output_variables text,
-
 			created_at datetime NOT NULL,
 			updated_at datetime NOT NULL,
 			created_by bigint(20) unsigned,
-
+			PRIMARY KEY  (id),
 			KEY provider (provider),
 			KEY status (status),
 			KEY name (name)
