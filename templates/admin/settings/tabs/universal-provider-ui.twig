@@ -77,6 +77,9 @@
             <div data-provider="{{ provider_id|esc_attr }}" data-field="model-message" style="margin-top:0.5em;"></div>
             <small>{{ __('Default %s model to use for translations and AI Assistant steps.', 'polytrans')|format(settings_provider.get_tab_label())|esc_html }}</small>
         </div>
+
+        {# Site-wide reasoning effort; hidden by the field itself for classic models #}
+        {{ reasoning_effort_html|raw }}
     {% endif %}
     
     {# Allow providers to add custom fields via filter #}

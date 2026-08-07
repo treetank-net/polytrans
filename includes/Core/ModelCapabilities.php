@@ -318,6 +318,33 @@ class ModelCapabilities
     }
 
     /**
+     * Get the site-wide default effort configured for a provider, if any.
+     *
+     * This is the fallback for callers that select a model but say nothing about
+     * effort - the translation path, the description generator, refinement runs.
+     * Without it those requests inherit the provider's own default (`medium` on
+     * OpenAI reasoning models), which is not configurable anywhere.
+     *
+     * @param string $provider_id Provider ID.
+     * @return string Configured value, or '' when unset.
+     */
+    public static function get_configured_effort($provider_id)
+    {
+        if (!function_exists('get_option')) {
+            return '';
+        }
+
+        $settings = get_option('polytrans_settings', []);
+        if (!is_array($settings)) {
+            return '';
+        }
+
+        $value = $settings[$provider_id . '_reasoning_effort'] ?? '';
+
+        return is_string($value) ? trim($value) : '';
+    }
+
+    /**
      * Normalize a stored effort value to a canonical level supported by the model.
      *
      * Accepts canonical values, provider-native values and token budgets, so
@@ -500,9 +527,20 @@ class ModelCapabilities
             }
         }
 
+        // Nothing asked for explicitly - fall back to the site-wide setting, so a
+        // globally chosen effort reaches callers that only know about a model.
+        if ($requested_effort === null && !empty($capabilities['reasoning'])) {
+            $configured = self::get_configured_effort($provider_id);
+            if ($configured !== '') {
+                $requested_effort = $configured;
+            }
+        }
+
         // Models such as GPT-5.1+ accept a temperature only while reasoning is off.
         // Asking for a temperature is therefore a request to turn reasoning off, and
         // saying so explicitly is safer than relying on the provider's default effort.
+        // A site-wide effort wins over this inference: it is a deliberate choice,
+        // whereas the temperature may just be a caller's untouched default.
         if (
             $requested_effort === null
             && !empty($capabilities['temperature']['requires_effort_none'])

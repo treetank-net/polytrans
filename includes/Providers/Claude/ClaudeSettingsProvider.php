@@ -3,6 +3,7 @@
 namespace PolyTrans\Providers\Claude;
 
 use PolyTrans\Providers\SettingsProviderInterface;
+use PolyTrans\Providers\ReasoningEffortField;
 use PolyTrans\Core\Http\HttpClient;
 use PolyTrans\Core\Http\HttpResponse;
 
@@ -47,6 +48,7 @@ class ClaudeSettingsProvider implements SettingsProviderInterface
         return [
             'claude_api_key',
             'claude_model',
+            'claude_reasoning_effort',
         ];
     }
     
@@ -70,15 +72,24 @@ class ClaudeSettingsProvider implements SettingsProviderInterface
         if (isset($posted_data['claude_model'])) {
             $validated['claude_model'] = sanitize_text_field($posted_data['claude_model']);
         }
-        
+
+        if (isset($posted_data['claude_reasoning_effort'])) {
+            $validated['claude_reasoning_effort'] = ReasoningEffortField::sanitize(
+                'claude',
+                $validated['claude_model'] ?? ($posted_data['claude_model'] ?? ''),
+                $posted_data['claude_reasoning_effort']
+            );
+        }
+
         return $validated;
     }
-    
+
     public function get_default_settings()
     {
         return [
             'claude_api_key' => '',
             'claude_model' => '', // None selected by default
+            'claude_reasoning_effort' => '', // Defer to the provider's own default
         ];
     }
     

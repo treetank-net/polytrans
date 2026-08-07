@@ -16,6 +16,9 @@
         initialized: false,
         providers: {},
 
+        // Capability payloads keyed by provider, as returned alongside the model list.
+        modelCapabilities: {},
+
         init: function () {
             if (this.initialized) {
                 return;
@@ -41,6 +44,20 @@
 
             // Load models when provider tab is shown
             $(document).on('click', '.provider-settings-tab', this.onProviderTabClick.bind(this));
+
+            // The chosen model decides whether a reasoning effort applies at all,
+            // and which levels that particular model accepts.
+            $(document).on('change', '[data-provider][data-field="model"]', this.onModelChange.bind(this));
+        },
+
+        /**
+         * Handle a model change in a provider tab.
+         */
+        onModelChange: function (e) {
+            var providerId = $(e.currentTarget).data('provider');
+            if (providerId) {
+                this.syncEffortControl(providerId);
+            }
         },
 
         /**
@@ -88,6 +105,19 @@
                         if (self.providers[providerId]) {
                             self.providers[providerId].modelsLoaded = true;
                         }
+
+                        // PHP rendered the options, so no model request was made and no
+                        // capability data arrived with it. Fetch it anyway (server-cached),
+                        // otherwise switching models could not re-derive the effort levels.
+                        var $apiKeyInput = $('[data-provider="' + providerId + '"][data-field="api-key"]');
+                        self.fetchModels(
+                            providerId,
+                            $apiKeyInput.length ? $apiKeyInput.val() : '',
+                            $modelSelect.val() || '',
+                            function () {
+                                self.syncEffortControl(providerId);
+                            }
+                        );
                     }
                 }
             });
@@ -267,6 +297,9 @@
                     nonce: nonce
                 },
                 success: function (response) {
+                    if (response.success && response.data && response.data.capabilities) {
+                        this.modelCapabilities[providerId] = response.data.capabilities;
+                    }
                     if (response.success && response.data && response.data.models) {
                         callback(response.data.models);
                     } else {
@@ -347,6 +380,91 @@
             // Update data attribute to reflect current selection
             var currentValue = $select.val() || '';
             $select.data('selected-model', currentValue);
+
+            var providerId = $select.data('provider');
+            if (providerId) {
+                this.syncEffortControl(providerId);
+            }
+        },
+
+        /**
+         * Resolve the capability profile for a provider's currently selected model.
+         *
+         * Returns null when there is no capability data yet (models still loading)
+         * or the provider is unknown to the capability layer.
+         */
+        getModelProfile: function (providerId, model) {
+            var capabilities = this.modelCapabilities[providerId];
+            if (!capabilities || !capabilities.profiles) {
+                return null;
+            }
+
+            var normalized = String(model || '').toLowerCase().replace(/^models\//, '');
+            var profileId = (capabilities.models || {})[normalized] || capabilities.fallback;
+
+            return capabilities.profiles[profileId] || null;
+        },
+
+        /**
+         * Show the reasoning effort selector only for models that accept one, with
+         * that model's own levels. A previously saved level survives a model switch
+         * when the new model also supports it, and is otherwise reset to the
+         * provider default rather than silently sending an invalid value.
+         */
+        syncEffortControl: function (providerId) {
+            var $row = $('[data-provider="' + providerId + '"][data-field="reasoning-effort-row"]');
+            var $select = $('[data-provider="' + providerId + '"][data-field="reasoning-effort"]');
+
+            if (!$row.length || !$select.length) {
+                return;
+            }
+
+            // Without capability data there is nothing better than what the server
+            // already rendered - leave the row alone rather than hiding a control
+            // the model may well support.
+            if (!this.modelCapabilities[providerId]) {
+                return;
+            }
+
+            var $modelSelect = $('[data-provider="' + providerId + '"][data-field="model"]');
+            var model = $modelSelect.val() || '';
+            var profile = this.getModelProfile(providerId, model);
+            var levels = (profile && profile.reasoning && Array.isArray(profile.reasoning.levels))
+                ? profile.reasoning.levels
+                : [];
+
+            if (!levels.length) {
+                $row.hide();
+                return;
+            }
+
+            var previous = $select.val() || '';
+            var available = levels.map(function (level) { return level.value; });
+            var selected = available.indexOf(previous) !== -1 ? previous : '';
+
+            $select.empty();
+            $select.append($('<option></option>')
+                .attr('value', '')
+                .text(this.i18n('effort_provider_default', 'Provider default')));
+
+            levels.forEach(function (level) {
+                $select.append($('<option></option>')
+                    .attr('value', level.value)
+                    .text(level.label));
+            });
+
+            $select.val(selected);
+
+            var $description = $('[data-provider="' + providerId + '"][data-field="reasoning-effort-description"]');
+            if ($description.length) {
+                // Rendered as a data attribute so appending a note never compounds:
+                // the visible text already contains the note of the previous model.
+                var base = $description.data('base-description') || '';
+                var note = (profile.reasoning && profile.reasoning.note) || '';
+                $description.text([base, note].filter(Boolean).join(' '));
+            }
+
+            $row.show();
         },
 
         /**

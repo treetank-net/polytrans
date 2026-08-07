@@ -4,6 +4,7 @@ namespace PolyTrans\Providers\OpenAI;
 
 use PolyTrans\Providers\SettingsProviderInterface;
 use PolyTrans\Providers\ProviderRegistry;
+use PolyTrans\Providers\ReasoningEffortField;
 use PolyTrans\Assistants\AssistantManager;
 
 /**
@@ -70,7 +71,8 @@ class OpenAISettingsProvider implements SettingsProviderInterface
             'openai_api_key',
             'openai_source_language',
             'openai_assistants',
-            'openai_model'
+            'openai_model',
+            'openai_reasoning_effort'
         ];
     }
 
@@ -90,6 +92,7 @@ class OpenAISettingsProvider implements SettingsProviderInterface
             ]
         ];
         $openai_model = $settings['openai_model'] ?? '';
+        $openai_reasoning_effort = $settings['openai_reasoning_effort'] ?? '';
 
         // Add language data for JS via enqueued script
         $lang_name_map = [];
@@ -134,6 +137,11 @@ class OpenAISettingsProvider implements SettingsProviderInterface
                 <div data-provider="openai" data-field="model-message" id="openai-model-message" style="margin-top:0.5em;"></div>
                 <br><small><?php esc_html_e('Default OpenAI model to use for translations and AI Assistant steps. This can be overridden per workflow step.', 'polytrans'); ?></small>
             </div>
+
+            <?php
+            // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- escaped in get_html()
+            echo ReasoningEffortField::get_html('openai', $openai_model, $openai_reasoning_effort);
+            ?>
 
             <div style="margin-top:2em; padding: 15px; background: #f0f6fc; border-left: 4px solid #0073aa;">
                 <p style="margin: 0;">
@@ -223,6 +231,15 @@ class OpenAISettingsProvider implements SettingsProviderInterface
             }
         }
 
+        // Validate reasoning effort against whichever model was just saved.
+        if (isset($posted_data['openai_reasoning_effort'])) {
+            $validated['openai_reasoning_effort'] = ReasoningEffortField::sanitize(
+                'openai',
+                $validated['openai_model'] ?? ($posted_data['openai_model'] ?? ''),
+                $posted_data['openai_reasoning_effort']
+            );
+        }
+
         return $validated;
     }
 
@@ -236,6 +253,7 @@ class OpenAISettingsProvider implements SettingsProviderInterface
             'openai_source_language' => 'en',
             'openai_assistants' => [],
             'openai_model' => '', // None selected by default
+            'openai_reasoning_effort' => '', // Defer to the provider's own default
         ];
     }
 

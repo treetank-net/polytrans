@@ -126,6 +126,8 @@ class SettingsMenu
                     'refreshing' => esc_html__('Refreshing...', 'polytrans'),
                     'models_refreshed' => esc_html__('Models refreshed', 'polytrans'),
                     'no_models' => esc_html__('No models available', 'polytrans'),
+                    'none_selected' => esc_html__('None selected', 'polytrans'),
+                    'effort_provider_default' => esc_html__('Provider default', 'polytrans'),
                     'dismiss_notice' => esc_html__('Dismiss this notice', 'polytrans'),
                     'error' => esc_html__('An error occurred. Please try again.', 'polytrans'),
                     'confirm_delete' => esc_html__('Are you sure you want to delete this item?', 'polytrans'),

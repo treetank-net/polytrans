@@ -30,6 +30,22 @@ if (!function_exists('esc_html')) {
     }
 }
 
+if (!function_exists('esc_html_e')) {
+    function esc_html_e($text, $domain = null) {
+        echo esc_html($text);
+    }
+}
+
+if (!function_exists('selected')) {
+    function selected($selected, $current = true, $display = true) {
+        $result = ((string) $selected === (string) $current) ? ' selected="selected"' : '';
+        if ($display) {
+            echo $result;
+        }
+        return $result;
+    }
+}
+
 if (!function_exists('esc_attr')) {
     function esc_attr($text) {
         return htmlspecialchars($text, ENT_QUOTES, 'UTF-8');

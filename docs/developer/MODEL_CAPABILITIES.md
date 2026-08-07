@@ -100,6 +100,24 @@ enum values and raw token budgets all normalize to a canonical level.
   `api_parameters.reasoning_effort`) and the workflow AI step
   (`steps[N][reasoning_effort]`) render either a temperature input or an effort
   selector, labelled with the provider's own value names.
+- Provider settings tabs render `ReasoningEffortField` next to the default model,
+  storing `<provider>_reasoning_effort`. This is the site-wide default for callers
+  that pick a model but say nothing about effort - the translation path, the
+  description generator, refinement runs. Without it those inherit the provider's
+  own default (`medium` on OpenAI reasoning models) with no way to change it.
+
+### Precedence
+
+1. An effort passed explicitly by the caller (assistant, workflow step).
+2. `<provider>_reasoning_effort` from settings.
+3. The `temperature`-implies-`effort: none` inference, for models that only accept
+   a temperature while reasoning is off.
+4. Nothing sent - the provider applies its own default.
+
+2 deliberately outranks 3: a temperature may just be a caller's untouched default
+(`DescriptionGeneratorService` hardcodes `0.2`), whereas a configured effort is a
+choice someone made. The consequence is that configuring a site-wide effort on a
+GPT-5.1+ model drops those temperatures instead of honouring them.
 
 ## Knowledge sources
 

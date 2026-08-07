@@ -3,6 +3,7 @@
 namespace PolyTrans\Providers\Gemini;
 
 use PolyTrans\Providers\SettingsProviderInterface;
+use PolyTrans\Providers\ReasoningEffortField;
 use PolyTrans\Core\Http\HttpClient;
 use PolyTrans\Core\Http\HttpResponse;
 
@@ -47,6 +48,7 @@ class GeminiSettingsProvider implements SettingsProviderInterface
         return [
             'gemini_api_key',
             'gemini_model',
+            'gemini_reasoning_effort',
         ];
     }
     
@@ -81,15 +83,24 @@ class GeminiSettingsProvider implements SettingsProviderInterface
                 }
             }
         }
-        
+
+        if (isset($posted_data['gemini_reasoning_effort'])) {
+            $validated['gemini_reasoning_effort'] = ReasoningEffortField::sanitize(
+                'gemini',
+                $validated['gemini_model'] ?? ($posted_data['gemini_model'] ?? ''),
+                $posted_data['gemini_reasoning_effort']
+            );
+        }
+
         return $validated;
     }
-    
+
     public function get_default_settings()
     {
         return [
             'gemini_api_key' => '',
             'gemini_model' => '', // None selected by default
+            'gemini_reasoning_effort' => '', // Defer to the provider's own default
         ];
     }
     

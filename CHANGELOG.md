@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.15.2] - 2026-08-07
+
+### Added
+- Site-wide **Reasoning Effort** selector on the OpenAI, Claude and Gemini settings tabs, next to the default model. These tabs previously exposed no generation parameter at all, so a globally selected reasoning model always ran at the provider's own default effort with no way to change it. The selector appears only for models that accept an effort, offers exactly the levels that model supports, and is overridden per assistant and per workflow step.
+- `ModelCapabilities::get_configured_effort()` and a matching fallback in `prepare_chat_parameters()`, so the site-wide setting also reaches callers that only choose a model - the translation path, the description generator and refinement runs.
+
+### Fixed
+- OpenAI settings are saved through an explicit key list rather than a merge, so `openai_reasoning_effort` is now included there; without it the field would have been silently discarded on save.
+
 ## [1.15.1] - 2026-08-07
 
 ### Added

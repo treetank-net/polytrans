@@ -274,7 +274,10 @@ class TranslationSettings
                 if (isset($provider_settings['openai_model'])) {
                     $settings['openai_model'] = $provider_settings['openai_model'];
                 }
-                
+                if (isset($provider_settings['openai_reasoning_effort'])) {
+                    $settings['openai_reasoning_effort'] = $provider_settings['openai_reasoning_effort'];
+                }
+
                 // Save path rules in both formats (new universal + old OpenAI-specific for backward compatibility)
                 if (isset($provider_settings['openai_path_rules'])) {
                     $path_rules = $provider_settings['openai_path_rules'];
@@ -636,6 +639,11 @@ class TranslationSettings
             'provider_id' => $provider_id,
             'settings_provider' => $settings_provider,
             'settings' => $settings,
+            'reasoning_effort_html' => \PolyTrans\Providers\ReasoningEffortField::get_html(
+                $provider_id,
+                (string) ($settings[$provider_id . '_model'] ?? ''),
+                (string) ($settings[$provider_id . '_reasoning_effort'] ?? '')
+            ),
         ], false);
         // phpcs:enable WordPress.Security.EscapeOutput.OutputNotEscaped
     }

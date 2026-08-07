@@ -471,3 +471,93 @@ describe('extensibility', function () {
         ModelCapabilities::flush_cache();
     });
 });
+
+describe('site-wide default effort', function () {
+    afterEach(function () {
+        unset($GLOBALS['polytrans_test_options']['polytrans_settings']);
+    });
+
+    it('applies the configured effort when the caller says nothing', function () {
+        $GLOBALS['polytrans_test_options']['polytrans_settings'] = [
+            'openai_reasoning_effort' => 'high',
+        ];
+
+        $prepared = ModelCapabilities::prepare_chat_parameters('openai', 'gpt-5.6-luna', []);
+
+        expect($prepared['reasoning']['param'])->toBe('reasoning_effort');
+        expect($prepared['reasoning']['value'])->toBe('high');
+    });
+
+    it('lets an explicit per-call effort win over the site-wide one', function () {
+        $GLOBALS['polytrans_test_options']['polytrans_settings'] = [
+            'openai_reasoning_effort' => 'high',
+        ];
+
+        $prepared = ModelCapabilities::prepare_chat_parameters('openai', 'gpt-5.6-luna', [
+            'reasoning_effort' => 'low',
+        ]);
+
+        expect($prepared['reasoning']['value'])->toBe('low');
+    });
+
+    it('wins over the temperature-implies-none inference', function () {
+        // A caller's untouched default temperature must not silently disable
+        // reasoning the admin deliberately asked for.
+        $GLOBALS['polytrans_test_options']['polytrans_settings'] = [
+            'openai_reasoning_effort' => 'xhigh',
+        ];
+
+        $prepared = ModelCapabilities::prepare_chat_parameters('openai', 'gpt-5.6-luna', [
+            'temperature' => 0.2,
+        ]);
+
+        expect($prepared['reasoning']['value'])->toBe('xhigh');
+        expect($prepared['parameters'])->not->toHaveKey('temperature');
+    });
+
+    it('still turns reasoning off when nothing is configured', function () {
+        $GLOBALS['polytrans_test_options']['polytrans_settings'] = [];
+
+        $prepared = ModelCapabilities::prepare_chat_parameters('openai', 'gpt-5.6-luna', [
+            'temperature' => 0.2,
+        ]);
+
+        expect($prepared['reasoning']['value'])->toBe('none');
+        expect($prepared['parameters']['temperature'])->toBe(0.2);
+    });
+
+    it('is ignored by classic models that have no reasoning control', function () {
+        $GLOBALS['polytrans_test_options']['polytrans_settings'] = [
+            'openai_reasoning_effort' => 'high',
+        ];
+
+        $prepared = ModelCapabilities::prepare_chat_parameters('openai', 'gpt-4o', [
+            'temperature' => 0.7,
+        ]);
+
+        expect($prepared['reasoning'])->toBeNull();
+        expect($prepared['parameters']['temperature'])->toBe(0.7);
+    });
+
+    it('snaps a configured level the model does not have to the nearest one', function () {
+        // "max" exists on Claude but not on OpenAI's chat surface.
+        $GLOBALS['polytrans_test_options']['polytrans_settings'] = [
+            'openai_reasoning_effort' => 'max',
+        ];
+
+        $prepared = ModelCapabilities::prepare_chat_parameters('openai', 'gpt-5.6-luna', []);
+
+        expect($prepared['reasoning']['value'])->toBe('xhigh');
+    });
+
+    it('is read per provider', function () {
+        $GLOBALS['polytrans_test_options']['polytrans_settings'] = [
+            'openai_reasoning_effort' => 'low',
+            'claude_reasoning_effort' => 'max',
+        ];
+
+        expect(ModelCapabilities::get_configured_effort('openai'))->toBe('low');
+        expect(ModelCapabilities::get_configured_effort('claude'))->toBe('max');
+        expect(ModelCapabilities::get_configured_effort('gemini'))->toBe('');
+    });
+});
