@@ -867,39 +867,101 @@
             $spinner.addClass('is-active');
             $('#assistant-test-results').hide().empty();
 
-            $.ajax({
-                url: polytransAssistants.ajaxUrl,
-                type: 'POST',
-                data: {
-                    action: 'polytrans_test_assistant',
-                    nonce: polytransAssistants.nonce,
-                    assistant_id: assistantId,
-                    source_language: $('#assistant-test-source-language').val(),
-                    target_language: $('#assistant-test-target-language').val(),
-                    selected_post_id: selectedPost?.id || 0,
-                    title: title,
-                    content: content
-                },
-                success: (response) => {
-                    if (response.success) {
-                        this.renderAssistantTestResults(response.data);
+            // Runs through the async job worker rather than one long request: a
+            // reasoning model at high effort can take minutes, which outlives proxy
+            // and PHP timeouts, and a dead connection carries no error message.
+            this.runAssistantTestJob({
+                assistant_id: assistantId,
+                source_language: $('#assistant-test-source-language').val(),
+                target_language: $('#assistant-test-target-language').val(),
+                selected_post_id: selectedPost?.id || 0,
+                title: title,
+                content: content
+            }).then(
+                (result) => {
+                    if (result && result.success !== false) {
+                        this.renderAssistantTestResults(result.data);
                         this.showNotice('Assistant test completed.', 'success');
                     } else {
-                        const message = response.data?.message || 'Assistant test failed.';
+                        const message = result?.data?.message || 'Assistant test failed.';
                         this.renderAssistantTestError(message);
                         this.showNotice(message, 'error');
                     }
                 },
-                error: () => {
-                    const message = 'Assistant test failed. Please check logs.';
+                (error) => {
+                    // A rejected $.ajax hands back the jqXHR, which carries a status
+                    // but no message; a thrown Error carries the opposite.
+                    const message = error?.message
+                        || this.describeAssistantTestFailure(error, error?.statusText);
                     this.renderAssistantTestError(message);
                     this.showNotice(message, 'error');
-                },
-                complete: () => {
-                    $button.prop('disabled', false).text('Run Test');
-                    $spinner.removeClass('is-active');
                 }
+            ).then(() => {
+                $button.prop('disabled', false).text('Run Test');
+                $spinner.removeClass('is-active');
             });
+        },
+
+        /**
+         * Dispatch the assistant test to the async worker and poll until it settles.
+         *
+         * @param {Object} params Test parameters.
+         * @return {Promise<Object>} The worker's result payload.
+         */
+        runAssistantTestJob: async function(params) {
+            const pollIntervalMs = 2000;
+            const timeoutMs = 15 * 60 * 1000;
+
+            const dispatchResponse = await $.ajax({
+                url: polytransAssistants.ajaxUrl,
+                type: 'POST',
+                data: Object.assign({
+                    action: 'polytrans_dispatch_assistant_job',
+                    nonce: polytransAssistants.nonce,
+                    job_type: 'assistant_test'
+                }, params)
+            });
+
+            if (!dispatchResponse || !dispatchResponse.success) {
+                throw new Error(dispatchResponse?.data?.message || 'Async dispatch failed.');
+            }
+
+            const jobId = String(dispatchResponse.data?.job_id || '').trim();
+            if (!jobId) {
+                throw new Error('Async dispatch did not return job_id.');
+            }
+
+            const startedAt = Date.now();
+            while ((Date.now() - startedAt) < timeoutMs) {
+                await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+
+                const pollResponse = await $.ajax({
+                    url: polytransAssistants.ajaxUrl,
+                    type: 'POST',
+                    data: {
+                        action: 'polytrans_poll_assistant_job',
+                        nonce: polytransAssistants.nonce,
+                        job_id: jobId
+                    }
+                });
+
+                if (!pollResponse || !pollResponse.success) {
+                    throw new Error(pollResponse?.data?.message || 'Async poll failed.');
+                }
+
+                const status = String(pollResponse.data?.status || '');
+
+                if (status === 'completed' || status === 'failed') {
+                    return pollResponse.data?.result
+                        || { success: false, data: { message: 'Async job returned empty result.' } };
+                }
+
+                if (status !== 'pending' && status !== 'running') {
+                    throw new Error('Unknown async job status: ' + status);
+                }
+            }
+
+            throw new Error('Assistant test is still running after 15 minutes; giving up on waiting.');
         },
 
         /**
@@ -2410,6 +2472,41 @@
             `;
 
             $('#assistant-test-results').html(html).show();
+        },
+
+        /**
+         * Explain a transport-level test failure.
+         *
+         * These are the cases where no JSON came back at all, so there is no server
+         * message to show. A bare "check the logs" hid the most common cause: a high
+         * reasoning effort keeps the request open for a minute or more and the proxy
+         * in front of PHP closes it first.
+         */
+        describeAssistantTestFailure: function(xhr, textStatus) {
+            const status = xhr?.status || 0;
+
+            if (textStatus === 'timeout' || status === 504 || status === 408) {
+                return 'Assistant test timed out before the model answered (HTTP ' + status + '). ' +
+                    'High reasoning effort can exceed the server request limit - try a lower effort ' +
+                    'or a shorter test post.';
+            }
+
+            if (status === 502 || status === 503) {
+                return 'The server closed the connection while the model was still working (HTTP ' +
+                    status + '). This usually means the request outlived a proxy or gateway timeout.';
+            }
+
+            if (status === 500) {
+                return 'The server returned an error (HTTP 500). Check the PHP error log for details.';
+            }
+
+            if (status === 0) {
+                return 'The connection was interrupted before a response arrived. ' +
+                    'The request may still be running on the server.';
+            }
+
+            return 'Assistant test failed (HTTP ' + status + ' ' + (xhr?.statusText || textStatus || '') +
+                '). Please check logs.';
         },
 
         /**

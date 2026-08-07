@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.16.1] - 2026-08-07
+
+### Changed
+- The assistant tester now runs through the existing async job worker (`AsyncJobRunner`) instead of one long-held request, matching how workflow refinement already worked. The browser gets a job ID immediately and polls for the result, so a reasoning model that thinks for minutes no longer depends on the request surviving PHP limits and proxy timeouts. The worker also converts a fatal error into a reported failure, which a dropped connection could not do.
+
+### Fixed
+- Requests routed to `/responses` returned an empty result whenever a token limit was configured. That budget covers reasoning tokens, which `max_tokens` on Chat Completions never did, so the configured number was spent on thinking before any answer was produced: measured on `gpt-5.6-luna` at `max` effort, a 4000 budget produced `reasoning_tokens: 4000` and no message, coming back as `incomplete` - the same request needed ~9200 reasoning tokens on top of the reply. The parameter is optional, so it is now omitted while reasoning is active and the model's own ceiling applies. An explicit `none` level spends no reasoning tokens and keeps honouring the configured limit.
+- The assistant tester reported every transport failure as *"Assistant test failed. Please check logs."*, which hid the most likely cause. It now reports the HTTP status and names it: a request that outlives a proxy timeout (high effort on a long post can run for well over a minute) is reported as a timeout rather than an unexplained failure.
+
 ## [1.16.0] - 2026-08-07
 
 ### Added

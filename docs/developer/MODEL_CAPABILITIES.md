@@ -301,6 +301,26 @@ Payload shape also differs:
 | Length control | `max_completion_tokens` | `max_output_tokens` |
 | Verbosity | - | `text: {verbosity: low\|medium\|high}` |
 
+The two length controls are **not** interchangeable: `max_output_tokens` covers
+reasoning tokens as well as the answer, while `max_completion_tokens` never did.
+Carrying a configured limit across therefore starves the reply. Measured on
+`gpt-5.6-luna` at `max` effort with an 8.5k-character article:
+
+| `max_output_tokens` | reasoning tokens | answer | result |
+|---|---|---|---|
+| 4000 | 4000 | none | `incomplete` (`reason: max_output_tokens`) |
+| 32000 | 9201 | 11.3 KB | `completed` |
+
+Because the parameter is optional, `OpenAIResponsesClientAdapter` omits it
+whenever reasoning is active (`ModelCapabilities::is_reasoning_active()`) and lets
+the model's own ceiling apply. An explicit `none` level spends no reasoning
+tokens, so there the caller's limit is passed through unchanged.
+
+Note that reasoning cost also drives wall-clock time: the run above took ~80
+seconds. A synchronous admin request at high effort can outlive a proxy or
+gateway timeout (AWS ALB defaults to 60 seconds), which surfaces as a 502/504
+rather than an API error.
+
 Temperature behaves consistently across both: allowed only while reasoning is
 off, and `gpt-5.4` + `effort: none` + `temperature` is accepted on either
 endpoint.

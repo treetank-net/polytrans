@@ -1540,7 +1540,9 @@ class PostprocessingMenu
             case 'workflow_adjust':
                 return $this->execute_async_workflow_adjust($params);
             default:
-                return ['success' => false, 'data' => ['message' => 'Unknown job type: ' . $job_type]];
+                // Job types owned by other menus (e.g. assistant tests) reach this
+                // filter too, so an unknown type is passed on rather than failed here.
+                return $result;
         }
     }
 

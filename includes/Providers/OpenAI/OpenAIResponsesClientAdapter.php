@@ -190,12 +190,24 @@ class OpenAIResponsesClientAdapter implements ChatClientInterface
             'input' => $this->build_input($messages),
         ];
 
-        // Token limit: /responses counts reasoning tokens against this budget, so
-        // the caller's completion limit maps onto max_output_tokens.
-        foreach (['max_output_tokens', 'max_completion_tokens', 'max_tokens'] as $key) {
-            if (isset($parameters[$key]) && is_numeric($parameters[$key])) {
-                $body['max_output_tokens'] = (int) $parameters[$key];
-                break;
+        // Token limit: on /responses this budget covers reasoning tokens too, which
+        // Chat Completions' max_tokens never did. Carrying the configured number over
+        // silently starves the answer - measured on gpt-5.6-luna at `max` effort, a
+        // 4000 budget was spent entirely on reasoning (reasoning_tokens: 4000) and the
+        // response came back `incomplete` with no message at all, while the same
+        // request actually needed ~9200 reasoning tokens on top of the answer.
+        // The parameter is optional, so when reasoning is active it is left out and
+        // the model's own default ceiling applies. Without reasoning the two
+        // parameters mean the same thing, so the caller's limit is honoured.
+        // Asking whether reasoning is *active*, not merely present: an explicit
+        // `none` level still travels in the body but spends no reasoning tokens,
+        // so there the configured limit is safe to honour.
+        if (!ModelCapabilities::is_reasoning_active($prepared['reasoning'])) {
+            foreach (['max_output_tokens', 'max_completion_tokens', 'max_tokens'] as $key) {
+                if (isset($parameters[$key]) && is_numeric($parameters[$key])) {
+                    $body['max_output_tokens'] = (int) $parameters[$key];
+                    break;
+                }
             }
         }
         unset($parameters['max_output_tokens'], $parameters['max_completion_tokens'], $parameters['max_tokens']);

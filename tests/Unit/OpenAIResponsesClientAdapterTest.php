@@ -72,11 +72,25 @@ describe('request shape', function () {
         expect($body['input'][0]['content'])->toBe('keep me');
     });
 
-    it('maps every token-limit spelling onto max_output_tokens', function () {
+    it('maps every token-limit spelling onto max_output_tokens without reasoning', function () {
         foreach (['max_tokens', 'max_completion_tokens', 'max_output_tokens'] as $key) {
-            $body = responses_body('gpt-5.6-luna', [$key => 1234]);
+            $body = responses_body('gpt-5.6-luna', [$key => 1234, 'reasoning_effort' => 'none']);
 
             expect($body['max_output_tokens'])->toBe(1234);
+            expect($body)->not->toHaveKey('max_tokens');
+            expect($body)->not->toHaveKey('max_completion_tokens');
+        }
+    });
+
+    it('omits the token limit when reasoning is active', function () {
+        // This budget covers reasoning tokens here, unlike max_tokens on Chat
+        // Completions. Measured against the live API, a 4000 budget at `max` effort
+        // was consumed entirely by reasoning and the reply came back empty, so the
+        // configured limit must not be carried over. The parameter is optional.
+        foreach (['max_tokens', 'max_completion_tokens', 'max_output_tokens'] as $key) {
+            $body = responses_body('gpt-5.6-luna', [$key => 4000, 'reasoning_effort' => 'max']);
+
+            expect($body)->not->toHaveKey('max_output_tokens');
             expect($body)->not->toHaveKey('max_tokens');
             expect($body)->not->toHaveKey('max_completion_tokens');
         }

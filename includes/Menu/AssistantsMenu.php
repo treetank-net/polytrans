@@ -12,6 +12,7 @@ namespace PolyTrans\Menu;
 use PolyTrans\Assistants\AssistantManager;
 use PolyTrans\Assistants\AssistantExecutor;
 use PolyTrans\Assistants\AssistantMigration;
+use PolyTrans\Core\AsyncJobRunner;
 use PolyTrans\Assistants\Testing\AssistantRefinementService;
 use PolyTrans\PromptRefinement\DescriptionGeneratorService;
 use PolyTrans\PromptRefinement\PromptRefinementSettings;
@@ -53,6 +54,11 @@ class AssistantsMenu
         add_action('wp_ajax_polytrans_migrate_workflows', [$this, 'ajax_migrate_workflows']);
         add_action('wp_ajax_polytrans_get_provider_models', [$this, 'ajax_get_provider_models']);
         add_action('wp_ajax_polytrans_test_assistant', [$this, 'ajax_test_assistant']);
+        add_action('wp_ajax_polytrans_dispatch_assistant_job', [$this, 'ajax_dispatch_assistant_job']);
+        add_action('wp_ajax_polytrans_poll_assistant_job', [$this, 'ajax_poll_assistant_job']);
+        // Priority 20 so this runs after the workflow handler, which passes unknown
+        // job types through rather than failing them.
+        add_filter('polytrans_async_job_execute', [$this, 'handle_async_job'], 20, 3);
         add_action('wp_ajax_polytrans_get_recent_posts_for_assistant_test', [$this, 'ajax_get_recent_posts_for_assistant_test']);
         add_action('wp_ajax_polytrans_run_assistant_refinement_post', [$this, 'ajax_run_assistant_refinement_post']);
         add_action('wp_ajax_polytrans_evaluate_assistant_run', [$this, 'ajax_evaluate_assistant_run']);
@@ -934,35 +940,59 @@ class AssistantsMenu
             wp_send_json_error(['message' => __('Permission denied.', 'polytrans')]);
         }
 
-        $assistant_id = isset($_POST['assistant_id']) ? intval($_POST['assistant_id']) : 0;
-        $source_language = isset($_POST['source_language']) ? sanitize_text_field(wp_unslash($_POST['source_language'])) : 'en';
-        $target_language = isset($_POST['target_language']) ? sanitize_text_field(wp_unslash($_POST['target_language'])) : 'pl';
-        $selected_post_id = isset($_POST['selected_post_id']) ? intval($_POST['selected_post_id']) : 0;
-        $title = isset($_POST['title']) ? sanitize_text_field(wp_unslash($_POST['title'])) : '';
-        $content = isset($_POST['content']) ? wp_kses_post(wp_unslash($_POST['content'])) : '';
+        $outcome = $this->run_assistant_test([
+            'assistant_id' => isset($_POST['assistant_id']) ? intval($_POST['assistant_id']) : 0,
+            'source_language' => isset($_POST['source_language']) ? sanitize_text_field(wp_unslash($_POST['source_language'])) : 'en',
+            'target_language' => isset($_POST['target_language']) ? sanitize_text_field(wp_unslash($_POST['target_language'])) : 'pl',
+            'selected_post_id' => isset($_POST['selected_post_id']) ? intval($_POST['selected_post_id']) : 0,
+            'title' => isset($_POST['title']) ? sanitize_text_field(wp_unslash($_POST['title'])) : '',
+            'content' => isset($_POST['content']) ? wp_kses_post(wp_unslash($_POST['content'])) : '',
+        ]);
+
+        if (empty($outcome['success'])) {
+            wp_send_json_error($outcome['data']);
+        }
+
+        wp_send_json_success($outcome['data']);
+    }
+
+    /**
+     * Run an assistant test and return the outcome instead of emitting it.
+     *
+     * Shared by the synchronous AJAX handler and the async job worker, so both
+     * report identically. Params are sanitized by the caller.
+     *
+     * @param array $params Test parameters.
+     * @return array{success: bool, data: array}
+     */
+    private function run_assistant_test(array $params)
+    {
+        $assistant_id = intval($params['assistant_id'] ?? 0);
+        $source_language = (string) ($params['source_language'] ?? 'en');
+        $target_language = (string) ($params['target_language'] ?? 'pl');
+        $selected_post_id = intval($params['selected_post_id'] ?? 0);
+        $title = (string) ($params['title'] ?? '');
+        $content = (string) ($params['content'] ?? '');
 
         if ($assistant_id <= 0) {
-            wp_send_json_error(['message' => __('Invalid assistant ID.', 'polytrans')]);
+            return ['success' => false, 'data' => ['message' => __('Invalid assistant ID.', 'polytrans')]];
         }
 
         if ($selected_post_id <= 0 && trim(wp_strip_all_tags($content)) === '') {
-            wp_send_json_error(['message' => __('Test content is required.', 'polytrans')]);
+            return ['success' => false, 'data' => ['message' => __('Test content is required.', 'polytrans')]];
         }
 
         $assistant = AssistantManager::get_assistant($assistant_id);
         if (!$assistant) {
-            wp_send_json_error(['message' => __('Assistant not found.', 'polytrans')]);
+            return ['success' => false, 'data' => ['message' => __('Assistant not found.', 'polytrans')]];
         }
 
         if ($selected_post_id > 0) {
             $context = PostTestContextBuilder::fromPost($selected_post_id, $source_language, $target_language);
             if ($context === null) {
-                wp_send_json_error(['message' => __('Selected post not found.', 'polytrans')]);
+                return ['success' => false, 'data' => ['message' => __('Selected post not found.', 'polytrans')]];
             }
         } else {
-            if (trim(wp_strip_all_tags($content)) === '') {
-                wp_send_json_error(['message' => __('Test content is required.', 'polytrans')]);
-            }
             $context = PostTestContextBuilder::fromText($title, $content, $source_language, $target_language);
         }
 
@@ -971,32 +1001,129 @@ class AssistantsMenu
         $execution_time = microtime(true) - $start_time;
 
         if (is_wp_error($result)) {
-            wp_send_json_error([
-                'message' => $result->get_error_message(),
-                'error_code' => $result->get_error_code(),
-            ]);
+            return [
+                'success' => false,
+                'data' => [
+                    'message' => $result->get_error_message(),
+                    'error_code' => $result->get_error_code(),
+                ],
+            ];
         }
 
         if (empty($result['success'])) {
-            wp_send_json_error([
-                'message' => $result['error'] ?? __('Assistant execution failed.', 'polytrans'),
-            ]);
+            return [
+                'success' => false,
+                'data' => ['message' => $result['error'] ?? __('Assistant execution failed.', 'polytrans')],
+            ];
+        }
+
+        return [
+            'success' => true,
+            'data' => [
+                'assistant_id' => $assistant_id,
+                'assistant_name' => $assistant['name'],
+                'provider' => $result['provider'] ?? $assistant['provider'],
+                'model' => $result['model'] ?? ($assistant['api_parameters']['model'] ?? ''),
+                'expected_format' => $assistant['expected_format'] ?? 'text',
+                'output' => $result['output'] ?? '',
+                'usage' => $result['usage'] ?? [],
+                'execution_time' => $execution_time,
+                'interpolated_system_prompt' => $result['interpolated_system_prompt'] ?? null,
+                'interpolated_user_message' => $result['interpolated_user_message'] ?? null,
+                'context' => PostTestContextBuilder::compact($context),
+                'context_full' => $context,
+            ],
+        ];
+    }
+
+    /**
+     * AJAX: Dispatch an assistant test as an async job, returning a job ID at once.
+     *
+     * A reasoning model at high effort can keep a request open for minutes, which
+     * outlives proxy timeouts and PHP limits; the caller then sees a dead connection
+     * with no message. The worker also converts a fatal into a reportable failure.
+     */
+    public function ajax_dispatch_assistant_job()
+    {
+        if (!check_ajax_referer('polytrans_assistants', 'nonce', false)) {
+            wp_send_json_error(['message' => __('Security check failed.', 'polytrans')]);
+            return;
+        }
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => __('Permission denied.', 'polytrans')]);
+            return;
+        }
+
+        $job_type = isset($_POST['job_type']) ? sanitize_text_field(wp_unslash($_POST['job_type'])) : '';
+        if (!in_array($job_type, ['assistant_test'], true)) {
+            wp_send_json_error(['message' => __('Invalid job type.', 'polytrans')]);
+            return;
+        }
+
+        $job_id = AsyncJobRunner::dispatch($job_type, [
+            'assistant_id' => isset($_POST['assistant_id']) ? intval($_POST['assistant_id']) : 0,
+            'source_language' => isset($_POST['source_language']) ? sanitize_text_field(wp_unslash($_POST['source_language'])) : 'en',
+            'target_language' => isset($_POST['target_language']) ? sanitize_text_field(wp_unslash($_POST['target_language'])) : 'pl',
+            'selected_post_id' => isset($_POST['selected_post_id']) ? intval($_POST['selected_post_id']) : 0,
+            'title' => isset($_POST['title']) ? sanitize_text_field(wp_unslash($_POST['title'])) : '',
+            'content' => isset($_POST['content']) ? wp_kses_post(wp_unslash($_POST['content'])) : '',
+        ]);
+
+        wp_send_json_success(['job_id' => $job_id]);
+    }
+
+    /**
+     * AJAX: Poll an assistant async job.
+     */
+    public function ajax_poll_assistant_job()
+    {
+        if (!check_ajax_referer('polytrans_assistants', 'nonce', false)) {
+            wp_send_json_error(['message' => __('Security check failed.', 'polytrans')]);
+            return;
+        }
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => __('Permission denied.', 'polytrans')]);
+            return;
+        }
+
+        $job_id = isset($_POST['job_id']) ? sanitize_text_field(wp_unslash($_POST['job_id'])) : '';
+        if ($job_id === '') {
+            wp_send_json_error(['message' => __('Missing job ID.', 'polytrans')]);
+            return;
+        }
+
+        $job = AsyncJobRunner::poll($job_id);
+        if ($job === null) {
+            wp_send_json_error(['message' => __('Job not found or expired.', 'polytrans')]);
+            return;
         }
 
         wp_send_json_success([
-            'assistant_id' => $assistant_id,
-            'assistant_name' => $assistant['name'],
-            'provider' => $result['provider'] ?? $assistant['provider'],
-            'model' => $result['model'] ?? ($assistant['api_parameters']['model'] ?? ''),
-            'expected_format' => $assistant['expected_format'] ?? 'text',
-            'output' => $result['output'] ?? '',
-            'usage' => $result['usage'] ?? [],
-            'execution_time' => $execution_time,
-            'interpolated_system_prompt' => $result['interpolated_system_prompt'] ?? null,
-            'interpolated_user_message' => $result['interpolated_user_message'] ?? null,
-            'context' => PostTestContextBuilder::compact($context),
-            'context_full' => $context,
+            'status' => $job['status'],
+            'result' => $job['result'],
         ]);
+    }
+
+    /**
+     * Filter handler: execute the assistant job types owned by this menu.
+     *
+     * Registered after the workflow handler and passes anything it does not own
+     * straight through, since every job type reaches this one filter.
+     *
+     * @param mixed  $result   Result from earlier handlers.
+     * @param string $job_type Job type identifier.
+     * @param array  $params   Job params.
+     * @return mixed
+     */
+    public function handle_async_job($result, string $job_type, array $params)
+    {
+        if ($job_type !== 'assistant_test') {
+            return $result;
+        }
+
+        return $this->run_assistant_test($params);
     }
 
     /**
