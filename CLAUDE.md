@@ -208,6 +208,30 @@ leaves post totals alone; use it for test runs, which cost money without produci
 a post. Usage is recorded even when the step later fails, because a reply that
 could not be parsed was still billed.
 
+**Take the model from the API response, never from the configuration.** An assistant
+usually configures no model and inherits the provider default, so the configured field
+is an empty string — which `??` does not catch and no price list matches, making every
+such call *unpriced*. The response also names the concrete dated build rather than the
+alias that was sent, and that is what has a price. `AssistantExecutor::resolve_reported_model()`
+is the chain: response → configured → `<provider>_model` setting.
+
+**Relays: `target_language` is the language a call produced, `final_language` the one
+the request was for.** They differ on an intermediate hop, and that difference *is* the
+definition of a relayed call — there is no separate flag. The row also carries
+`source_language`, `translation_path` (`pl>en>de`) and `path_step`, so a report can
+present relays per market, per hop or per path without the recorder having chosen for
+it. Post meta on the original buckets by `final_language`: the `pl→en` hop was spent
+delivering German, and charging it to English credits a market nobody ordered.
+
+Adding a column means raising `UsageRecorder::SCHEMA_VERSION` — `initialize()` re-runs
+`dbDelta` and migrates without reactivation. An insert naming a column the table lacks
+is dropped by wpdb with nothing but a database error, and **backfill any column a
+report filters on**, or the entire history silently drops out of that view.
+
+`UsageReport::$groupable` and `$group_expressions` are the only defence against a
+column name arriving from a request: a group term cannot be a prepared value. Add
+dimensions there, never at the call site.
+
 `OpenAI\OpenAIProvider::translate()` duplicates the path logic and is effectively
 unreachable — any configured assistant makes `$has_paths` true, routing through
 `TranslationPathExecutor` instead — so it is deliberately not instrumented.
@@ -300,13 +324,24 @@ matches the prefix, deliberately.
 copy reading `translating` is indistinguishable from a real stuck translation, and
 gets marked `failed` after 24 h.
 
-`Core\MetaCleanup` cleans up what earlier versions copied. Its criterion is narrow on
-purpose: only keys naming the post's **own** language. A relay (`pl → en → de`) gives
-the intermediate post a legitimate hub for other languages, and nothing in the row
-distinguishes that from a copy. The post's language comes from the pointer on its
-original (`_polytrans_translation_post_id_<lang>` == this ID), with Polylang as
-fallback — **`polytrans_translation_lang` holds the SOURCE language**, so acting on it
-deletes the wrong keys.
+`Core\MetaCleanup` cleans up what earlier versions copied. It decides **per language
+group**, by checking the pointer: `_polytrans_translation_post_id_<lang>` either names
+a post whose `polytrans_translation_source` is this post — a legitimate relay hub
+(`pl → en → de`), kept — or it names someone else's translation, so it was inherited.
+No pointer means comparing the group against the original: identical is a copy,
+anything else is reported and left. Keys for one language are one indivisible group;
+deleting a status while leaving its pointer makes the post look like it commissioned a
+translation it did not.
+
+**The obvious criterion does not work, and this was measured, not guessed**: "delete
+keys naming the post's own language" removes nothing (dry-run on 72 real translations:
+0 deleted, 462 left), because the copy is taken *before* the original records the
+status for the language being produced. A copy therefore never carries its own
+language — the real orphans are keys for *other* languages.
+
+Where the post's own language is still needed, it comes from the pointer on its
+original, with Polylang as fallback — **`polytrans_translation_lang` holds the SOURCE
+language**, so acting on it deletes the wrong keys.
 
 ## Important Files
 

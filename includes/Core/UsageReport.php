@@ -27,10 +27,28 @@ class UsageReport
     private static $groupable = [
         'model',
         'provider',
+        'source_language',
         'target_language',
+        'final_language',
+        'translation_path',
+        'path_step',
         'activity',
         'workflow_id',
         'pricing_source',
+    ];
+
+    /**
+     * Dimensions that are not columns but expressions over them. Kept here rather
+     * than assembled by the caller, for the same reason as $groupable: the grouping
+     * term is interpolated, so it must come from this file and nowhere else.
+     *
+     * @var array
+     */
+    private static $group_expressions = [
+        // The hop itself, e.g. 'pl>en'. Two languages identify it; the path it sat in
+        // is a separate dimension, so the same hop shared by several paths groups
+        // together here.
+        'language_pair' => "CONCAT(COALESCE(source_language, '?'), '>', COALESCE(target_language, '?'))",
     ];
 
     /**
@@ -53,6 +71,8 @@ class UsageReport
                 COUNT(*) AS calls,
                 SUM(cost_usd) AS total_usd,
                 SUM(CASE WHEN cost_usd IS NULL THEN 1 ELSE 0 END) AS unpriced_calls,
+                SUM(CASE WHEN final_language IS NOT NULL AND target_language <> final_language THEN 1 ELSE 0 END) AS relay_calls,
+                SUM(CASE WHEN final_language IS NOT NULL AND target_language <> final_language THEN cost_usd ELSE 0 END) AS relay_usd,
                 SUM(tokens_input) AS tokens_input,
                 SUM(tokens_output) AS tokens_output,
                 SUM(tokens_cached_read) AS tokens_cached_read,
@@ -78,7 +98,8 @@ class UsageReport
      * Ordered by cost with the call count as a tiebreak, so rows that cost nothing
      * measurable still appear in a stable order rather than shuffling between loads.
      *
-     * @param string $column Column to group by, one of self::$groupable.
+     * @param string $column Dimension to group by: a name from self::$groupable or
+     *                       self::$group_expressions.
      * @param array  $args   Query arguments, see build_where().
      * @param int    $limit  Maximum rows.
      * @return array
@@ -87,7 +108,9 @@ class UsageReport
     {
         global $wpdb;
 
-        if (!in_array($column, self::$groupable, true) || !UsageRecorder::table_exists()) {
+        $term = self::group_term($column);
+
+        if ($term === null || !UsageRecorder::table_exists()) {
             return [];
         }
 
@@ -95,16 +118,17 @@ class UsageReport
         $limit = max(1, min(500, (int) $limit));
 
         $sql = "SELECT
-                {$column} AS label,
+                {$term} AS label,
                 COUNT(*) AS calls,
                 SUM(cost_usd) AS total_usd,
                 SUM(CASE WHEN cost_usd IS NULL THEN 1 ELSE 0 END) AS unpriced_calls,
+                SUM(CASE WHEN final_language IS NOT NULL AND target_language <> final_language THEN 1 ELSE 0 END) AS relay_calls,
                 SUM(tokens_input) AS tokens_input,
                 SUM(tokens_output) AS tokens_output,
                 SUM(tokens_cached_read) AS tokens_cached_read,
                 SUM(tokens_reasoning) AS tokens_reasoning
             FROM " . self::table() . " {$where}
-            GROUP BY {$column}
+            GROUP BY {$term}
             ORDER BY SUM(cost_usd) DESC, COUNT(*) DESC
             LIMIT {$limit}";
 
@@ -112,6 +136,29 @@ class UsageReport
         $rows = $wpdb->get_results(self::prepare($sql, $params), ARRAY_A);
 
         return array_map([self::class, 'normalize_row'], is_array($rows) ? $rows : []);
+    }
+
+    /**
+     * The SQL term for a requested dimension, or null when it is not one we allow.
+     *
+     * @param string $column Dimension name.
+     * @return string|null
+     */
+    private static function group_term($column)
+    {
+        if (in_array($column, self::$groupable, true)) {
+            return $column;
+        }
+
+        return self::$group_expressions[$column] ?? null;
+    }
+
+    /**
+     * @return array Dimension names by() accepts, for a caller building a UI.
+     */
+    public static function dimensions()
+    {
+        return array_merge(self::$groupable, array_keys(self::$group_expressions));
     }
 
     /**
@@ -319,6 +366,17 @@ class UsageReport
             $params[] = (string) $args['activity'];
         }
 
+        // The language a request was for, not the one a given hop produced: filtering
+        // a relay by target_language would hide the hop that fed it.
+        if (!empty($args['language'])) {
+            $clauses[] = 'final_language = %s';
+            $params[] = (string) $args['language'];
+        }
+
+        if (!empty($args['relay_only'])) {
+            $clauses[] = 'final_language IS NOT NULL AND target_language <> final_language';
+        }
+
         if (!empty($args['post_id'])) {
             $clauses[] = '(post_id = %d OR source_post_id = %d)';
             $params[] = (int) $args['post_id'];
@@ -362,7 +420,7 @@ class UsageReport
     {
         $row = is_array($row) ? $row : [];
 
-        foreach (['calls', 'unpriced_calls', 'tokens_input', 'tokens_output', 'tokens_cached_read', 'tokens_reasoning', 'models'] as $key) {
+        foreach (['calls', 'unpriced_calls', 'relay_calls', 'tokens_input', 'tokens_output', 'tokens_cached_read', 'tokens_reasoning', 'models'] as $key) {
             if (array_key_exists($key, $row)) {
                 $row[$key] = (int) $row[$key];
             }
@@ -382,11 +440,40 @@ class UsageReport
         // effort it dominates the bill, and it is the one knob that changes it.
         $row['reasoning_share'] = $output > 0 ? min(100, (int) round($reasoning / $output * 100)) : 0;
 
+        // Only present on queries that ask for it. An intermediate hop is a call whose
+        // target is not the language the request was for.
+        if (array_key_exists('relay_usd', $row)) {
+            $row['relay_usd'] = $row['relay_usd'] !== null ? (string) $row['relay_usd'] : null;
+            $row['relay_display'] = self::format_usd($row['relay_usd']);
+            $row['relay_share'] = self::share_of($row['relay_usd'], $row['total_usd']);
+        }
+
         if (array_key_exists('label', $row) && ($row['label'] === null || $row['label'] === '')) {
-            $row['label'] = __('(none)', 'polytrans');
+            // Not '(none)': a blank model means the provider named none, and a reader
+            // needs to tell that apart from a dimension that genuinely does not apply.
+            $row['label'] = __('not reported', 'polytrans');
         }
 
         return $row;
+    }
+
+    /**
+     * One amount as a whole-percent share of another.
+     *
+     * @param string|null $part  Part, as a decimal string.
+     * @param string|null $whole Whole, as a decimal string.
+     * @return int 0 when either is missing or the whole is zero.
+     */
+    private static function share_of($part, $whole)
+    {
+        $part = (float) ($part ?? 0);
+        $whole = (float) ($whole ?? 0);
+
+        if ($whole <= 0) {
+            return 0;
+        }
+
+        return min(100, (int) round($part / $whole * 100));
     }
 
     /**
@@ -399,6 +486,10 @@ class UsageReport
             'total_usd' => null,
             'cost_display' => self::format_usd(null),
             'unpriced_calls' => 0,
+            'relay_calls' => 0,
+            'relay_usd' => null,
+            'relay_display' => self::format_usd(null),
+            'relay_share' => 0,
             'tokens_input' => 0,
             'tokens_output' => 0,
             'tokens_cached_read' => 0,

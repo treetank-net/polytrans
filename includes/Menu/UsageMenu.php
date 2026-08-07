@@ -97,9 +97,16 @@ class UsageMenu
             'table_missing' => !UsageRecorder::table_exists(),
             'totals' => UsageReport::totals($filters),
             'by_model' => UsageReport::by('model', $filters),
-            'by_language' => UsageReport::by('target_language', $filters),
+            // The language the request was for, so a relay's intermediate hop counts
+            // towards the market that needed it rather than the one it passed through.
+            'by_language' => UsageReport::by('final_language', $filters),
             'by_activity' => UsageReport::by('activity', $filters),
             'by_workflow' => UsageReport::by('workflow_id', $filters),
+            // The hops themselves, which is where a relay becomes visible: pl>en and
+            // en>de appear separately, and the row says how many of its calls were
+            // intermediate.
+            'by_step' => UsageReport::by('language_pair', $filters),
+            'by_path' => UsageReport::by('translation_path', $filters),
             'daily' => UsageReport::daily($filters),
             'top_posts' => UsageReport::top_posts($filters, 20),
             'known_models' => UsageReport::known_models(),

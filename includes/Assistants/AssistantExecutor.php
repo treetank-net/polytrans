@@ -101,12 +101,49 @@ class AssistantExecutor
 			'success'                   => true,
 			'output'                    => $processed['output'],
 			'provider'                  => $config['provider'] ?? 'openai',
-			'model'                     => $config['api_parameters']['model'] ?? 'unknown',
+			'model'                     => self::resolve_reported_model($api_response, $config),
 			'usage'                     => $api_response['usage'] ?? array(),
 			// raw_response removed - can be 50KB+ and cause memory issues
 			'interpolated_system_prompt' => $prompts['system_prompt'] ?? null,
 			'interpolated_user_message'  => $prompts['user_message'] ?? null,
 		);
+	}
+
+	/**
+	 * Determine which model actually served the request.
+	 *
+	 * Read from the response first, because that is the name a price lookup needs: an
+	 * assistant frequently has no model of its own and inherits the provider default,
+	 * and an alias resolves to a concrete dated build the caller never named. Reading
+	 * the configured value instead recorded an empty string for every managed
+	 * assistant, which no price list can match.
+	 *
+	 * Falls back through the same chain call_provider_api() used to pick the model, so
+	 * a provider that reports nothing still yields the name that was sent.
+	 *
+	 * @param array $api_response Raw provider response.
+	 * @param array $config       Assistant configuration.
+	 * @return string Model name, or '' when nothing names one.
+	 */
+	private static function resolve_reported_model($api_response, $config)
+	{
+		$reported = is_array($api_response) ? ($api_response['model'] ?? '') : '';
+
+		if (is_string($reported) && $reported !== '') {
+			return $reported;
+		}
+
+		$configured = $config['api_parameters']['model'] ?? '';
+
+		if (is_string($configured) && $configured !== '') {
+			return $configured;
+		}
+
+		$provider = $config['provider'] ?? 'openai';
+		$settings = get_option('polytrans_settings', array());
+		$fallback = $settings[$provider . '_model'] ?? '';
+
+		return is_string($fallback) ? $fallback : '';
 	}
 
 	/**

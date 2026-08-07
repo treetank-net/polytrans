@@ -121,7 +121,7 @@ class TranslationPathExecutor
             // Recorded before the success check: a step that failed while parsing the
             // reply was still billed for it. Intermediate hops in a multi-step path
             // are recorded separately, so a relay through English shows both legs.
-            self::record_step_usage($result, $step_target, $usage_context);
+            self::record_step_usage($result, $step_source, $step_target, $path, $i + 1, $usage_context);
             
             if (!$result['success']) {
                 \PolyTrans_Logs_Manager::log(
@@ -152,11 +152,14 @@ class TranslationPathExecutor
      * instance) carry no usage payload and are skipped.
      *
      * @param array  $result        Step result.
+     * @param string $source_lang   Language this step read from.
      * @param string $target_lang   Language this step produced.
+     * @param array  $path          Full resolved path, e.g. ['pl', 'en', 'de'].
+     * @param int    $step_number   1-based position of this step within the path.
      * @param array  $usage_context Post context passed into execute().
      * @return void
      */
-    private static function record_step_usage($result, $target_lang, $usage_context)
+    private static function record_step_usage($result, $source_lang, $target_lang, array $path, $step_number, $usage_context)
     {
         $usage = is_array($result) ? ($result['usage'] ?? null) : null;
 
@@ -164,6 +167,11 @@ class TranslationPathExecutor
             return;
         }
 
+        // Every fact about the hop goes into the row: which languages it read and
+        // wrote, which language the whole request was for, the path it belongs to and
+        // where in that path it sat. A report can then present relays any way it
+        // likes - per market, per hop, per path - without the recorder having decided
+        // for it.
         UsageRecorder::record([
             'provider' => $result['provider'] ?? '',
             'model' => $result['model'] ?? '',
@@ -171,10 +179,14 @@ class TranslationPathExecutor
             'activity' => 'translation',
             'step' => $usage_context['step'] ?? null,
             // The translated post does not exist yet at this point, so the cost is
-            // attributed to the original, bucketed by the language being produced.
+            // attributed to the original.
             'post_id' => $usage_context['post_id'] ?? null,
             'source_post_id' => $usage_context['source_post_id'] ?? null,
+            'source_language' => $source_lang,
             'target_language' => $target_lang,
+            'final_language' => end($path) ?: $target_lang,
+            'translation_path' => implode('>', $path),
+            'path_step' => (int) $step_number,
             'skip_post_meta' => !empty($usage_context['skip_post_meta']),
         ]);
     }

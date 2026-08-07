@@ -49,9 +49,10 @@
             <span class="polytrans-usage-card__label">{{ __('Total cost', 'polytrans') }}</span>
             <span class="polytrans-usage-card__value">{{ totals.cost_display }}</span>
             {% if totals.unpriced_calls > 0 %}
-                <span class="polytrans-usage-card__note">
+                <span class="polytrans-usage-card__note"
+                      title="{{ __('A call is unpriced when no per-token price could be found for it: the model is not in the price list, or nothing named the model that served the request. Such calls are recorded with no cost rather than with a zero, which would understate this figure silently.', 'polytrans')|esc_attr }}">
                     {# Called out rather than hidden: the total is short by whatever these cost. #}
-                    {{ totals.unpriced_calls }} {{ __('calls could not be priced', 'polytrans') }}
+                    {{ totals.unpriced_calls }} {{ __('calls unpriced, so this total is short by their cost', 'polytrans') }}
                 </span>
             {% endif %}
         </div>
@@ -60,6 +61,13 @@
             <span class="polytrans-usage-card__label">{{ __('Calls', 'polytrans') }}</span>
             <span class="polytrans-usage-card__value">{{ totals.calls|number_format(0, '.', ' ') }}</span>
             <span class="polytrans-usage-card__note">{{ totals.models }} {{ __('models', 'polytrans') }}</span>
+            {% if totals.relay_calls > 0 %}
+                <span class="polytrans-usage-card__note"
+                      title="{{ __('Translating through an intermediate language costs one call per hop. This is what the hops nobody ordered came to.', 'polytrans')|esc_attr }}">
+                    {{ totals.relay_calls }} {{ __('relayed', 'polytrans') }},
+                    {{ totals.relay_display }} ({{ totals.relay_share }}%)
+                </span>
+            {% endif %}
         </div>
 
         <div class="polytrans-usage-card">
@@ -111,7 +119,11 @@
         <div class="polytrans-usage-columns">
             {% set breakdowns = [
                 { 'title': __('By model', 'polytrans'), 'rows': by_model, 'head': __('Model', 'polytrans') },
-                { 'title': __('By target language', 'polytrans'), 'rows': by_language, 'head': __('Language', 'polytrans') },
+                { 'title': __('By target language', 'polytrans'), 'rows': by_language, 'head': __('Language', 'polytrans'),
+                  'note': __('The language each request was for. A relay\'s intermediate step counts here towards the language it was on the way to.', 'polytrans') },
+                { 'title': __('By translation step', 'polytrans'), 'rows': by_step, 'head': __('Step', 'polytrans'),
+                  'note': __('Each hop the content actually made. Steps marked as relayed produced a language nobody asked for, on the way to one that was.', 'polytrans') },
+                { 'title': __('By path', 'polytrans'), 'rows': by_path, 'head': __('Path', 'polytrans') },
                 { 'title': __('By activity', 'polytrans'), 'rows': by_activity, 'head': __('Activity', 'polytrans') },
                 { 'title': __('By workflow', 'polytrans'), 'rows': by_workflow, 'head': __('Workflow', 'polytrans') }
             ] %}
@@ -120,6 +132,9 @@
                 {% if breakdown.rows|length > 0 %}
                     <div class="polytrans-usage-column">
                         <h2>{{ breakdown.title }}</h2>
+                        {% if breakdown.note is defined %}
+                            <p class="description">{{ breakdown.note }}</p>
+                        {% endif %}
                         <table class="widefat striped polytrans-usage-table">
                             <thead>
                                 <tr>
@@ -134,10 +149,16 @@
                                     <tr>
                                         <td>
                                             {{ row.label }}
+                                            {% if row.relay_calls > 0 %}
+                                                <span class="polytrans-usage-flag"
+                                                      title="{{ __('Calls that produced a language the request did not ask for, on the way to the one it did.', 'polytrans')|esc_attr }}">
+                                                    {{ row.relay_calls }} {{ __('relayed', 'polytrans') }}
+                                                </span>
+                                            {% endif %}
                                             {% if row.unpriced_calls > 0 %}
                                                 <span class="polytrans-usage-flag"
-                                                      title="{{ __('Not in the price list', 'polytrans')|esc_attr }}">
-                                                    {{ __('unpriced', 'polytrans') }}
+                                                      title="{{ __('No price could be found, so what these calls cost is missing from the total. Either the model is absent from the price list, or nothing named the model that served the request.', 'polytrans')|esc_attr }}">
+                                                    {{ row.unpriced_calls }} {{ __('unpriced', 'polytrans') }}
                                                 </span>
                                             {% endif %}
                                         </td>

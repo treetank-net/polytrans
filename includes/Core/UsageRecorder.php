@@ -32,6 +32,15 @@ class UsageRecorder
     const SUMMARY_VERSION = 1;
 
     /**
+     * Raise when the table gains a column, so an existing install migrates without
+     * being reactivated. An insert naming a column the table lacks is dropped by
+     * wpdb with nothing but a database error to show for it.
+     */
+    const SCHEMA_VERSION = 2;
+
+    const OPTION_SCHEMA = 'polytrans_usage_schema_version';
+
+    /**
      * Whether the table has been verified during this request.
      *
      * @var bool|null
@@ -52,7 +61,22 @@ class UsageRecorder
             return true;
         }
 
-        self::$table_ready = self::table_exists() ? true : self::create_table();
+        $migrated = (int) get_option(self::OPTION_SCHEMA, 0) >= self::SCHEMA_VERSION;
+
+        if (self::table_exists() && $migrated) {
+            self::$table_ready = true;
+
+            return true;
+        }
+
+        // dbDelta() adds the columns an older table is missing, so the same call
+        // serves creation and migration.
+        self::$table_ready = self::create_table();
+
+        if (self::$table_ready) {
+            self::backfill_final_language();
+            update_option(self::OPTION_SCHEMA, self::SCHEMA_VERSION);
+        }
 
         return self::$table_ready;
     }
@@ -66,7 +90,12 @@ class UsageRecorder
     {
         global $wpdb;
 
-        require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+        // Guarded rather than required outright: the function is all this needs, and
+        // asking for it only when it is absent keeps the call reachable from a context
+        // that has no wp-admin loaded.
+        if (!function_exists('dbDelta')) {
+            require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+        }
 
         $table = $wpdb->prefix . self::TABLE;
         $charset_collate = $wpdb->get_charset_collate();
@@ -79,7 +108,11 @@ class UsageRecorder
             created_at datetime NOT NULL,
             post_id bigint(20) unsigned DEFAULT NULL,
             source_post_id bigint(20) unsigned DEFAULT NULL,
+            source_language varchar(20) DEFAULT NULL,
             target_language varchar(20) DEFAULT NULL,
+            final_language varchar(20) DEFAULT NULL,
+            translation_path varchar(191) DEFAULT NULL,
+            path_step tinyint(3) unsigned DEFAULT NULL,
             activity varchar(40) NOT NULL DEFAULT 'unknown',
             step varchar(191) DEFAULT NULL,
             workflow_id varchar(191) DEFAULT NULL,
@@ -100,12 +133,34 @@ class UsageRecorder
             KEY source_post_id (source_post_id),
             KEY model (model),
             KEY created_at (created_at),
-            KEY activity (activity)
+            KEY activity (activity),
+            KEY final_language (final_language)
         ) {$charset_collate};";
 
         dbDelta($sql);
 
         return self::table_exists();
+    }
+
+    /**
+     * Give rows written before final_language existed the only value that can be
+     * inferred for them.
+     *
+     * Without this, every historical row answers "which language was this request
+     * for" with NULL, and a per-market report silently omits the whole history. The
+     * inference is exact for a direct translation and is the best available for a
+     * relayed one, whose path was never recorded.
+     *
+     * @return void
+     */
+    private static function backfill_final_language()
+    {
+        global $wpdb;
+
+        $table = $wpdb->prefix . self::TABLE;
+
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared
+        $wpdb->query("UPDATE {$table} SET final_language = target_language WHERE final_language IS NULL AND target_language IS NOT NULL");
     }
 
     /**
@@ -132,7 +187,13 @@ class UsageRecorder
      *     @type string $step            Optional step ID or label.
      *     @type int    $post_id         Post the call produced or acted on.
      *     @type int    $source_post_id  Original post, when this is a translation.
-     *     @type string $target_language Target language, when this is a translation.
+     *     @type string $source_language Language this call read from.
+     *     @type string $target_language Language this call produced.
+     *     @type string $final_language  Language the whole request was for. Differs from
+     *                                   target_language on an intermediate hop of a
+     *                                   relay; defaults to target_language.
+     *     @type string $translation_path Full path this call belongs to, e.g. 'pl>en>de'.
+     *     @type int    $path_step       1-based position of this call within that path.
      *     @type string $surface         API surface used.
      *     @type string $effort          Reasoning effort used.
      * }
@@ -150,7 +211,15 @@ class UsageRecorder
             'created_at' => current_time('mysql'),
             'post_id' => !empty($event['post_id']) ? (int) $event['post_id'] : null,
             'source_post_id' => !empty($event['source_post_id']) ? (int) $event['source_post_id'] : null,
+            'source_language' => !empty($event['source_language']) ? (string) $event['source_language'] : null,
             'target_language' => !empty($event['target_language']) ? (string) $event['target_language'] : null,
+            // Defaulted rather than left null, so a report grouping by the language a
+            // request was for covers every row, not only the relayed ones.
+            'final_language' => !empty($event['final_language'])
+                ? (string) $event['final_language']
+                : (!empty($event['target_language']) ? (string) $event['target_language'] : null),
+            'translation_path' => !empty($event['translation_path']) ? (string) $event['translation_path'] : null,
+            'path_step' => !empty($event['path_step']) ? (int) $event['path_step'] : null,
             'activity' => (string) ($event['activity'] ?? 'unknown'),
             'step' => !empty($event['step']) ? (string) $event['step'] : null,
             'workflow_id' => !empty($event['workflow_id']) ? (string) $event['workflow_id'] : null,
@@ -225,10 +294,37 @@ class UsageRecorder
 
         // The original is the hub: it holds the status of every target language, so
         // it also holds the cost of every target language.
+        //
+        // Bucketed by final_language, not by the language the call produced: the
+        // pl→en hop of a pl→en→de relay was spent on delivering German, and charging
+        // it to English would credit a market nobody ordered while understating the
+        // one that was. The per-hop truth stays in the table row.
         $source_id = (int) ($record['source_post_id'] ?? 0);
         if ($source_id > 0 && $source_id !== (int) ($record['post_id'] ?? 0)) {
-            self::merge_summary($source_id, $record, $record['target_language'] ?? null);
+            self::merge_summary($source_id, $record, self::market_language($record));
         }
+    }
+
+    /**
+     * The language a record should be charged to on the original.
+     *
+     * Falls back to target_language for rows written before final_language existed,
+     * so a rebuild of an old post keeps working.
+     *
+     * @param array $record Record.
+     * @return string|null
+     */
+    private static function market_language(array $record)
+    {
+        $final = $record['final_language'] ?? null;
+
+        if (is_string($final) && $final !== '') {
+            return $final;
+        }
+
+        $target = $record['target_language'] ?? null;
+
+        return (is_string($target) && $target !== '') ? $target : null;
     }
 
     /**
@@ -426,7 +522,7 @@ class UsageRecorder
 
         foreach ($as_source as $row) {
             $row = self::normalize_stored_row($row);
-            self::merge_summary($post_id, $row, $row['target_language'] ?? null);
+            self::merge_summary($post_id, $row, self::market_language($row));
         }
 
         return self::get_post_summary($post_id);

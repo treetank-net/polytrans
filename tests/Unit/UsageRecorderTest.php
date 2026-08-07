@@ -89,6 +89,14 @@ final class PolyTransFakeUsageWpdb
 {
     public $prefix = 'wp_';
     public $inserted = [];
+    public $queries = [];
+
+    public function query($sql)
+    {
+        $this->queries[] = $sql;
+
+        return 1;
+    }
 
     public function get_charset_collate()
     {
@@ -154,6 +162,16 @@ if (!function_exists('delete_post_meta')) {
     }
 }
 
+// Standing in for the schema step: create_table() asks for this function rather than
+// for wp-admin's upgrade.php when it is already defined.
+if (!function_exists('dbDelta')) {
+    function dbDelta($queries = '', $execute = true)
+    {
+        $GLOBALS['polytrans_test_dbdelta'][] = $queries;
+        return [];
+    }
+}
+
 function polytrans_seed_usage_pricing(): void
 {
     set_transient(ModelPricing::TRANSIENT_KEY, [
@@ -203,12 +221,34 @@ beforeEach(function () {
     $GLOBALS['polytrans_test_post_meta'] = [];
     $GLOBALS['polytrans_test_actions'] = [];
     $GLOBALS['polytrans_test_filters'] = [];
+    // Stand in for a table already at the current schema, so initialize() does not
+    // reach for dbDelta() and the WordPress upgrade file it lives in.
+    $GLOBALS['polytrans_test_options'][UsageRecorder::OPTION_SCHEMA] = UsageRecorder::SCHEMA_VERSION;
     $GLOBALS['polytrans_test_posts'] = [
         11 => (object) ['ID' => 11, 'post_title' => 'Original'],
         22 => (object) ['ID' => 22, 'post_title' => 'German translation'],
     ];
 
     polytrans_seed_usage_pricing();
+});
+
+describe('schema migration', function () {
+    it('backfills the language of rows written before the column existed', function () {
+        // Left NULL, every historical row would drop out of a per-market report, which
+        // filters on final_language.
+        $GLOBALS['polytrans_test_options'][UsageRecorder::OPTION_SCHEMA] = 0;
+
+        UsageRecorder::initialize();
+
+        expect($this->wpdb->queries)->toContain('UPDATE wp_polytrans_usage SET final_language = target_language WHERE final_language IS NULL AND target_language IS NOT NULL');
+        expect(get_option(UsageRecorder::OPTION_SCHEMA))->toBe(UsageRecorder::SCHEMA_VERSION);
+    });
+
+    it('does not touch the table once the recorded schema is current', function () {
+        UsageRecorder::initialize();
+
+        expect($this->wpdb->queries)->toBeEmpty();
+    });
 });
 
 describe('table row', function () {
@@ -320,6 +360,84 @@ describe('post summaries', function () {
         expect($summary['by_language']['fr']['tokens_input'])->toBe(2000);
         expect($summary['by_language']['de']['by_model'])->toHaveKey('gpt-5.6-luna');
         expect($summary['calls'])->toBe(2);
+    });
+
+    it('charges an intermediate hop to the market it was on the way to', function () {
+        // pl → en → de: two calls, and the English one exists only because German was
+        // ordered. Bucketing it under 'en' would credit a market nobody asked for and
+        // understate the one that was.
+        UsageRecorder::record([
+            'provider' => 'openai',
+            'model' => 'gpt-5.6-luna',
+            'usage' => polytrans_usage_payload(1000, 500),
+            'activity' => 'translation',
+            'source_post_id' => 11,
+            'source_language' => 'pl',
+            'target_language' => 'en',
+            'final_language' => 'de',
+            'translation_path' => 'pl>en>de',
+            'path_step' => 1,
+        ]);
+        UsageRecorder::record([
+            'provider' => 'openai',
+            'model' => 'gpt-5.6-luna',
+            'usage' => polytrans_usage_payload(1200, 600),
+            'activity' => 'translation',
+            'source_post_id' => 11,
+            'source_language' => 'en',
+            'target_language' => 'de',
+            'final_language' => 'de',
+            'translation_path' => 'pl>en>de',
+            'path_step' => 2,
+        ]);
+
+        $summary = polytrans_recorded_summary(11);
+
+        expect(array_keys($summary['by_language']))->toBe(['de']);
+        expect($summary['by_language']['de']['calls'])->toBe(2);
+        expect($summary['by_language']['de']['tokens_output'])->toBe(1100);
+    });
+
+    it('keeps each hop distinguishable in the table row', function () {
+        // The summary rolls hops up per market; the row is where the detail survives,
+        // so a report can present relays per hop or per path without re-deriving them.
+        UsageRecorder::record([
+            'provider' => 'openai',
+            'model' => 'gpt-5.6-luna',
+            'usage' => polytrans_usage_payload(1000, 500),
+            'activity' => 'translation',
+            'source_post_id' => 11,
+            'source_language' => 'pl',
+            'target_language' => 'en',
+            'final_language' => 'de',
+            'translation_path' => 'pl>en>de',
+            'path_step' => 1,
+        ]);
+
+        $row = $this->wpdb->inserted[0]['data'];
+
+        expect($row['source_language'])->toBe('pl');
+        expect($row['target_language'])->toBe('en');
+        expect($row['final_language'])->toBe('de');
+        expect($row['translation_path'])->toBe('pl>en>de');
+        expect($row['path_step'])->toBe(1);
+    });
+
+    it('treats a direct translation as its own final language', function () {
+        // Nothing else names it, and leaving it null would exclude every unrelayed row
+        // from a per-market query.
+        UsageRecorder::record([
+            'provider' => 'openai',
+            'model' => 'gpt-5.6-luna',
+            'usage' => polytrans_usage_payload(1000, 500),
+            'activity' => 'translation',
+            'source_post_id' => 11,
+            'target_language' => 'fr',
+        ]);
+
+        $row = $this->wpdb->inserted[0]['data'];
+
+        expect($row['final_language'])->toBe('fr');
     });
 
     it('accumulates across calls without losing precision', function () {

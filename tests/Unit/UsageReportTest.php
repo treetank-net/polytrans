@@ -119,12 +119,24 @@ describe('grouping safety', function () {
     });
 
     it('groups on each allowed column', function () {
-        foreach (['model', 'provider', 'target_language', 'activity', 'workflow_id'] as $column) {
+        foreach (['model', 'provider', 'source_language', 'target_language', 'final_language', 'translation_path', 'path_step', 'activity', 'workflow_id'] as $column) {
             $this->wpdb->queries = [];
             UsageReport::by($column);
 
             expect($this->wpdb->last_data_query())->toContain('GROUP BY ' . $column);
         }
+    });
+
+    it('groups on a dimension that is an expression rather than a column', function () {
+        // The hop 'pl>en' is not stored as such; it is the pair of languages the call
+        // read and wrote. The expression still comes from the class, never the caller.
+        UsageReport::by('language_pair');
+
+        expect($this->wpdb->last_data_query())->toContain("CONCAT(COALESCE(source_language, '?'), '>', COALESCE(target_language, '?'))");
+    });
+
+    it('lists the dimensions it accepts, expressions included', function () {
+        expect(UsageReport::dimensions())->toContain('final_language')->toContain('language_pair');
     });
 
     it('clamps the row limit', function () {
@@ -155,6 +167,20 @@ describe('filters', function () {
         // The value is quoted rather than becoming part of the statement.
         expect($query)->toContain("model = 'gpt' OR 1=1 --'");
         expect($query)->not->toContain('OR 1=1 --"');
+    });
+
+    it('filters a language by what the request was for, not by what a hop produced', function () {
+        // Filtering on target_language would drop the pl→en hop from a pl→en→de
+        // request, which is exactly the cost a per-market view must not lose.
+        UsageReport::by('model', ['language' => 'de']);
+
+        expect($this->wpdb->last_data_query())->toContain("final_language = 'de'");
+    });
+
+    it('can restrict the query to intermediate hops', function () {
+        UsageReport::by('model', ['relay_only' => true]);
+
+        expect($this->wpdb->last_data_query())->toContain('target_language <> final_language');
     });
 
     it('matches a post as either the source or the translation', function () {
@@ -220,7 +246,9 @@ describe('result handling', function () {
             'tokens_reasoning' => '0',
         ]];
 
-        expect(UsageReport::by('workflow_id')[0]['label'])->toBe('(none)');
+        // Named rather than blank: on the model breakdown an empty group means the
+        // provider reported no model, which a reader must be able to see.
+        expect(UsageReport::by('workflow_id')[0]['label'])->toBe('not reported');
     });
 
     it('returns zeroed totals when the table is not there yet', function () {
