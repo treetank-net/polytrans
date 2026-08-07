@@ -373,6 +373,87 @@ class UsageRecorder
     }
 
     /**
+     * Rebuild a post's summary meta from the table.
+     *
+     * The table is the source of truth; the meta is a denormalised copy that can be
+     * discarded and recomputed. Use this when the meta is known to be wrong - it was
+     * copied from another post, say - rather than deleting it, which would throw away
+     * figures that are genuinely this post's.
+     *
+     * Replays each row through the same accumulation the live path uses, so a rebuilt
+     * summary is identical to one that grew normally.
+     *
+     * @param int $post_id Post to rebuild.
+     * @return array|null The rebuilt summary, or null if the post has no rows.
+     */
+    public static function rebuild_post_summary($post_id)
+    {
+        global $wpdb;
+
+        $post_id = (int) $post_id;
+
+        if ($post_id <= 0 || !self::table_exists()) {
+            return null;
+        }
+
+        delete_post_meta($post_id, self::META_SUMMARY);
+        delete_post_meta($post_id, self::META_COST);
+
+        $table = $wpdb->prefix . self::TABLE;
+
+        // Rows produced for this post, then rows where it was the original - the same
+        // two contributions record() makes, in insertion order.
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared
+        $own = $wpdb->get_results($wpdb->prepare("SELECT * FROM {$table} WHERE post_id = %d ORDER BY id ASC", $post_id), ARRAY_A);
+
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared
+        $as_source = $wpdb->get_results($wpdb->prepare(
+            "SELECT * FROM {$table} WHERE source_post_id = %d AND (post_id IS NULL OR post_id <> %d) ORDER BY id ASC",
+            $post_id,
+            $post_id
+        ), ARRAY_A);
+
+        $own = is_array($own) ? $own : [];
+        $as_source = is_array($as_source) ? $as_source : [];
+
+        if (empty($own) && empty($as_source)) {
+            return null;
+        }
+
+        foreach ($own as $row) {
+            self::merge_summary($post_id, self::normalize_stored_row($row), null);
+        }
+
+        foreach ($as_source as $row) {
+            $row = self::normalize_stored_row($row);
+            self::merge_summary($post_id, $row, $row['target_language'] ?? null);
+        }
+
+        return self::get_post_summary($post_id);
+    }
+
+    /**
+     * Cast a row read back from the database into the shape merge_summary() expects.
+     *
+     * @param array $row Stored row.
+     * @return array
+     */
+    private static function normalize_stored_row(array $row)
+    {
+        foreach (['tokens_input', 'tokens_input_uncached', 'tokens_output', 'tokens_cached_read', 'tokens_cached_write', 'tokens_reasoning'] as $key) {
+            $row[$key] = (int) ($row[$key] ?? 0);
+        }
+
+        $row['activity'] = (string) ($row['activity'] ?? 'unknown');
+        $row['model'] = (string) ($row['model'] ?? '');
+        // NULL must survive the round trip: it means unpriced, not free.
+        $row['cost_usd'] = isset($row['cost_usd']) && $row['cost_usd'] !== null ? (string) $row['cost_usd'] : null;
+        $row['created_at'] = (string) ($row['created_at'] ?? '');
+
+        return $row;
+    }
+
+    /**
      * Read a post's stored summary.
      *
      * @param int $post_id Post ID.

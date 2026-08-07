@@ -272,6 +272,42 @@ The translation execution flow has several key stages:
 - Falls back to original term ID if Polylang unavailable
 - Missing translations are logged but not assigned
 
+### Post meta ownership
+
+Two different filters decide what meta reaches a translation, and they work in
+opposite directions — confusing them is what hid a bug for a long time:
+
+| Path | Class | Direction |
+|---|---|---|
+| Post meta → AI | `Receiver\TranslationHandler::filter_meta_for_translation` | **allow**-list (SEO keys + ACF/Flynt patterns) |
+| Original's meta → translated post | `Receiver\Managers\MetadataManager::should_skip_meta_key` | **deny**-list |
+
+Because the model only ever sees an allow-list, translated *content* stays correct
+even when the copy step is broken — so a bug there shows up somewhere else entirely.
+
+**Everything under the `_polytrans_` prefix is per-post state, and all of it lives on
+the original**, with a language suffix: `_polytrans_translation_status_<lang>`,
+`_polytrans_translation_log_<lang>`, `_polytrans_translation_post_id_<lang>`,
+`_polytrans_author_notified`, `_polytrans_usage_summary`. It is written by the class
+that owns it (`TranslationExtension`, `StatusManager`, `BackgroundProcessor`,
+`LanguageManager`, `UsageRecorder`) on the post it belongs to. Never copy it, and
+never add a `_polytrans_` key expecting the copy step to enumerate it — the deny-list
+matches the prefix, deliberately.
+
+**Why it matters**: `handle_check_stuck_translations` (`class-polytrans.php`) and
+`fix_stuck_translations` (`TranslationHandler`) query
+`meta_key LIKE '_polytrans_translation_status_%'` across the **whole** table. A stray
+copy reading `translating` is indistinguishable from a real stuck translation, and
+gets marked `failed` after 24 h.
+
+`Core\MetaCleanup` cleans up what earlier versions copied. Its criterion is narrow on
+purpose: only keys naming the post's **own** language. A relay (`pl → en → de`) gives
+the intermediate post a legitimate hub for other languages, and nothing in the row
+distinguishes that from a copy. The post's language comes from the pointer on its
+original (`_polytrans_translation_post_id_<lang>` == this ID), with Polylang as
+fallback — **`polytrans_translation_lang` holds the SOURCE language**, so acting on it
+deletes the wrong keys.
+
 ## Important Files
 
 - `polytrans.php` - Main plugin file, version definition

@@ -146,13 +146,26 @@ class MetadataManager
     private function should_skip_meta_key($key)
     {
         $skip_keys = [
-            '_polytrans_translation_status',
             '_edit_lock',
             '_edit_last',
             '_thumbnail_id', // Skip featured image - handled by media manager
         ];
 
-        return in_array($key, $skip_keys, true);
+        if (in_array($key, $skip_keys, true)) {
+            return true;
+        }
+
+        // Everything the plugin stores about a post is per-post state, never content
+        // to carry over: translation status and logs, the pointers to each created
+        // translation, review flags, notification flags, cost summaries. All of it is
+        // written deliberately by the class that owns it, on the post it belongs to.
+        //
+        // Matched by prefix. The old exact comparison against
+        // '_polytrans_translation_status' never fired, because the real keys carry a
+        // language suffix ('_polytrans_translation_status_de'), so the original's
+        // whole hub of state was copied onto every translation - where nothing
+        // updates it again, since status is only ever written on the original.
+        return strpos($key, '_polytrans_') === 0;
     }
 
     /**
@@ -167,8 +180,11 @@ class MetadataManager
             $value = $value[0];
         }
 
-        if (is_string($value) && @unserialize($value) !== false) {
-            $value = unserialize($value);
+        // maybe_unserialize() checks the string's shape first, rather than attempting
+        // the unserialize and discarding the failure - which ran twice per value and
+        // raised a notice for every ordinary string.
+        if (is_string($value)) {
+            $value = maybe_unserialize($value);
         }
 
         return $value;

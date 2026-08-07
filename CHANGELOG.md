@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Translations no longer inherit the original's translation state.** Metadata is copied from the original wholesale, and the skip list was comparing against `_polytrans_translation_status` exactly, while the real keys carry a language suffix (`_polytrans_translation_status_de`). Nothing ever matched, so every translation received a copy of the original's whole hub of state - status, logs, the pointers naming each created translation, review and notification flags. On a translation none of it is ever updated again, because status is only ever written on the original. The list now matches the `_polytrans_` prefix, which covers every key the plugin owns, present and future.
+  - The visible consequence was translations being marked **failed** roughly a day after they succeeded. The copied status read `translating`, because the original only flips to `completed` after the new post exists, and the stuck-translation scanners search `meta_key LIKE '_polytrans_translation_status_%'` across the whole table - so they found an orphan that had been "translating" for 24 hours and failed it.
+  - The copied `_polytrans_author_notified` would also have suppressed the author notification for the translation, and since 1.17.0 the copy included the original's cost summary, so a translation showed what the original cost across every language and then added its own costs on top of that.
+- One-off cleanup of the meta earlier versions left behind (`Core\MetaCleanup`, runs once per site in batches). It only removes entries naming the post's **own** language - a German post cannot be the origin of a translation into German - and leaves other languages alone, since `pl → en → de` gives the intermediate post a legitimate hub of its own. The post's language is read from the pointer on its original, not from `polytrans_translation_lang`, which holds the *source* language. Posts whose language cannot be established are reported and skipped. Cost meta is rebuilt from the `polytrans_usage` table rather than deleted, since a translation can have costs of its own from workflow steps.
+- Copying meta no longer raises a notice for every ordinary string value: it checks the value's shape with `maybe_unserialize()` instead of attempting the unserialize and discarding the failure.
+
 ## [1.17.0] - 2026-08-07
 
 ### Added

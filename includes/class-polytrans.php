@@ -39,6 +39,9 @@ class PolyTrans
     private function init_hooks()
     {
         add_action('init', [$this, 'init']);
+        // One-off cleanup of state older versions copied onto translated posts. Guarded
+        // by a version option, so the normal case is a single autoloaded option read.
+        add_action('admin_init', [\PolyTrans\Core\MetaCleanup::class, 'maybe_run']);
         add_action('admin_menu', [$this, 'add_admin_menus']);
         add_action('admin_enqueue_scripts', [$this, 'enqueue_admin_scripts']);
         add_action('wp_enqueue_scripts', [$this, 'enqueue_public_scripts']);

@@ -97,8 +97,11 @@ final class PolyTransFakeUsageWpdb
 
     public function prepare($query, ...$args)
     {
-        foreach ($args as $arg) {
-            $query = preg_replace('/%s/', (string) $arg, $query, 1);
+        $values = (count($args) === 1 && is_array($args[0])) ? $args[0] : $args;
+
+        foreach ($values as $value) {
+            // %d as well as %s: the rebuild queries bind post IDs as numbers.
+            $query = preg_replace('/%[dsf]/', (string) $value, $query, 1);
         }
 
         return $query;
@@ -114,6 +117,40 @@ final class PolyTransFakeUsageWpdb
     {
         $this->inserted[] = ['table' => $table, 'data' => $data];
         return 1;
+    }
+
+    /**
+     * Replays the captured rows, filtered the way rebuild_post_summary() asks for
+     * them, so a rebuild reads back exactly what was recorded.
+     */
+    public function get_results($query, $output = null)
+    {
+        $rows = array_map(function ($entry, $index) {
+            return array_merge($entry['data'], ['id' => $index + 1]);
+        }, $this->inserted, array_keys($this->inserted));
+
+        if (preg_match('/WHERE post_id = (\d+)/', $query, $m)) {
+            return array_values(array_filter($rows, function ($row) use ($m) {
+                return (int) ($row['post_id'] ?? 0) === (int) $m[1];
+            }));
+        }
+
+        if (preg_match('/WHERE source_post_id = (\d+)/', $query, $m)) {
+            return array_values(array_filter($rows, function ($row) use ($m) {
+                return (int) ($row['source_post_id'] ?? 0) === (int) $m[1]
+                    && (int) ($row['post_id'] ?? 0) !== (int) $m[1];
+            }));
+        }
+
+        return [];
+    }
+}
+
+if (!function_exists('delete_post_meta')) {
+    function delete_post_meta($post_id, $key, $value = '')
+    {
+        unset($GLOBALS['polytrans_test_post_meta'][$post_id][$key]);
+        return true;
     }
 }
 
@@ -375,6 +412,91 @@ describe('writes that must not touch a post', function () {
 
         expect($this->wpdb->inserted[0]['data']['source_post_id'])->toBe(9999);
         expect(polytrans_recorded_summary(9999))->toBeEmpty();
+    });
+});
+
+describe('rebuilding a summary from the table', function () {
+    it('reproduces what accumulating the same rows produced', function () {
+        // The table is the source of truth, so a rebuild must be indistinguishable
+        // from a summary that grew call by call.
+        UsageRecorder::record([
+            'provider' => 'openai',
+            'model' => 'gpt-5.6-luna',
+            'usage' => polytrans_usage_payload(1000, 500, 200),
+            'activity' => 'translation',
+            'post_id' => 22,
+            'source_post_id' => 11,
+            'target_language' => 'de',
+        ]);
+        UsageRecorder::record([
+            'provider' => 'openai',
+            'model' => 'gpt-5.6-luna',
+            'usage' => polytrans_usage_payload(300, 100),
+            'activity' => 'workflow_step',
+            'step' => 'SEO',
+            'post_id' => 22,
+        ]);
+
+        $grown = polytrans_recorded_summary(22);
+        $rebuilt = UsageRecorder::rebuild_post_summary(22);
+
+        // updated_at comes from the row, so both carry the same value.
+        expect($rebuilt)->toEqual($grown);
+        expect($rebuilt['calls'])->toBe(2);
+        expect($rebuilt['by_activity'])->toHaveKeys(['translation', 'workflow_step']);
+    });
+
+    it('discards a summary the post has no rows for', function () {
+        // This is the copied-from-another-post case: nothing in the table backs it.
+        update_post_meta(22, UsageRecorder::META_SUMMARY, [
+            'version' => 1,
+            'total_usd' => '9.99',
+            'calls' => 40,
+        ]);
+
+        $rebuilt = UsageRecorder::rebuild_post_summary(22);
+
+        expect($rebuilt)->toBeNull();
+        expect(polytrans_recorded_summary(22))->toBeEmpty();
+    });
+
+    it('keeps the per-language split when rebuilding an original', function () {
+        UsageRecorder::record([
+            'provider' => 'openai',
+            'model' => 'gpt-5.6-luna',
+            'usage' => polytrans_usage_payload(1000, 500),
+            'activity' => 'translation',
+            'source_post_id' => 11,
+            'target_language' => 'de',
+        ]);
+        UsageRecorder::record([
+            'provider' => 'openai',
+            'model' => 'gpt-5.6-luna',
+            'usage' => polytrans_usage_payload(2000, 100),
+            'activity' => 'translation',
+            'source_post_id' => 11,
+            'target_language' => 'fr',
+        ]);
+
+        $rebuilt = UsageRecorder::rebuild_post_summary(11);
+
+        expect(array_keys($rebuilt['by_language']))->toBe(['de', 'fr']);
+        expect($rebuilt['by_language']['fr']['tokens_input'])->toBe(2000);
+    });
+
+    it('does not turn an unpriced call into a free one', function () {
+        UsageRecorder::record([
+            'provider' => 'openai',
+            'model' => 'model-nobody-lists',
+            'usage' => polytrans_usage_payload(500, 500),
+            'activity' => 'translation',
+            'post_id' => 22,
+        ]);
+
+        $rebuilt = UsageRecorder::rebuild_post_summary(22);
+
+        expect($rebuilt['unpriced_calls'])->toBe(1);
+        expect((float) $rebuilt['total_usd'])->toBe(0.0);
     });
 });
 
