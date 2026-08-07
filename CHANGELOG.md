@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.18.0] - 2026-08-07
+
 ### Added
 - **Relayed translations are now recorded as such.** A `pl → en → de` path costs one call per hop, and the row for each hop now carries every fact about it: the language it read, the language it produced, the language the whole request was for, the full path (`pl>en>de`) and the hop's position in it. Nothing about the relay has to be inferred from timing or guessed at afterwards.
   - The AI Costs dashboard gained **By translation step** (each hop, e.g. `pl>en`, with a count of how many of its calls were intermediate) and **By path**, and marks intermediate calls as *relayed*. The Calls card shows what the hops came to, in money and as a share of the total.
