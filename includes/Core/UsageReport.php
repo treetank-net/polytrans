@@ -52,6 +52,21 @@ class UsageReport
     ];
 
     /**
+     * Dimensions whose rows belong to one activity type. Keeping the constraint here,
+     * rather than in each dashboard caller, prevents a translation from appearing as
+     * "not reported" in the workflow breakdown and a workflow as "?>de" in the hop
+     * breakdown.
+     *
+     * @var array<string, string>
+     */
+    private static $dimension_activities = [
+        'language_pair' => 'translation',
+        'translation_path' => 'translation',
+        'path_step' => 'translation',
+        'workflow_id' => 'workflow_step',
+    ];
+
+    /**
      * Totals across the selected period.
      *
      * @param array $args Query arguments, see build_where().
@@ -110,7 +125,13 @@ class UsageReport
 
         $term = self::group_term($column);
 
-        if ($term === null || !UsageRecorder::table_exists()) {
+        if ($term === null) {
+            return [];
+        }
+
+        $args = self::dimension_activity_args($column, $args);
+
+        if ($args === null || !UsageRecorder::table_exists()) {
             return [];
         }
 
@@ -151,6 +172,31 @@ class UsageReport
         }
 
         return self::$group_expressions[$column] ?? null;
+    }
+
+    /**
+     * Restrict activity-specific dimensions to their own kind of call.
+     *
+     * @param string $column Dimension name.
+     * @param array  $args   Query arguments.
+     * @return array|null Query arguments, or null when an incompatible activity filter
+     *                    makes the dimension empty by definition.
+     */
+    private static function dimension_activity_args($column, $args)
+    {
+        if (!isset(self::$dimension_activities[$column])) {
+            return $args;
+        }
+
+        $activity = self::$dimension_activities[$column];
+
+        if (!empty($args['activity']) && $args['activity'] !== $activity) {
+            return null;
+        }
+
+        $args['activity'] = $activity;
+
+        return $args;
     }
 
     /**

@@ -135,6 +135,35 @@ describe('grouping safety', function () {
         expect($this->wpdb->last_data_query())->toContain("CONCAT(COALESCE(source_language, '?'), '>', COALESCE(target_language, '?'))");
     });
 
+    it('keeps translation dimensions free of workflow calls', function () {
+        foreach (['language_pair', 'translation_path', 'path_step'] as $column) {
+            $this->wpdb->queries = [];
+            UsageReport::by($column);
+
+            expect($this->wpdb->last_data_query())->toContain("activity = 'translation'");
+        }
+    });
+
+    it('does not query translation dimensions for a workflow-only filter', function () {
+        $this->wpdb->queries = [];
+
+        expect(UsageReport::by('language_pair', ['activity' => 'workflow_step']))->toBe([]);
+        expect($this->wpdb->last_data_query())->toBe('');
+    });
+
+    it('keeps the workflow dimension free of translation calls', function () {
+        UsageReport::by('workflow_id');
+
+        expect($this->wpdb->last_data_query())->toContain("activity = 'workflow_step'");
+    });
+
+    it('does not query the workflow dimension for a translation-only filter', function () {
+        $this->wpdb->queries = [];
+
+        expect(UsageReport::by('workflow_id', ['activity' => 'translation']))->toBe([]);
+        expect($this->wpdb->last_data_query())->toBe('');
+    });
+
     it('lists the dimensions it accepts, expressions included', function () {
         expect(UsageReport::dimensions())->toContain('final_language')->toContain('language_pair');
     });

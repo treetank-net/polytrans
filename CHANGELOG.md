@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.18.2] - 2026-08-07
+
+### Fixed
+- Kept translation hop/path reports limited to translation calls and workflow reports limited to workflow calls, preventing synthetic `?>de` and relay rows under `not reported`.
+
 ## [1.18.1] - 2026-08-07
 
 ### Fixed
