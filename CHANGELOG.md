@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.19.0] - 2026-08-07
+
+### Added
+- Added a translation-run ledger that groups relay hops and post-translation workflow calls into one article/target process.
+- Added source-text metrics (visible characters and words), process totals, and derived cost-per-1,000-character/word projections for each run in the AI Costs dashboard.
+
+### Changed
+- Propagated the run identifier and source metrics through local and remote translation paths, so workflow usage can be attributed to the translation that triggered it.
+- Recorded direct provider calls in the usage ledger as well as configured path calls.
+- Kept historical usage rows without a run identifier out of the new per-process view instead of inventing an article association.
+
 ## [1.18.2] - 2026-08-07
 
 ### Fixed
