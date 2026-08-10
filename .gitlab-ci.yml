@@ -8,6 +8,17 @@ variables:
   PHP_VERSION: "8.1"
   WP_CORE_VERSION: "6.8"
   PLUGIN_CHECK_VERSION: "2.0.0"
+  # A previous Docker job may have left root-owned dependency files in the
+  # reused shell-runner checkout. The gate jobs clean those exact paths below.
+  GIT_CLEAN_FLAGS: "none"
+
+.shell-checkout-cleanup:
+  before_script:
+    - >
+      docker run --rm --user root --entrypoint sh
+      -v "${CI_PROJECT_DIR}:/cleanup"
+      alpine:3.20
+      -c "rm -rf /cleanup/vendor /cleanup/pcp /cleanup/composer.phar /cleanup/pcp-report.csv"
 
 # ==============================================================================
 # Test Stage - runs on main branch, merge requests and version tags
@@ -17,6 +28,7 @@ unit-tests:
   stage: test
   tags:
     - vps
+  extends: .shell-checkout-cleanup
   script:
     - >
       docker run --rm
@@ -32,6 +44,7 @@ php-syntax-check:
   stage: test
   tags:
     - vps
+  extends: .shell-checkout-cleanup
   script:
     - >
       docker run --rm
@@ -53,6 +66,7 @@ phpcs:
   stage: test
   tags:
     - vps
+  extends: .shell-checkout-cleanup
   script:
     - >
       docker run --rm
@@ -76,6 +90,7 @@ plugin-check:
   stage: test
   tags:
     - vps
+  extends: .shell-checkout-cleanup
   # `services:` is deliberately not used: this runner is a shell executor (every other
   # job here shells out to `docker run`), and services are silently ignored there.
   script:

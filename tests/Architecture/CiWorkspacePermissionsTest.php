@@ -5,7 +5,8 @@ declare(strict_types=1);
 /**
  * The shell runner reuses its checkout between jobs. Docker containers run as
  * root by default, so a writable bind mount can leave files that the runner
- * cannot remove during the next checkout.
+ * cannot remove during the next checkout. The only intentional writable mount
+ * is the narrowly-scoped cleanup helper for an already-poisoned workspace.
  */
 
 test('Docker CI jobs do not write through the GitLab checkout mount', function () {
@@ -19,9 +20,24 @@ test('Docker CI jobs do not write through the GitLab checkout mount', function (
 
     expect($mounts[0])->not->toBeEmpty();
 
+    $cleanup_mount = '-v "${CI_PROJECT_DIR}:/cleanup"';
+    $writable_mounts = array_values(array_filter(
+        $mounts[0],
+        static fn (string $mount): bool => !str_ends_with($mount, ':ro"')
+    ));
+
+    expect($writable_mounts)->toBe([$cleanup_mount]);
+
     foreach ($mounts[0] as $mount) {
+        if ($mount === $cleanup_mount) {
+            continue;
+        }
+
         expect($mount)->toEndWith(':ro"');
     }
+
+    expect($ci)->toContain('GIT_CLEAN_FLAGS: "none"');
+    expect($ci)->toContain('rm -rf /cleanup/vendor /cleanup/pcp /cleanup/composer.phar /cleanup/pcp-report.csv');
 
     $phpcs = substr($ci, strpos($ci, 'phpcs:'));
     $phpcs = substr($phpcs, 0, strpos($phpcs, '# The scan WordPress.org'));
