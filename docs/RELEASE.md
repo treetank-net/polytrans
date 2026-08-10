@@ -207,6 +207,13 @@ git push origin v1.7.1
    - ZIP creation failed → Check file permissions
    - Release creation failed → Check CI job token permissions
 
+If a shell-runner job fails during checkout with `failed to remove ... Permission denied`,
+an earlier Docker job wrote root-owned files into the persistent runner
+workspace. The CI jobs now use read-only checkout mounts and job-scoped staging, but
+the poisoned workspace needs a one-time cleanup by the runner administrator: remove
+or `chown` the exact project workspace (including stale `vendor/`, `pcp/`
+and `composer.phar`) for the `gitlab-runner` user, then retry the pipeline.
+
 ### ZIP is Too Large
 
 The release ZIP should be < 10 MB. If larger:

@@ -48,6 +48,7 @@ php-syntax-check:
 #
 # This job is the reason the March review fixes came back: nothing enforced them.
 # Do not add allow_failure here.
+# Shell executor + Docker: mount the checkout read-only and run Composer in /work.
 phpcs:
   stage: test
   tags:
@@ -55,11 +56,12 @@ phpcs:
   script:
     - >
       docker run --rm
-      -v "${CI_PROJECT_DIR}:/src"
-      -w /src
+      -v "${CI_PROJECT_DIR}:/src:ro"
       php:8.3-cli
       sh -c "apt-get update -qq && apt-get install -y -qq unzip git libxml2-dev libonig-dev >/dev/null
       && docker-php-ext-install xml dom simplexml mbstring >/dev/null
+      && cp -r /src /work
+      && cd /work
       && curl -sS https://getcomposer.org/installer | php
       && php composer.phar install --no-interaction --quiet
       && php -d memory_limit=1G vendor/bin/phpcs --standard=phpcs.xml --report=full --no-colors --warning-severity=0"
@@ -88,12 +90,16 @@ plugin-check:
       done
     # The plugin boots through vendor/autoload.php during activation. Install only
     # production dependencies before copying the distribution-shaped tree.
-    - composer install --no-dev --optimize-autoloader --no-interaction
-    - mkdir -p pcp/wp-content/plugins
-    - rsync -a --exclude-from=.distignore . pcp/wp-content/plugins/polytrans/
+    # Keep the complete staging tree outside the checkout: WP-CLI runs as root
+    # and would otherwise leave root-owned WordPress files under CI_PROJECT_DIR.
+    - export PCP_ROOT="/tmp/polytrans-pcp-${CI_JOB_ID}"
+    - mkdir -p "$PCP_ROOT/source" "$PCP_ROOT/wp-content/plugins"
+    - rsync -a --exclude='/vendor/' . "$PCP_ROOT/source/"
+    - composer install --working-dir="$PCP_ROOT/source" --no-dev --optimize-autoloader --no-interaction
+    - rsync -a --exclude-from="$PCP_ROOT/source/.distignore" "$PCP_ROOT/source/" "$PCP_ROOT/wp-content/plugins/polytrans/"
     - >
       docker run --rm --network "$NET"
-      -v "${CI_PROJECT_DIR}/pcp:/var/www/html"
+      -v "$PCP_ROOT:/var/www/html"
       -w /var/www/html
       --user root
       wordpress:cli-php8.2
@@ -115,6 +121,8 @@ plugin-check:
   after_script:
     - docker rm -f "pcp-mysql-${CI_JOB_ID}" || true
     - docker network rm "pcp-${CI_JOB_ID}" || true
+    - docker run --rm --user root --entrypoint sh -v "/tmp/polytrans-pcp-${CI_JOB_ID}:/cleanup" wordpress:cli-php8.2 -c "rm -rf /cleanup/* /cleanup/.[!.]* /cleanup/..?*" || true
+    - rmdir "/tmp/polytrans-pcp-${CI_JOB_ID}" || true
   artifacts:
     when: always
     paths:

@@ -175,6 +175,11 @@ Literal AJAX actions have one canonical owner. Compatibility methods may remain 
 for integrations, but must not register the same `wp_ajax_*` hook a second time. The
 Architecture suite checks this invariant.
 
+The shell runner reuses its checkout between jobs. Docker jobs must mount
+`${CI_PROJECT_DIR}` read-only and copy work into the container or a job-scoped `/tmp`
+staging directory; otherwise a root container can leave files that the next checkout
+cannot remove. `CiWorkspacePermissionsTest` guards this invariant.
+
 ### Checking Version
 
 ```bash
