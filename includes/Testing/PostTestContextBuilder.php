@@ -167,7 +167,12 @@ final class PostTestContextBuilder
 
     private static function stripTags(string $content): string
     {
-        return function_exists('wp_strip_all_tags') ? wp_strip_all_tags($content) : strip_tags($content);
+        if (function_exists('wp_strip_all_tags')) {
+            return wp_strip_all_tags($content);
+        }
+
+        // phpcs:ignore WordPress.WP.AlternativeFunctions.strip_tags_strip_tags -- Fallback for the unit suite, which exercises this class without WordPress loaded.
+        return strip_tags($content);
     }
 
     private static function trimWords(string $content, int $words, string $more): string

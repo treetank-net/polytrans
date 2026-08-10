@@ -4,12 +4,12 @@
  * Plugin Name: PolyTrans
  * Plugin URI: https://github.com/treetank-net/polytrans
  * Description: Advanced multilingual translation management system with AI-powered translation, scheduling, and review workflow
- * Version: 1.19.0
+ * Version: 1.19.1
  * Author: treetank
  * Author URI: https://treetank.net
  * Text Domain: polytrans
  * Domain Path: /languages
- * Requires at least: 5.0
+ * Requires at least: 6.0
  * Requires PHP: 8.1
  * License: GPLv2 or later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -21,7 +21,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('POLYTRANS_VERSION', '1.19.0');
+define('POLYTRANS_VERSION', '1.19.1');
 define('POLYTRANS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('POLYTRANS_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('POLYTRANS_PLUGIN_FILE', __FILE__);
@@ -214,12 +214,10 @@ function polytrans_check_workflows_table()
     // Add expected_output_schema column if it doesn't exist
     global $wpdb;
     $table_name = $wpdb->prefix . 'polytrans_assistants';
-    // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-    // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name from trusted source ($wpdb->prefix)
+	// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Table name from trusted source ($wpdb->prefix)
     $column_exists = $wpdb->get_results("SHOW COLUMNS FROM `{$table_name}` LIKE 'expected_output_schema'");
     if (empty($column_exists)) {
-        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange -- Plugin upgrade: adding missing column
-        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name from trusted source ($wpdb->prefix)
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Plugin upgrade: adding missing column; table name from trusted source ($wpdb->prefix)
         $wpdb->query("ALTER TABLE `{$table_name}` ADD COLUMN expected_output_schema text AFTER expected_format");
     }
 }

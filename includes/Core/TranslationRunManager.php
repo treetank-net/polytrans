@@ -136,7 +136,7 @@ class TranslationRunManager
         global $wpdb;
         $table = self::table_name();
 
-        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- A table name cannot be a prepared value; table_name() builds it from $wpdb->prefix, never from a request. The run id is prepared.
         $existing = $wpdb->get_var($wpdb->prepare("SELECT id FROM {$table} WHERE run_id = %s", $run_id));
 
         if ($existing) {

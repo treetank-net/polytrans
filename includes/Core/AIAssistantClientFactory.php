@@ -92,4 +92,3 @@ class AIAssistantClientFactory
         return null;
     }
 }
-

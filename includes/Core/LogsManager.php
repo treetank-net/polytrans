@@ -143,7 +143,7 @@ class LogsManager
             if (!isset($existing_columns[$column_name])) {
                 // Column doesn't exist - add it
                 $sql = self::build_add_column_sql($table_name, $column_name, $expected);
-                // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.NotPrepared -- Plugin table migration with safe internal schema definitions
+				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Plugin table migration with safe internal schema definitions
                 $wpdb->query($sql);
                 // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
                 error_log("[polytrans] Added missing column '$column_name' to logs table");
@@ -347,13 +347,13 @@ class LogsManager
                     // Index exists but on different column - drop and recreate
                     // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
                     error_log("[polytrans] Index '$index_name' exists but on wrong column (expected '$column_name', found '{$existing_indexes[$index_name]}'). Recreating.");
-                    // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange -- Plugin table maintenance
+					// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Plugin table maintenance; identifiers cannot be prepared: table from $wpdb->prefix, index name from the hardcoded $indexes map above.
                     $wpdb->query("ALTER TABLE `{$wpdb->prefix}polytrans_logs` DROP INDEX `$index_name`");
                 }
             }
 
             // Add the index
-            // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange -- Plugin table maintenance
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Plugin table maintenance; identifiers cannot be prepared: table from $wpdb->prefix, index and column names from the hardcoded $indexes map above.
             $result = $wpdb->query("ALTER TABLE `{$wpdb->prefix}polytrans_logs` ADD INDEX `$index_name` (`$column_name`)");
             if ($result === false) {
                 // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
@@ -379,11 +379,8 @@ class LogsManager
         }
 
         $indexes = [];
-        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name from trusted source ($wpdb->prefix)
-        $results = $wpdb->get_results(
-            "SHOW INDEX FROM `{$table_name}`"
-        );
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- A table name cannot be a prepared value; it is built from $wpdb->prefix, never from a request. Result cached in $indexes_cache above.
+        $results = $wpdb->get_results("SHOW INDEX FROM `{$table_name}`");
 
         if ($results) {
             foreach ($results as $row) {
@@ -619,13 +616,11 @@ class LogsManager
         $sql .= $wpdb->prepare(" LIMIT %d OFFSET %d", $per_page, $offset);
 
         // Get the total count
-        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- Query built with $wpdb->prepare() for all user inputs
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Query built with $wpdb->prepare() for all user inputs
         $total_items = $wpdb->get_var($count_sql);
 
         // Get the logs
-        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- Query built with $wpdb->prepare() for all user inputs
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Query built with $wpdb->prepare() for all user inputs
         $logs = $wpdb->get_results($sql);
         if ($logs === null) {
             // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
@@ -719,10 +714,10 @@ class LogsManager
         $retention_days = self::get_retention_days($retention_days);
         $cutoff = gmdate('Y-m-d H:i:s', strtotime('-' . $retention_days . ' days'));
 
-        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Admin maintenance stats for plugin-owned table.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Admin maintenance stats for plugin-owned table.
         $row = $wpdb->get_row("SELECT COUNT(*) AS total_logs, COALESCE(SUM(CHAR_LENGTH(message) + COALESCE(CHAR_LENGTH(context), 0)), 0) AS total_payload_size, MIN(created_at) AS oldest_created_at, MAX(created_at) AS newest_created_at FROM {$table_name}", ARRAY_A);
 
-        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Admin maintenance stats for plugin-owned table.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Admin maintenance stats for plugin-owned table.
         $old_logs = (int) $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$table_name} WHERE created_at < %s", $cutoff));
 
         return [
@@ -1065,11 +1060,8 @@ class LogsManager
 
         // Get all columns for this table
         $columns = [];
-        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name from trusted source ($wpdb->prefix)
-        $cols = $wpdb->get_results(
-            "SHOW COLUMNS FROM `{$table}`"
-        );
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- A table name cannot be a prepared value; it is built from $wpdb->prefix, never from a request. Result cached in $columns_cache above.
+        $cols = $wpdb->get_results("SHOW COLUMNS FROM `{$table}`");
 
         if ($cols) {
             foreach ($cols as $col) {
@@ -1102,11 +1094,8 @@ class LogsManager
 
         // Get detailed column information
         $column_details = [];
-        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name from trusted source ($wpdb->prefix)
-        $cols = $wpdb->get_results(
-            "SHOW COLUMNS FROM `{$table}`"
-        );
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- A table name cannot be a prepared value; it is built from $wpdb->prefix, never from a request. Result cached in $details_cache above.
+        $cols = $wpdb->get_results("SHOW COLUMNS FROM `{$table}`");
 
         if ($cols) {
             foreach ($cols as $col) {
@@ -1161,11 +1150,8 @@ class LogsManager
 
         if (!isset($columns_cache[$cache_key])) {
             // Get all columns for this table
-            // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name from trusted source ($wpdb->prefix)
-            $cols = $wpdb->get_results(
-                "SHOW COLUMNS FROM `{$table}`"
-            );
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- A table name cannot be a prepared value; it is built from $wpdb->prefix, never from a request. Result cached in $columns_cache above.
+            $cols = $wpdb->get_results("SHOW COLUMNS FROM `{$table}`");
             $columns_cache[$cache_key] = [];
 
             if ($cols) {

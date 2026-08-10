@@ -25,8 +25,20 @@ class SecurityManager
         $method = isset($settings['translation_receiver_secret_method']) ? $settings['translation_receiver_secret_method'] : 'header_bearer';
         $custom_header_name = isset($settings['translation_receiver_secret_custom_header']) ? $settings['translation_receiver_secret_custom_header'] : 'x-polytrans-secret';
 
-        if (!$secret || $method === 'none') {
-            return true; // No secret configured, allow all requests
+        // Only an explicit choice of "none" opens this endpoint. A missing secret is a
+        // half-finished configuration, not consent — this endpoint creates posts.
+        if ($method === 'none') {
+            return true;
+        }
+
+        if (!$secret) {
+            \PolyTrans_Logs_Manager::log(
+                'Translation receiver request rejected: no receiver secret is configured. '
+                    . 'Set one under PolyTrans → Settings → Advanced, or set the authentication '
+                    . 'method to "none" to accept unauthenticated requests deliberately.',
+                'warning'
+            );
+            return false;
         }
 
         $provided_secret = '';
@@ -50,7 +62,8 @@ class SecurityManager
                 break;
         }
 
-        $is_valid = hash_equals($secret, $provided_secret);
+        // Cast: get_header() returns null for an absent header, and hash_equals() takes strings.
+        $is_valid = hash_equals($secret, is_string($provided_secret) ? $provided_secret : '');
 
         if (!$is_valid) {
             \PolyTrans_Logs_Manager::log("Translation receiver authentication failed", "info");

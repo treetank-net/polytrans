@@ -27,6 +27,7 @@
                                 {% else %}
                                     {% set lang_name = language_filter|upper %}
                                 {% endif %}
+                                {# This markup combines trusted translated text with the escaped selected language name, so it is safe to render as HTML. #}
                                 {{ __('Showing workflows for %s posts only. This matches your selected post\'s language.', 'polytrans')|format('<strong>' ~ lang_name|esc_html ~ '</strong>')|raw }}
                             </p>
                         </div>
@@ -199,4 +200,3 @@
 
     </div>
 </div>
-

@@ -48,13 +48,19 @@ polytrans/
 
    Use `git log vPREVIOUS..HEAD --oneline` to see commits since last tag.
 
-2. **Update version in polytrans.php** (TWO places):
+2. **Update version in THREE places** — two in `polytrans.php`:
    ```php
    * Version: X.Y.Z
    ```
    ```php
    define('POLYTRANS_VERSION', 'X.Y.Z');
    ```
+   and one in `readme.txt`, which is what the WordPress.org directory serves:
+   ```
+   Stable tag: X.Y.Z
+   ```
+   The `build` job compares all three against the tag and against the `CHANGELOG.md`
+   section, and fails the pipeline on a mismatch — but only after the tag is pushed.
 
 3. **Commit and push**:
    ```bash
@@ -119,17 +125,55 @@ cd /home/jm/projects/trans-info
 
 ```bash
 cd /home/jm/projects/trans-info/plugins/polytrans
-./vendor/bin/pest
+composer test
 ```
 
 Prefer Docker for Pest runs because local PHP may miss PHPUnit extensions such as `dom`/`php-xml`:
 
 ```bash
 docker compose -f docker-compose.test.yml run --rm polytrans-test ./vendor/bin/pest tests/Unit/AssistantExecutorTest.php
-docker compose -f docker-compose.test.yml run --rm polytrans-test ./vendor/bin/pest
+docker compose -f docker-compose.test.yml run --rm polytrans-test composer test
 ```
 
 Note: `AGENTS.md` is a symlink to `CLAUDE.md`; update either path and the shared instruction file changes.
+
+### Coding-standard gates
+
+CI has four blocking jobs: `unit-tests`, `php-syntax-check`, `phpcs` and
+`plugin-check`. They run on merge requests, `main` and version tags; the release
+build explicitly needs all four to pass. The last two exist because the WordPress.org reviewer runs them, and
+because fixes made for an earlier review silently regressed in code added later —
+nothing was checking. `docs/development/plugin-check.md` has both commands and the
+warnings that are expected.
+
+Two things worth knowing before adding a `phpcs:ignore`:
+
+- **It covers exactly one line.** Over a multi-line statement it suppresses nothing.
+  Assign to a variable first, then annotate the one-line statement.
+- **The sniff code has to be the one that actually fires.** `PreparedSQL.NotPrepared`
+  and `PreparedSQL.InterpolatedNotPrepared` are different sniffs; naming the wrong one
+  is the same as writing no annotation.
+
+`phpcs.xml` deliberately carries **no** formatting or indentation rules — this codebase
+uses spaces, `WordPress-Core` mandates tabs, and 35 251 of 35 661 findings used to be
+"tabs must be used". `wp-coding-standards/wpcs` is pinned to `^3.1`; version 2.3 fatals
+on PHP 8.3 and PHPCS reports that as "checking has been aborted" for every file.
+
+Plugin Check runs PHPCS with its own `PluginCheck.Security.DirectDB` sniffs. A local
+`WordPress.DB.*` ignore does not suppress `PluginCheck.Security.DirectDB.UnescapedDBParameter`;
+use the exact Plugin Check sniff on the line containing `$wpdb->get_*()`/`query()`, and
+only after verifying that the table/SQL fragment is trusted or allow-listed. The same
+one-line rule applies to stacked `phpcs:ignore` comments: combine all codes on the
+annotation immediately before the statement.
+
+`dom`, `xml`, `xmlwriter`, `SimpleXML` and `xmlreader` mentioned by the Docker/PHPCS
+instructions are test-tool extensions only. They are not PolyTrans runtime requirements
+and are not bundled into the release ZIP; production Composer dependencies require PHP
+8.1, not those extensions.
+
+Literal AJAX actions have one canonical owner. Compatibility methods may remain callable
+for integrations, but must not register the same `wp_ajax_*` hook a second time. The
+Architecture suite checks this invariant.
 
 ### Checking Version
 

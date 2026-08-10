@@ -471,4 +471,3 @@ class GeminiSettingsProvider implements SettingsProviderInterface
         return $all_models;
     }
 }
-

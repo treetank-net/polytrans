@@ -61,6 +61,7 @@ class TextMetrics
         if (function_exists('wp_strip_all_tags')) {
             $content = wp_strip_all_tags($content, true);
         } else {
+            // phpcs:ignore WordPress.WP.AlternativeFunctions.strip_tags_strip_tags -- Fallback for the unit suite, which exercises this class without WordPress loaded.
             $content = strip_tags($content);
         }
 

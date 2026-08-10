@@ -12,7 +12,7 @@ make setup    # Docker environment
 ## Requirements
 
 - Docker & Docker Compose
-- PHP 7.4+
+- PHP 8.1+
 - Composer
 - Git
 

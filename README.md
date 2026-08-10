@@ -1,34 +1,19 @@
 # PolyTrans
 
-Contributors: jmarianski
-Tags: translation, multilingual, ai, openai, polylang
-Requires at least: 5.0
-Tested up to: 6.9
-Requires PHP: 8.1
-Stable tag: 1.9.5
-License: GPLv2 or later
-License URI: https://www.gnu.org/licenses/gpl-2.0.html
+WordPress translation management that runs on your own AI provider account. You supply the
+API key, your provider bills you for the tokens a translation consumed, and the translations
+stay in your database as ordinary WordPress posts.
 
-WordPress translation plugin with bring-your-own AI. Pay only for tokens, not subscriptions.
+> The readme published to the WordPress.org plugin directory is [`readme.txt`](readme.txt).
+> That file owns the plugin headers (version, tested-up-to, stable tag); this one is the
+> repository readme and deliberately carries none, so the two cannot drift apart.
 
 ## Description
 
-Connect your own AI provider (OpenAI, Claude, Gemini) — pay only for tokens consumed, not $200–800+/year in plugin subscriptions. Translation orchestration with post-processing workflows, multi-server architecture, and review management.
-
-**The problem:** WordPress translation plugins like WPML ($299/yr), Weglot ($200–790/yr), and TranslatePress ($99–349/yr) charge flat subscription fees that scale with content volume, not actual usage. With Weglot, you lose all translations if you stop paying.
-
-**PolyTrans takes a different approach:** bring your own AI account. The plugin connects to any AI provider you already use — you pay only for the tokens you actually consume. No vendor lock-in, no recurring license fees, and you always own your translations.
-
-### Why PolyTrans?
-
-| | WPML | Weglot | TranslatePress | PolyTrans |
-|---|---|---|---|---|
-| **Annual cost** | $299+ | $200–790+ | $99–349+ | Free (pay only AI tokens) |
-| **Own your translations** | Yes | No (SaaS-hosted) | Yes | Yes |
-| **AI provider choice** | None | Built-in only | Built-in only | OpenAI, Claude, Gemini |
-| **Post-processing workflows** | No | No | No | Yes (multi-step AI chains) |
-| **Multi-server support** | No | No | No | Yes (sender/translator/receiver) |
-| **Open source** | No | No | Freemium | Yes |
+The plugin has no translation service of its own. It orchestrates: it decides what to send,
+to which provider, through which chain of languages, what to do with the result, and what
+the whole thing cost. Nothing leaves the site until a provider is configured and a
+translation is requested.
 
 ### Features
 
@@ -81,7 +66,7 @@ When multi-server mode is enabled by the administrator, post content (title, bod
 
 ### Requirements
 
-* WordPress 5.0 or higher
+* WordPress 6.0 or higher
 * PHP 8.1 or higher
 * Polylang plugin (recommended, for language management)
 * An API key for your chosen AI provider (OpenAI, Claude, or Gemini)
@@ -126,40 +111,24 @@ Only the post content you choose to translate: title, body, excerpt, and optiona
 
 ## Changelog
 
-### 1.9.0
-* WordPress Plugin Check compliance: resolved all security issues across 45 files
-* Output escaping, input sanitization, SQL prepare, nonce verification, i18n fixes
-* Plugin Check result: 0 errors
-
-### 1.8.9
-* Detach translation feature for unlinking posts from translation source
-* Plugin headers: added GPLv2+ license declaration
-* CI/CD: release artifacts now uploaded to GitLab Package Registry
-
-### 1.8.8
-* Show/Hide toggle for secret fields in Advanced settings
-* Immediate dispatch mode for external translations
-* Same-database architecture mode for shared-DB setups
-
-### 1.8.7
-* Translation Path Executor for multi-step language routing
-* Claude and Gemini AI provider support
-* Workflow conditions system
-
-For the full changelog, see [CHANGELOG.md](https://gitlab.com/treetank/polytrans/-/blob/main/CHANGELOG.md).
-
-## Upgrade Notice
-
-### 1.9.0
-Security hardening release. All output escaping, input sanitization, and nonce verification issues resolved. Recommended update for all users.
+[CHANGELOG.md](CHANGELOG.md) is the full history. The directory-facing excerpt lives in
+[`readme.txt`](readme.txt); this file keeps no copy of it, to avoid a third version to
+forget about.
 
 ## Plugin Check Notes
 
-This plugin passes WordPress Plugin Check with 0 errors. The remaining warnings are intentional:
+How to reproduce the Plugin Check run locally: [`docs/development/plugin-check.md`](docs/development/plugin-check.md).
+The remaining warnings are intentional:
 
-* **Direct Database Queries** — Custom tables (`polytrans_logs`, `polytrans_assistants`) require direct `$wpdb` queries. `WP_Query` does not apply to custom tables.
-* **Interpolated Table Names** — Table names use `$wpdb->prefix . 'polytrans_*'` which cannot be parameterized in SQL. The prefix comes from `wp-config.php` and is trusted.
-* **Template Output** — `TemplateRenderer::render()` returns Twig-rendered HTML which auto-escapes all variables by default.
+* **Direct Database Queries** — the plugin owns four custom tables (`polytrans_logs`,
+  `polytrans_workflows`, `polytrans_assistants`, `polytrans_usage`). `WP_Query` does not
+  apply to custom tables, so `$wpdb` is used directly.
+* **Interpolated Table Names** — table names are built from `$wpdb->prefix`, which comes from
+  `wp-config.php` and never from a request, and a table name cannot be a prepared value.
+* **Template Output** — `TemplateRenderer::render()` returns HTML that the Twig templates
+  escape explicitly, per output, using the `esc_html`/`esc_attr`/`esc_url` functions exposed
+  to the templates. Twig's `autoescape` is deliberately off: the same package also renders
+  AI prompts, which must not be HTML-escaped.
 
 ## License
 

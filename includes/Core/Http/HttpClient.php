@@ -281,4 +281,3 @@ class HttpClient
         return $this->base_url;
     }
 }
-

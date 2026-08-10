@@ -1,0 +1,77 @@
+# Single source of truth for what does NOT go into the release ZIP.
+#
+# Consumed by the `build` job in .gitlab-ci.yml via `rsync --exclude-from=.distignore`
+# and by the `package-lint` job that verifies the result. Do not duplicate this list
+# anywhere else: the previous split between .gitattributes and .gitlab-ci.yml drifted
+# and shipped a broken symlink, two hidden files and a directory of debug logs.
+#
+# Patterns are rsync patterns. A leading slash anchors to the plugin root, which is
+# what you almost always want — an unanchored `cache` would also match anything
+# similarly named inside vendor/.
+
+# Version control and CI
+/.git
+/.github
+/.gitlab
+/.gitlab-ci.yml
+/.gitignore
+/.gitattributes
+/.distignore
+
+# Agent and tooling state
+/.codex
+/.agents
+/.claude
+/.cursor
+/.playwright-cli
+/.playwright-mcp
+/.rsync-exclude
+/AGENTS.md
+/CLAUDE.md
+/CONTEXT.md
+/skills
+/prompts
+
+# Development docs and scratch notes
+/QUICK_START.md
+/REVIEW-ISSUES.md
+/TODO-CRITICAL.md
+/docs/planning
+/docs/development
+/docs/testing
+/docs/roadmap
+/docs/examples
+/docs/WPORG-SUBMISSION-PLAN.md
+
+# Tests, tooling config, local environment
+/tests
+/examples
+/release
+/cache
+/node_modules
+/Makefile
+/composer.lock
+/phpunit.xml
+/phpunit.xml.dist
+/pest.php
+/phpcs.xml
+/phpcs-relaxed.xml
+/phpcs-syntax-only.xml
+/docker-compose.yml
+/docker-compose.test.yml
+/Dockerfile
+/.env.example
+*.sh
+
+# One-off scripts that must never reach a user's site
+/test-migration.php
+/test-migration-status.php
+/debug-workflows.php
+/check-logging-config.php
+/install-translation-assistant.php
+
+# Code excluded from distribution
+/includes/Menu/TagTranslation_temp.php
+/includes/process-task.php
+/includes/Debug
+/includes/Providers/Google

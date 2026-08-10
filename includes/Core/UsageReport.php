@@ -52,6 +52,28 @@ class UsageReport
     ];
 
     /**
+     * The SQL term that snaps a row to its time bucket, per resolution.
+     *
+     * Written without DATE_FORMAT on purpose. Its patterns are full of '%', which
+     * $wpdb->prepare() reads as placeholders; the resulting query is either mangled or
+     * rejected outright, and only on the code paths that bind a parameter. The date
+     * arithmetic below says the same thing and survives preparation.
+     *
+     * Each term must produce exactly what UsageWindow writes for that resolution, or a
+     * filled series matches nothing and every bucket reads as empty.
+     *
+     * @var array
+     */
+    private static $bucket_terms = [
+        UsageWindow::BUCKET_HOUR => 'DATE_ADD(DATE(created_at), INTERVAL HOUR(created_at) HOUR)',
+        UsageWindow::BUCKET_DAY => 'DATE(created_at)',
+        // WEEKDAY() is Monday-based regardless of the server's week mode, which
+        // YEARWEEK() is not.
+        UsageWindow::BUCKET_WEEK => 'DATE_SUB(DATE(created_at), INTERVAL WEEKDAY(created_at) DAY)',
+        UsageWindow::BUCKET_MONTH => 'DATE_SUB(DATE(created_at), INTERVAL DAYOFMONTH(created_at) - 1 DAY)',
+    ];
+
+    /**
      * Dimensions whose rows belong to one activity type. Keeping the constraint here,
      * rather than in each dashboard caller, prevents a translation from appearing as
      * "not reported" in the workflow breakdown and a workflow as "?>de" in the hop
@@ -97,7 +119,7 @@ class UsageReport
                 MAX(created_at) AS last_call
             FROM " . self::table() . " {$where}";
 
-        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
         $row = $wpdb->get_row(self::prepare($sql, $params), ARRAY_A);
 
         if (!$row) {
@@ -153,7 +175,7 @@ class UsageReport
             ORDER BY SUM(cost_usd) DESC, COUNT(*) DESC
             LIMIT {$limit}";
 
-        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
         $rows = $wpdb->get_results(self::prepare($sql, $params), ARRAY_A);
 
         return array_map([self::class, 'normalize_row'], is_array($rows) ? $rows : []);
@@ -208,38 +230,125 @@ class UsageReport
     }
 
     /**
-     * Daily totals, oldest first, for a trend line.
+     * A gap-free cost series over the window, oldest first.
      *
-     * @param array $args Query arguments, see build_where().
+     * The window supplies both the range and the resolution, so a caller cannot ask
+     * for one that does not match the other. Buckets the database has no rows for are
+     * filled in rather than skipped: the query only returns buckets containing calls,
+     * and a chart drawn from those alone squeezes a quiet night out of existence and
+     * misstates the shape of everything either side of it.
+     *
+     * @param UsageWindow $window Range and resolution.
+     * @param array       $args   Further filters, see build_where(). Any range in here
+     *                            is overridden by the window.
      * @return array
      */
-    public static function daily($args = [])
+    public static function series(UsageWindow $window, $args = [])
     {
         global $wpdb;
 
-        if (!UsageRecorder::table_exists()) {
+        $term = self::$bucket_terms[$window->bucket()] ?? null;
+
+        if ($term === null || !UsageRecorder::table_exists()) {
             return [];
         }
 
-        [$where, $params] = self::build_where($args);
+        [$where, $params] = self::build_where(array_merge($args, $window->args()));
 
         $sql = "SELECT
-                DATE(created_at) AS label,
+                {$term} AS bucket,
                 COUNT(*) AS calls,
                 SUM(cost_usd) AS total_usd,
                 SUM(CASE WHEN cost_usd IS NULL THEN 1 ELSE 0 END) AS unpriced_calls,
+                SUM(CASE WHEN final_language IS NOT NULL AND target_language <> final_language THEN 1 ELSE 0 END) AS relay_calls,
                 SUM(tokens_input) AS tokens_input,
                 SUM(tokens_output) AS tokens_output,
                 SUM(tokens_cached_read) AS tokens_cached_read,
                 SUM(tokens_reasoning) AS tokens_reasoning
             FROM " . self::table() . " {$where}
-            GROUP BY DATE(created_at)
-            ORDER BY DATE(created_at) ASC";
+            GROUP BY {$term}
+            ORDER BY {$term} ASC";
 
-        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
         $rows = $wpdb->get_results(self::prepare($sql, $params), ARRAY_A);
 
-        return array_map([self::class, 'normalize_row'], is_array($rows) ? $rows : []);
+        return self::fill_series($window, is_array($rows) ? $rows : []);
+    }
+
+    /**
+     * Place the rows a query returned onto every bucket of the window.
+     *
+     * @param UsageWindow $window Range and resolution.
+     * @param array       $rows   Raw rows, keyed by bucket in the 'bucket' column.
+     * @return array
+     */
+    private static function fill_series(UsageWindow $window, array $rows)
+    {
+        $found = [];
+
+        foreach ($rows as $row) {
+            $found[(string) ($row['bucket'] ?? '')] = $row;
+        }
+
+        $series = [];
+
+        foreach ($window->bucket_starts() as $key) {
+            // An absent bucket cost zero, not "unknown". NULL is reserved for a call
+            // that ran and could not be priced, and the two must not read alike.
+            $row = $found[$key] ?? [
+                'bucket' => $key,
+                'calls' => 0,
+                'total_usd' => '0',
+                'unpriced_calls' => 0,
+                'relay_calls' => 0,
+                'tokens_input' => 0,
+                'tokens_output' => 0,
+                'tokens_cached_read' => 0,
+                'tokens_reasoning' => 0,
+            ];
+
+            $row = self::normalize_row($row);
+            $row['bucket'] = $key;
+            $row['label'] = $window->format_label($key);
+            $row['is_empty'] = ((int) $row['calls']) === 0;
+            $row['is_partial'] = $window->is_partial_bucket($key);
+
+            $series[] = $row;
+        }
+
+        return $series;
+    }
+
+    /**
+     * The oldest call on record, for a report that means to cover everything.
+     *
+     * MIN() over an indexed column, so this costs one index lookup rather than a scan.
+     *
+     * @return \DateTimeImmutable|null
+     */
+    public static function earliest_call()
+    {
+        global $wpdb;
+
+        if (!UsageRecorder::table_exists()) {
+            return null;
+        }
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
+        $earliest = $wpdb->get_var('SELECT MIN(created_at) FROM ' . self::table());
+
+        if (!$earliest) {
+            return null;
+        }
+
+        // Stored as site-local wall clock, so it is read back as one.
+        $parsed = \DateTimeImmutable::createFromFormat(
+            '!Y-m-d H:i:s',
+            (string) $earliest,
+            function_exists('wp_timezone') ? wp_timezone() : new \DateTimeZone(date_default_timezone_get())
+        );
+
+        return $parsed instanceof \DateTimeImmutable ? $parsed : null;
     }
 
     /**
@@ -281,7 +390,7 @@ class UsageReport
             ORDER BY SUM(cost_usd) DESC
             LIMIT {$limit}";
 
-        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
         $rows = $wpdb->get_results(self::prepare($sql, $params), ARRAY_A);
 
         $rows = is_array($rows) ? $rows : [];
@@ -354,7 +463,7 @@ class UsageReport
             ORDER BY COALESCE(SUM(u.cost_usd), 0) DESC, r.created_at DESC
             LIMIT {$limit}";
 
-        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
         $rows = $wpdb->get_results(self::prepare($sql, $params), ARRAY_A);
 
         return array_map([self::class, 'normalize_run'], is_array($rows) ? $rows : []);
@@ -420,7 +529,7 @@ class UsageReport
             ) u ON u.run_id = r.run_id
             {$where}";
 
-        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
         $row = $wpdb->get_row(self::prepare($sql, $params), ARRAY_A);
 
         return self::normalize_run_totals(is_array($row) ? $row : []);
@@ -439,7 +548,7 @@ class UsageReport
             return [];
         }
 
-        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
         $models = $wpdb->get_col('SELECT DISTINCT model FROM ' . self::table() . " WHERE model <> '' ORDER BY model ASC");
 
         return is_array($models) ? $models : [];
@@ -513,7 +622,8 @@ class UsageReport
      * Build the WHERE clause and its bound parameters.
      *
      * @param array $args {
-     *     @type int    $days     Only rows from the last N days.
+     *     @type string $from     Only rows at or after this instant, site-local.
+     *     @type string $to       Only rows strictly before this instant, site-local.
      *     @type string $model    Restrict to one model.
      *     @type string $activity Restrict to one activity.
      *     @type int    $post_id  Restrict to one original post.
@@ -525,10 +635,20 @@ class UsageReport
         $clauses = [];
         $params = [];
 
-        $days = isset($args['days']) ? (int) $args['days'] : 0;
-        if ($days > 0) {
-            $clauses[] = 'created_at >= DATE_SUB(NOW(), INTERVAL %d DAY)';
-            $params[] = $days;
+        // Bound in PHP rather than with NOW(). Rows are stamped with
+        // current_time('mysql'), which is the site's timezone; NOW() is the database
+        // server's, commonly UTC. The two differ by the site's offset, which a
+        // thirty-day window hides and an hourly one is entirely made of.
+        if (!empty($args['from'])) {
+            $clauses[] = 'created_at >= %s';
+            $params[] = (string) $args['from'];
+        }
+
+        // Half-open: a row on the boundary belongs to one bucket and one period, so
+        // two adjacent windows neither double-count it nor drop it.
+        if (!empty($args['to'])) {
+            $clauses[] = 'created_at < %s';
+            $params[] = (string) $args['to'];
         }
 
         if (!empty($args['model'])) {
@@ -575,10 +695,17 @@ class UsageReport
         $params = [];
         $usage_table = self::table();
 
-        $days = isset($args['days']) ? (int) $args['days'] : 0;
-        if ($days > 0) {
-            $clauses[] = 'r.created_at >= DATE_SUB(NOW(), INTERVAL %d DAY)';
-            $params[] = $days;
+        // A run is placed in the window by when it started, not by when each of its
+        // calls ran: the unit here is the process, and one that begins at 13:59 and
+        // finishes at 14:20 belongs to the hour that commissioned it.
+        if (!empty($args['from'])) {
+            $clauses[] = 'r.created_at >= %s';
+            $params[] = (string) $args['from'];
+        }
+
+        if (!empty($args['to'])) {
+            $clauses[] = 'r.created_at < %s';
+            $params[] = (string) $args['to'];
         }
 
         if (!empty($args['language'])) {

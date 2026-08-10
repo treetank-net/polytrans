@@ -290,12 +290,8 @@ class AssistantManager
 		global $wpdb;
 
 		$table_name = $wpdb->prefix . 'polytrans_assistants';
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name from trusted source ($wpdb->prefix)
-		$assistant  = $wpdb->get_row(
-			$wpdb->prepare("SELECT * FROM `{$table_name}` WHERE id = %d", $id),
-			ARRAY_A
-		);
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- A table name cannot be a prepared value; it is built from $wpdb->prefix, never from a request. The id is prepared.
+		$assistant  = $wpdb->get_row($wpdb->prepare("SELECT * FROM `{$table_name}` WHERE id = %d", $id), ARRAY_A);
 
 		if (! $assistant) {
 			return null;
@@ -428,19 +424,11 @@ class AssistantManager
 		$where_clause = implode(' AND ', $where);
 
 		if (! empty($params)) {
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name and WHERE clause from trusted sources
-			$assistants = $wpdb->get_results(
-				$wpdb->prepare("SELECT * FROM `{$table_name}` WHERE {$where_clause} ORDER BY name ASC", $params),
-				ARRAY_A
-			);
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Neither part can be a prepared value: the table comes from $wpdb->prefix, and $where_clause is assembled above only from literal fragments carrying %s placeholders - every filter value travels in $params.
+			$assistants = $wpdb->get_results($wpdb->prepare("SELECT * FROM `{$table_name}` WHERE {$where_clause} ORDER BY name ASC", $params), ARRAY_A);
 		} else {
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name from trusted source ($wpdb->prefix)
-			$assistants = $wpdb->get_results(
-				"SELECT * FROM `{$table_name}` WHERE 1=1 ORDER BY name ASC",
-				ARRAY_A
-			);
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- A table name cannot be a prepared value; it is built from $wpdb->prefix, never from a request. No filters, so the query takes no values.
+			$assistants = $wpdb->get_results("SELECT * FROM `{$table_name}` WHERE 1=1 ORDER BY name ASC", ARRAY_A);
 		}
 
 		// Decode JSON fields
@@ -502,12 +490,8 @@ class AssistantManager
 		$workflows_table = $wpdb->prefix . 'polytrans_workflows';
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		if ($wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $workflows_table)) === $workflows_table) {
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name from trusted source ($wpdb->prefix)
-			$workflows = $wpdb->get_results(
-				"SELECT id, name, steps FROM `{$workflows_table}`",
-				ARRAY_A
-			);
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- A table name cannot be a prepared value; it is built from $wpdb->prefix, never from a request. The query takes no values.
+			$workflows = $wpdb->get_results("SELECT id, name, steps FROM `{$workflows_table}`", ARRAY_A);
 
 			foreach ($workflows as $workflow) {
 				$steps = json_decode($workflow['steps'], true);

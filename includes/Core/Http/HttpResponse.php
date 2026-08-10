@@ -203,4 +203,3 @@ class HttpResponse
         return $this->get_header($name) !== null;
     }
 }
-

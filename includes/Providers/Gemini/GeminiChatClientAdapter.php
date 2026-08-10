@@ -194,4 +194,3 @@ class GeminiChatClientAdapter implements ChatClientInterface
         return null;
     }
 }
-

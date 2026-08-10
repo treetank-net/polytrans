@@ -18,10 +18,10 @@
         "phpunit/phpunit": "^10.5",
         "pestphp/pest": "^2.35",
         "pestphp/pest-plugin-arch": "^2.7",
-        "wp-coding-standards/wpcs": "^2.3",
+        "wp-coding-standards/wpcs": "^3.1",
         "phpmd/phpmd": "^2.10",
-        "squizlabs/php_codesniffer": "^3.6",
-        "dealerdirect/phpcodesniffer-composer-installer": "^0.7"
+        "squizlabs/php_codesniffer": "^3.9",
+        "dealerdirect/phpcodesniffer-composer-installer": "^1.0"
     },
     "autoload": {
         "psr-4": {
@@ -39,10 +39,10 @@
         "phpcs-syntax": "phpcs -d memory_limit=512M --standard=phpcs-syntax-only.xml",
         "phpcbf": "phpcbf -d memory_limit=512M --standard=phpcs.xml",
         "phpmd": "phpmd includes text cleancode,codesize,controversial,design,naming,unusedcode",
-        "test": "pest",
-        "test:unit": "pest --testsuite=Unit",
-        "test:arch": "pest --testsuite=Architecture",
-        "test-coverage": "pest --coverage --min=80",
+        "test": "php -d memory_limit=512M vendor/bin/pest --testsuite=Unit && php -d memory_limit=512M vendor/bin/pest --testsuite=Architecture",
+        "test:unit": "php -d memory_limit=512M vendor/bin/pest --testsuite=Unit",
+        "test:arch": "php -d memory_limit=512M vendor/bin/pest --testsuite=Architecture",
+        "test-coverage": "php -d memory_limit=512M vendor/bin/pest --coverage --min=80",
         "test-phpunit": "phpunit",
         "docker:setup": "./dev.sh setup",
         "docker:phpcs": "./dev.sh phpcs",

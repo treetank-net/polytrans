@@ -39,4 +39,3 @@ interface AIAssistantClientInterface
      */
     public function supports_assistant_id($assistant_id);
 }
-

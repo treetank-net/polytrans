@@ -114,4 +114,3 @@ class Bootstrap
         return class_exists('Twig\Environment');
     }
 }
-

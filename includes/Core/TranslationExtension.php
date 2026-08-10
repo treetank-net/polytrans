@@ -650,15 +650,28 @@ class TranslationExtension
         $secret_method = $settings['translation_receiver_secret_method'] ?? 'header_bearer';
         $custom_header_name = $settings['translation_receiver_secret_custom_header'] ?? 'x-polytrans-secret';
 
-        if (empty($expected_secret) || $secret_method === 'none') {
+        // Only an explicit choice of "none" opens this endpoint. A missing secret is a
+        // half-finished configuration, not consent: this endpoint starts billable
+        // provider calls, so it stays closed until someone decides otherwise.
+        if ($secret_method === 'none') {
             return true;
+        }
+
+        if ($expected_secret === '') {
+            LogsManager::log(
+                'Translation request rejected: no receiver secret is configured. '
+                    . 'Set one under PolyTrans → Settings → Advanced, or set the authentication '
+                    . 'method to "none" to accept unauthenticated requests deliberately.',
+                'warning'
+            );
+            return false;
         }
 
         $received_secret = '';
 
         switch ($secret_method) {
             case 'get_param':
-                $received_secret = $request->get_param('secret');
+                $received_secret = (string) $request->get_param('secret');
                 break;
             case 'header_bearer':
                 $auth = $request->get_header('authorization');
@@ -667,17 +680,18 @@ class TranslationExtension
                 }
                 break;
             case 'header_custom':
-                $received_secret = $request->get_header($custom_header_name);
+                $received_secret = (string) $request->get_header($custom_header_name);
                 break;
             case 'post_param':
                 $params = $request->get_json_params();
-                error_log("[polytrans] post_param received params: " . wp_json_encode($params)); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-                $received_secret = $params['secret'] ?? '';
+                $received_secret = is_array($params) ? (string) ($params['secret'] ?? '') : '';
                 break;
         }
 
-        if (!$received_secret || $received_secret !== $expected_secret) {
-            LogsManager::log("Invalid or missing translation receiver secret (permission callback)", "info");
+        // hash_equals, not !==: the comparison is against a shared secret, and it takes
+        // both arguments as strings.
+        if ($received_secret === '' || !hash_equals($expected_secret, $received_secret)) {
+            LogsManager::log('Invalid or missing translation receiver secret (permission callback)', 'info');
             return false;
         }
 

@@ -52,6 +52,43 @@ if (!function_exists('esc_attr')) {
     }
 }
 
+// Date handling is pinned to a fixed zone so that a window built in a test covers the
+// same instants wherever the suite runs.
+if (!function_exists('wp_timezone')) {
+    function wp_timezone() {
+        return new DateTimeZone($GLOBALS['polytrans_test_timezone'] ?? 'Europe/Warsaw');
+    }
+}
+
+if (!function_exists('wp_timezone_string')) {
+    function wp_timezone_string() {
+        return wp_timezone()->getName();
+    }
+}
+
+if (!function_exists('current_datetime')) {
+    function current_datetime() {
+        return $GLOBALS['polytrans_test_now'] ?? new DateTimeImmutable('now', wp_timezone());
+    }
+}
+
+if (!function_exists('current_time')) {
+    function current_time($type = 'mysql', $gmt = 0) {
+        $now = current_datetime();
+
+        return $type === 'timestamp' ? $now->getTimestamp() : $now->format('Y-m-d H:i:s');
+    }
+}
+
+if (!function_exists('wp_date')) {
+    function wp_date($format, $timestamp = null, $timezone = null) {
+        $timestamp = $timestamp ?? current_datetime()->getTimestamp();
+        $when = new DateTimeImmutable('@' . $timestamp);
+
+        return $when->setTimezone($timezone ?: wp_timezone())->format($format);
+    }
+}
+
 if (!function_exists('wp_json_encode')) {
     function wp_json_encode($data, $options = 0, $depth = 512) {
         return json_encode($data, $options, $depth);

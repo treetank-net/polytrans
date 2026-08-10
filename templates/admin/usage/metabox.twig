@@ -1,12 +1,12 @@
 {# Cost of the AI work on this post, read straight from the summary meta. #}
 
 <div class="polytrans-usage-metabox">
-    <span class="polytrans-usage-metabox__total">{{ total_display }}</span>
+    <span class="polytrans-usage-metabox__total">{{ total_display|esc_html }}</span>
 
     {% if summary.unpriced_calls > 0 %}
         <p class="polytrans-usage-metabox__note">
             {# Stated plainly: the figure above is short by whatever these cost. #}
-            {{ summary.unpriced_calls }} {{ __('calls had no price available', 'polytrans') }}
+            {{ summary.unpriced_calls|esc_html }} {{ __('calls had no price available', 'polytrans') }}
         </p>
     {% endif %}
 
@@ -15,8 +15,8 @@
             <tbody>
                 {% for row in languages %}
                     <tr>
-                        <td><strong>{{ row.label|upper }}</strong></td>
-                        <td class="num">{{ row.cost_display }}</td>
+                        <td><strong>{{ row.label|upper|esc_html }}</strong></td>
+                        <td class="num">{{ row.cost_display|esc_html }}</td>
                     </tr>
                 {% endfor %}
             </tbody>
@@ -26,15 +26,15 @@
     {% if models|length > 0 %}
         <p class="polytrans-usage-metabox__note">
             {{ __('Models', 'polytrans') }}:
-            {% for row in models %}{{ row.label }}{% if not loop.last %}, {% endif %}{% endfor %}
+            {% for row in models %}{{ row.label|esc_html }}{% if not loop.last %}, {% endif %}{% endfor %}
         </p>
     {% endif %}
 
     <p class="polytrans-usage-metabox__note">
-        {{ summary.calls }} {{ __('calls', 'polytrans') }},
+        {{ summary.calls|esc_html }} {{ __('calls', 'polytrans') }},
         {{ (summary.tokens_input + summary.tokens_output)|number_format(0, '.', ' ') }} {{ __('tokens', 'polytrans') }}
         {% if reasoning_share > 0 %}
-            &middot; {{ reasoning_share }}% {{ __('reasoning', 'polytrans') }}
+            &middot; {{ reasoning_share|esc_html }}% {{ __('reasoning', 'polytrans') }}
         {% endif %}
     </p>
 

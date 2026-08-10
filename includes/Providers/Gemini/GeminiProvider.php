@@ -65,4 +65,3 @@ class GeminiProvider implements TranslationProviderInterface
         return [];
     }
 }
-

@@ -2,7 +2,7 @@
 
 ## Requirements
 
-- WordPress 5.0+
+- WordPress 6.0+
 - PHP 8.1+
 - Polylang plugin (recommended)
 

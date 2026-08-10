@@ -111,7 +111,12 @@ final class RecentPostsProvider
             return wp_trim_words($content, $words, $more);
         }
 
-        $plain = function_exists('wp_strip_all_tags') ? wp_strip_all_tags($content) : strip_tags($content);
+        if (function_exists('wp_strip_all_tags')) {
+            $plain = wp_strip_all_tags($content);
+        } else {
+            // phpcs:ignore WordPress.WP.AlternativeFunctions.strip_tags_strip_tags -- Fallback for the unit suite, which exercises this class without WordPress loaded.
+            $plain = strip_tags($content);
+        }
         $parts = preg_split('/\s+/', trim($plain));
         if (!is_array($parts) || count($parts) <= $words) {
             return $plain;

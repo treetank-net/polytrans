@@ -9,6 +9,7 @@ namespace PolyTrans\Menu;
 
 use PolyTrans\Core\UsageRecorder;
 use PolyTrans\Core\UsageReport;
+use PolyTrans\Core\UsageWindow;
 use PolyTrans\Core\TranslationRunManager;
 use PolyTrans\Templating\TemplateRenderer;
 
@@ -19,13 +20,6 @@ if (!defined('ABSPATH')) {
 class UsageMenu
 {
     const PAGE_SLUG = 'polytrans-usage';
-
-    /**
-     * Selectable periods, in days. Zero means everything on record.
-     *
-     * @var array
-     */
-    private static $periods = [7, 30, 90, 365, 0];
 
     private static $instance = null;
 
@@ -74,6 +68,14 @@ class UsageMenu
             [],
             POLYTRANS_VERSION
         );
+
+        wp_enqueue_script(
+            'polytrans-usage-admin',
+            POLYTRANS_PLUGIN_URL . 'assets/js/usage-admin.js',
+            [],
+            POLYTRANS_VERSION,
+            true
+        );
     }
 
     /**
@@ -90,12 +92,27 @@ class UsageMenu
         UsageRecorder::initialize();
         TranslationRunManager::initialize();
 
-        $filters = $this->read_filters();
+        $request = $this->read_request();
+        $window = $this->build_window($request);
+
+        // The window is the authority on the range, so it is merged in last: a stale
+        // from/to in the request cannot outvote the preset that was actually chosen.
+        $filters = array_merge($request['filters'], $window->args());
 
         $context = [
             'page_slug' => self::PAGE_SLUG,
             'filters' => $filters,
-            'periods' => $this->period_choices(),
+            'window' => [
+                'preset' => $window->preset(),
+                'bucket' => $window->bucket(),
+                'requested_bucket' => $window->requested_bucket(),
+                'bucket_downgraded' => $window->bucket_downgraded(),
+                'from' => $window->input_from(),
+                'to' => $window->input_to(),
+                'range_display' => $window->format_range(),
+            ],
+            'presets' => UsageWindow::preset_labels(),
+            'buckets' => UsageWindow::bucket_labels(),
             'table_missing' => !UsageRecorder::table_exists(),
             'totals' => UsageReport::totals($filters),
             'by_model' => UsageReport::by('model', $filters),
@@ -109,7 +126,7 @@ class UsageMenu
             // intermediate.
             'by_step' => UsageReport::by('language_pair', $filters),
             'by_path' => UsageReport::by('translation_path', $filters),
-            'daily' => UsageReport::daily($filters),
+            'series' => UsageReport::series($window, $request['filters']),
             'top_posts' => UsageReport::top_posts($filters, 20),
             'translation_run_totals' => UsageReport::translation_run_totals($filters),
             'translation_runs' => UsageReport::translation_runs($filters, 20),
@@ -117,49 +134,62 @@ class UsageMenu
             'activities' => $this->activity_choices(),
         ];
 
-        $context['daily_max'] = $this->max_daily_cost($context['daily']);
-        $context['daily_max_display'] = UsageReport::format_usd($context['daily_max']);
+        $context['series_max'] = $this->max_bucket_cost($context['series']);
+        $context['series_max_display'] = UsageReport::format_usd($context['series_max']);
+        $context['series_ticks'] = $this->series_ticks($context['series']);
 
         // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Twig templates handle escaping
         echo TemplateRenderer::render('admin/usage/page.twig', $context);
     }
 
     /**
-     * Read and sanitise the request filters.
+     * Read and sanitise the request.
      *
-     * @return array
+     * The range half is handed to UsageWindow to interpret, since deciding what
+     * '7d' or a half-filled custom range means is its job, not this one's.
+     *
+     * @return array {
+     *     @type array $range   Raw range input for UsageWindow.
+     *     @type array $filters Everything else, already sanitised.
+     * }
      */
-    private function read_filters()
+    private function read_request()
     {
         // phpcs:disable WordPress.Security.NonceVerification.Recommended -- Read-only report filters on a GET form.
-        $days = isset($_GET['days']) ? (int) $_GET['days'] : 30;
-        $model = isset($_GET['model']) ? sanitize_text_field(wp_unslash($_GET['model'])) : '';
-        $activity = isset($_GET['activity']) ? sanitize_text_field(wp_unslash($_GET['activity'])) : '';
+        $get = function ($key) {
+            return isset($_GET[$key]) ? sanitize_text_field(wp_unslash($_GET[$key])) : '';
+        };
         // phpcs:enable WordPress.Security.NonceVerification.Recommended
 
-        if (!in_array($days, self::$periods, true)) {
-            $days = 30;
-        }
-
         return [
-            'days' => $days,
-            'model' => $model,
-            'activity' => $activity,
+            'range' => [
+                'preset' => $get('preset'),
+                'from' => $get('from'),
+                'to' => $get('to'),
+                'bucket' => $get('bucket'),
+            ],
+            'filters' => [
+                'model' => $get('model'),
+                'activity' => $get('activity'),
+            ],
         ];
     }
 
     /**
-     * @return array Period options as value => label.
+     * Resolve the request's range into a window.
+     *
+     * @param array $request Sanitised request, see read_request().
+     * @return UsageWindow
      */
-    private function period_choices()
+    private function build_window(array $request)
     {
-        return [
-            7 => __('Last 7 days', 'polytrans'),
-            30 => __('Last 30 days', 'polytrans'),
-            90 => __('Last 90 days', 'polytrans'),
-            365 => __('Last 12 months', 'polytrans'),
-            0 => __('All time', 'polytrans'),
-        ];
+        // Only 'all time' needs to know when recording started, and it costs an index
+        // lookup, so every other preset skips it.
+        $earliest = ($request['range']['preset'] ?? '') === UsageWindow::PRESET_ALL
+            ? UsageReport::earliest_call()
+            : null;
+
+        return UsageWindow::from_request($request['range'], $earliest);
     }
 
     /**
@@ -175,19 +205,43 @@ class UsageMenu
     }
 
     /**
-     * Largest daily cost, used to scale the trend bars.
+     * Largest cost in the series, used to scale the trend bars.
      *
-     * @param array $daily Daily rows.
+     * @param array $series Series rows.
      * @return float
      */
-    private function max_daily_cost($daily)
+    private function max_bucket_cost($series)
     {
         $max = 0.0;
 
-        foreach ($daily as $row) {
+        foreach ($series as $row) {
             $max = max($max, (float) ($row['total_usd'] ?? 0));
         }
 
         return $max;
+    }
+
+    /**
+     * Three labels along the series, so a reader can tell where in it they are.
+     *
+     * Labelling every bucket is unreadable at hourly resolution - 336 of them - and
+     * labelling none leaves a chart whose bars mean nothing without hovering each one.
+     *
+     * @param array $series Series rows.
+     * @return array Start, middle and end labels, or an empty array when too short.
+     */
+    private function series_ticks($series)
+    {
+        $count = count($series);
+
+        if ($count < 3) {
+            return [];
+        }
+
+        return [
+            $series[0]['label'],
+            $series[intdiv($count, 2)]['label'],
+            $series[$count - 1]['label'],
+        ];
     }
 }

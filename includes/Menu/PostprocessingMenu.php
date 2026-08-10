@@ -49,8 +49,6 @@ class PostprocessingMenu
         add_action('wp_ajax_polytrans_duplicate_workflow', [$this, 'ajax_duplicate_workflow']);
         add_action('wp_ajax_polytrans_get_workflow', [$this, 'ajax_get_workflow']);
         add_action('wp_ajax_polytrans_migrate_workflow', [$this, 'ajax_migrate_workflow']);
-        add_action('wp_ajax_polytrans_test_workflow', [$this, 'ajax_test_workflow']);
-        add_action('wp_ajax_polytrans_search_posts', [$this, 'ajax_search_posts']);
         add_action('wp_ajax_polytrans_get_post_data', [$this, 'ajax_get_post_data']);
         add_action('wp_ajax_polytrans_run_workflow_refinement_post', [$this, 'ajax_run_workflow_refinement_post']);
         add_action('wp_ajax_polytrans_evaluate_workflow_refinement_run', [$this, 'ajax_evaluate_workflow_refinement_run']);
@@ -775,6 +773,9 @@ class PostprocessingMenu
 
     /**
      * AJAX: Test workflow
+     *
+     * @deprecated The endpoint is registered by PostProcessing\WorkflowManager.
+     * Kept as a compatibility shim for integrations that call the legacy method.
      */
     public function ajax_test_workflow()
     {
@@ -785,6 +786,9 @@ class PostprocessingMenu
 
     /**
      * AJAX: Search posts
+     *
+     * @deprecated The endpoint is registered by Core\PostAutocomplete. Kept as a
+     * compatibility shim for integrations that call the legacy method directly.
      */
     public function ajax_search_posts()
     {
@@ -1182,7 +1186,9 @@ class PostprocessingMenu
         $criteria = isset($_POST['criteria']) ? sanitize_textarea_field(wp_unslash($_POST['criteria'])) : '';
         $workflow_purpose = isset($_POST['workflow_purpose']) ? sanitize_textarea_field(wp_unslash($_POST['workflow_purpose'])) : '';
         $prompt_objective = isset($_POST['prompt_objective']) ? sanitize_textarea_field(wp_unslash($_POST['prompt_objective'])) : '';
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Admin prompt text may contain XML/HTML markers; it is passed to refinement services/model requests as JSON, and returned diagnostics are serialized by wp_send_json_* instead of rendered as HTML.
         $evaluator_system_prompt = isset($_POST['evaluator_system_prompt']) ? wp_unslash($_POST['evaluator_system_prompt']) : '';
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Admin prompt text may contain XML/HTML markers; it is passed to refinement services/model requests as JSON, and returned diagnostics are serialized by wp_send_json_* instead of rendered as HTML.
         $evaluator_prompt_template = isset($_POST['evaluator_prompt_template']) ? wp_unslash($_POST['evaluator_prompt_template']) : '';
 
         $result = (new WorkflowRefinementService())->evaluateRun(
@@ -1220,10 +1226,14 @@ class PostprocessingMenu
         $criteria = isset($_POST['criteria']) ? sanitize_textarea_field(wp_unslash($_POST['criteria'])) : '';
         $workflow_purpose = isset($_POST['workflow_purpose']) ? sanitize_textarea_field(wp_unslash($_POST['workflow_purpose'])) : '';
         $prompt_objective = isset($_POST['prompt_objective']) ? sanitize_textarea_field(wp_unslash($_POST['prompt_objective'])) : '';
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Admin prompt text may contain XML/HTML markers; it is passed to refinement services/model requests as JSON, and returned diagnostics are serialized by wp_send_json_* instead of rendered as HTML.
         $adjuster_system_prompt = isset($_POST['adjuster_system_prompt']) ? wp_unslash($_POST['adjuster_system_prompt']) : '';
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Admin prompt text may contain XML/HTML markers; it is passed to refinement services/model requests as JSON, and returned diagnostics are serialized by wp_send_json_* instead of rendered as HTML.
         $adjuster_prompt_template = isset($_POST['adjuster_prompt_template']) ? wp_unslash($_POST['adjuster_prompt_template']) : '';
-        $evaluations_payload = $_POST['evaluations'] ?? '[]'; // phpcs:ignore WordPress.Security.NonceVerification.Missing -- protected by check_ajax_referer above
-        $refinement_history_payload = $_POST['refinement_history'] ?? '[]'; // phpcs:ignore WordPress.Security.NonceVerification.Missing -- protected by check_ajax_referer above
+        // phpcs:ignore WordPress.Security.NonceVerification.Missing, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized, WordPress.Security.ValidatedSanitizedInput.MissingUnslash -- JSON stays raw so WorkflowRefinementService::decodeEvaluations() unslashes, json_decodes, and validates it before prompt rendering.
+        $evaluations_payload = $_POST['evaluations'] ?? '[]';
+        // phpcs:ignore WordPress.Security.NonceVerification.Missing, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized, WordPress.Security.ValidatedSanitizedInput.MissingUnslash -- JSON stays raw so WorkflowRefinementService::decodeRefinementHistory() unslashes, json_decodes, and validates it before prompt rendering.
+        $refinement_history_payload = $_POST['refinement_history'] ?? '[]';
         $current_system_prompt = array_key_exists('current_system_prompt', $_POST)
             ? wp_unslash($_POST['current_system_prompt']) // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- trusted admin test payload
             : null;
@@ -1324,7 +1334,9 @@ class PostprocessingMenu
 
         $target_type = isset($_POST['target_type']) ? sanitize_text_field(wp_unslash($_POST['target_type'])) : 'workflow';
         $target_step_id = isset($_POST['target_step_id']) ? sanitize_text_field(wp_unslash($_POST['target_step_id'])) : '';
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Admin prompt text may contain XML/HTML markers; it is passed to refinement services/model requests as JSON, and returned diagnostics are serialized by wp_send_json_* instead of rendered as HTML.
         $system_prompt_template = isset($_POST['description_system_prompt']) ? (string) wp_unslash($_POST['description_system_prompt']) : '';
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Admin prompt text may contain XML/HTML markers; it is passed to refinement services/model requests as JSON, and returned diagnostics are serialized by wp_send_json_* instead of rendered as HTML.
         $prompt_template = isset($_POST['description_prompt_template']) ? (string) wp_unslash($_POST['description_prompt_template']) : '';
 
         $service = new DescriptionGeneratorService();
@@ -1369,10 +1381,12 @@ class PostprocessingMenu
         }
 
         $target_step_id = isset($_POST['target_step_id']) ? sanitize_text_field(wp_unslash($_POST['target_step_id'])) : '';
-        $current_criteria = isset($_POST['current_criteria']) ? (string) wp_unslash($_POST['current_criteria']) : '';
-        $workflow_purpose = isset($_POST['workflow_purpose']) ? (string) wp_unslash($_POST['workflow_purpose']) : '';
-        $prompt_objective = isset($_POST['prompt_objective']) ? (string) wp_unslash($_POST['prompt_objective']) : '';
+        $current_criteria = isset($_POST['current_criteria']) ? sanitize_textarea_field(wp_unslash($_POST['current_criteria'])) : '';
+        $workflow_purpose = isset($_POST['workflow_purpose']) ? sanitize_textarea_field(wp_unslash($_POST['workflow_purpose'])) : '';
+        $prompt_objective = isset($_POST['prompt_objective']) ? sanitize_textarea_field(wp_unslash($_POST['prompt_objective'])) : '';
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Admin prompt text may contain XML/HTML markers; it is passed to refinement services/model requests as JSON, and returned diagnostics are serialized by wp_send_json_* instead of rendered as HTML.
         $system_prompt_template = isset($_POST['criteria_system_prompt']) ? (string) wp_unslash($_POST['criteria_system_prompt']) : '';
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Admin prompt text may contain XML/HTML markers; it is passed to refinement services/model requests as JSON, and returned diagnostics are serialized by wp_send_json_* instead of rendered as HTML.
         $prompt_template = isset($_POST['criteria_prompt_template']) ? (string) wp_unslash($_POST['criteria_prompt_template']) : '';
 
         $result = (new DescriptionGeneratorService())->generateWorkflowCriteria(

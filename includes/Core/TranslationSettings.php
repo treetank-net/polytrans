@@ -52,9 +52,6 @@ class TranslationSettings
             'source' => __('Same as source', 'polytrans'),
         ];
         
-        // Register universal AJAX endpoints
-        // Note: Also registered in SettingsMenu::__construct() for early availability
-        add_action('wp_ajax_polytrans_validate_provider_key', [$this, 'ajax_validate_provider_key']);
     }
     
     /**

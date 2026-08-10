@@ -161,7 +161,9 @@ class PostAutocomplete
 
         $language = sanitize_text_field(wp_unslash($_POST['language'] ?? ''));
         $limit = intval($_POST['limit'] ?? 20);
-        $include_translations = !empty($_POST['include_translations']) && wp_validate_boolean(wp_unslash($_POST['include_translations']));
+        $include_translations = isset($_POST['include_translations'])
+            ? wp_validate_boolean(sanitize_key(wp_unslash($_POST['include_translations'])))
+            : false;
 
         // Limit the max number of posts to prevent performance issues
         if ($limit > 50) {

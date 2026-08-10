@@ -197,7 +197,7 @@ class WorkflowStorageManager
         );
 
         if (!$column) {
-            // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name from $wpdb->prefix constant
+            // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared -- Table name from $wpdb->prefix; the default is an integer class constant, not input
             $wpdb->query("ALTER TABLE $table_name ADD COLUMN priority int(11) NOT NULL DEFAULT " . self::DEFAULT_PRIORITY . " AFTER enabled");
         }
 

@@ -220,4 +220,3 @@ class ClaudeChatClientAdapter implements ChatClientInterface
         return null;
     }
 }
-

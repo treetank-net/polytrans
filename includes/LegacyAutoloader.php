@@ -142,4 +142,3 @@ class LegacyAutoloader
         unset(self::$classMap[$className]);
     }
 }
-

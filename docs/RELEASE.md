@@ -43,6 +43,16 @@ Update version in **polytrans.php** (2 places):
 define('POLYTRANS_VERSION', '1.7.1');
 ```
 
+And in **readme.txt** (1 place) — this is what the WordPress.org directory serves:
+
+```
+Stable tag: 1.7.1
+```
+
+The `build` job fails the pipeline if the tag, both `polytrans.php` values, the
+`Stable tag` and the `CHANGELOG.md` section do not all agree — so a forgotten
+`readme.txt` is caught, but only after the tag is already pushed. Check it here first.
+
 ### 3. Commit All Changes
 
 ```bash
@@ -88,27 +98,14 @@ When you push a version tag (e.g., `v1.7.1`), GitLab CI automatically:
 
 ## What's Included in Release
 
-### ✅ Included Files
+**`.distignore` is the single source of truth.** Read that file rather than a list
+duplicated here — a second list is how the ZIP came to ship `.codex`, a dangling
+`AGENTS.md` symlink and `.playwright-mcp/` logs. Everything not matched by
+`.distignore` ships; that includes `readme.txt`, which the directory requires.
 
-- All plugin PHP files
-- All assets (JS, CSS, images)
-- Composer dependencies (`vendor/`)
-- User documentation (`docs/` - excluding planning/development/testing)
-- Templates (`templates/`)
-- Languages (`languages/`)
-- README.md, CHANGELOG.md, LICENSE
-
-### ❌ Excluded Files (Development Only)
-
-- `.git/`, `.github/`, `.gitlab/`
-- `tests/` - Unit tests
-- `docs/planning/`, `docs/development/`, `docs/testing/`
-- `.gitignore`, `.gitattributes`
-- `composer.json`, `composer.lock`
-- `phpunit.xml`, `phpunit.xml.dist`, `pest.php`
-- `docker-compose.yml`, `Dockerfile`
-- `.env.example`
-- `release/` directory
+The `build` job then verifies the packed result: no hidden files, no symlinks, no
+development files, and `readme.txt` present. It fails the pipeline if any of those
+is wrong, so `.distignore` cannot quietly rot again.
 
 ## Manual Release (Fallback)
 
@@ -118,18 +115,9 @@ If GitLab CI fails, you can build manually:
 # Install production dependencies
 composer install --no-dev --optimize-autoloader
 
-# Create release directory
+# Create release directory — same exclusion list the pipeline uses
 mkdir -p release
-rsync -av --exclude='.git' \
-          --exclude='.github' \
-          --exclude='.gitlab' \
-          --exclude='node_modules' \
-          --exclude='tests' \
-          --exclude='docs/planning' \
-          --exclude='docs/development' \
-          --exclude='docs/testing' \
-          --exclude='release' \
-          . release/polytrans/
+rsync -a --exclude-from=.distignore ./ release/polytrans/
 
 # Create ZIP
 cd release
@@ -163,10 +151,13 @@ Use this checklist for every release:
 
 ```
 PRE-RELEASE (do these BEFORE creating tag):
-- [ ] All tests passing (`./vendor/bin/pest`)
+- [ ] All tests passing (`composer test` — Unit and Architecture run separately)
+- [ ] PHPCS clean (`composer phpcs` — see docs/development/plugin-check.md)
+- [ ] Plugin Check clean of ERRORs on the distribution package (warnings reviewed)
 - [ ] CHANGELOG.md updated with new version section
 - [ ] Version updated in `polytrans.php` (header comment)
 - [ ] Version updated in `polytrans.php` (POLYTRANS_VERSION constant)
+- [ ] `Stable tag` updated in `readme.txt`
 - [ ] Changes committed: `git commit -m "chore: Release version X.Y.Z"`
 - [ ] Changes pushed to main: `git push origin main`
 
@@ -175,7 +166,7 @@ CREATE RELEASE:
 - [ ] Tag pushed: `git push origin vX.Y.Z`
 
 POST-RELEASE VERIFICATION:
-- [ ] GitLab CI pipeline successful
+- [ ] GitLab CI pipeline successful, including the four gates on the tagged commit
 - [ ] Release visible in GitLab Releases
 - [ ] ZIP files downloadable
 - [ ] Version number in ZIP matches tag

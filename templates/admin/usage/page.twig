@@ -13,13 +13,28 @@
         </div>
     {% endif %}
 
-    <form method="get" class="polytrans-usage-filters">
+    <form method="get" class="polytrans-usage-filters" data-polytrans-usage-filters>
         <input type="hidden" name="page" value="{{ page_slug|esc_attr }}">
 
-        <label for="usage-days" class="screen-reader-text">{{ __('Period', 'polytrans') }}</label>
-        <select name="days" id="usage-days">
-            {% for value, label in periods %}
-                <option value="{{ value|esc_attr }}" {{ selected(filters.days, value) }}>{{ label }}</option>
+        <label for="usage-preset" class="screen-reader-text">{{ __('Period', 'polytrans') }}</label>
+        <select name="preset" id="usage-preset" data-usage-preset>
+            {% for value, label in presets %}
+                <option value="{{ value|esc_attr }}" {{ selected(window.preset, value) }}>{{ label|esc_html }}</option>
+            {% endfor %}
+        </select>
+
+        <label for="usage-from" class="screen-reader-text">{{ __('From', 'polytrans') }}</label>
+        <input type="datetime-local" name="from" id="usage-from" value="{{ window.from|esc_attr }}" data-usage-range>
+
+        <span class="polytrans-usage-filters__separator" aria-hidden="true">&ndash;</span>
+
+        <label for="usage-to" class="screen-reader-text">{{ __('To', 'polytrans') }}</label>
+        <input type="datetime-local" name="to" id="usage-to" value="{{ window.to|esc_attr }}" data-usage-range>
+
+        <label for="usage-bucket" class="screen-reader-text">{{ __('Resolution', 'polytrans') }}</label>
+        <select name="bucket" id="usage-bucket">
+            {% for value, label in buckets %}
+                <option value="{{ value|esc_attr }}" {{ selected(window.requested_bucket, value) }}>{{ label|esc_html }}</option>
             {% endfor %}
         </select>
 
@@ -27,7 +42,7 @@
         <select name="activity" id="usage-activity">
             <option value="">{{ __('All activities', 'polytrans') }}</option>
             {% for value, label in activities %}
-                <option value="{{ value|esc_attr }}" {{ selected(filters.activity, value) }}>{{ label }}</option>
+                <option value="{{ value|esc_attr }}" {{ selected(filters.activity, value) }}>{{ label|esc_html }}</option>
             {% endfor %}
         </select>
 
@@ -36,7 +51,7 @@
             <select name="model" id="usage-model">
                 <option value="">{{ __('All models', 'polytrans') }}</option>
                 {% for model in known_models %}
-                    <option value="{{ model|esc_attr }}" {{ selected(filters.model, model) }}>{{ model }}</option>
+                    <option value="{{ model|esc_attr }}" {{ selected(filters.model, model) }}>{{ model|esc_html }}</option>
                 {% endfor %}
             </select>
         {% endif %}
@@ -44,15 +59,27 @@
         <button type="submit" class="button">{{ __('Apply', 'polytrans') }}</button>
     </form>
 
+    <p class="description polytrans-usage-range">
+        {# Spelling out the timezone matters once the range can be hours: the table
+           stores site-local time, and an hour is only unambiguous against a zone. #}
+        {{ window.range_display|esc_html }}
+        {% if window.bucket_downgraded %}
+            &middot;
+            <span class="polytrans-usage-range__notice">
+                {{ __('That range is too long for the resolution you asked for, so it is shown at a coarser one.', 'polytrans') }}
+            </span>
+        {% endif %}
+    </p>
+
     <div class="polytrans-usage-cards">
         <div class="polytrans-usage-card polytrans-usage-card--primary">
             <span class="polytrans-usage-card__label">{{ __('Total cost', 'polytrans') }}</span>
-            <span class="polytrans-usage-card__value">{{ totals.cost_display }}</span>
+            <span class="polytrans-usage-card__value">{{ totals.cost_display|esc_html }}</span>
             {% if totals.unpriced_calls > 0 %}
                 <span class="polytrans-usage-card__note"
                       title="{{ __('A call is unpriced when no per-token price could be found for it: the model is not in the price list, or nothing named the model that served the request. Such calls are recorded with no cost rather than with a zero, which would understate this figure silently.', 'polytrans')|esc_attr }}">
                     {# Called out rather than hidden: the total is short by whatever these cost. #}
-                    {{ totals.unpriced_calls }} {{ __('calls unpriced, so this total is short by their cost', 'polytrans') }}
+                    {{ totals.unpriced_calls|esc_html }} {{ __('calls unpriced, so this total is short by their cost', 'polytrans') }}
                 </span>
             {% endif %}
         </div>
@@ -60,12 +87,12 @@
         <div class="polytrans-usage-card">
             <span class="polytrans-usage-card__label">{{ __('Calls', 'polytrans') }}</span>
             <span class="polytrans-usage-card__value">{{ totals.calls|number_format(0, '.', ' ') }}</span>
-            <span class="polytrans-usage-card__note">{{ totals.models }} {{ __('models', 'polytrans') }}</span>
+            <span class="polytrans-usage-card__note">{{ totals.models|esc_html }} {{ __('models', 'polytrans') }}</span>
             {% if totals.relay_calls > 0 %}
                 <span class="polytrans-usage-card__note"
                       title="{{ __('Translating through an intermediate language costs one call per hop. This is what the hops nobody ordered came to.', 'polytrans')|esc_attr }}">
-                    {{ totals.relay_calls }} {{ __('relayed', 'polytrans') }},
-                    {{ totals.relay_display }} ({{ totals.relay_share }}%)
+                    {{ totals.relay_calls|esc_html }} {{ __('relayed', 'polytrans') }},
+                    {{ totals.relay_display|esc_html }} ({{ totals.relay_share|esc_html }}%)
                 </span>
             {% endif %}
         </div>
@@ -86,7 +113,7 @@
             {% if totals.tokens_reasoning > 0 %}
                 <span class="polytrans-usage-card__note">
                     {# The one number that explains a surprising bill. #}
-                    {{ totals.reasoning_share }}% {{ __('spent on reasoning', 'polytrans') }}
+                    {{ totals.reasoning_share|esc_html }}% {{ __('spent on reasoning', 'polytrans') }}
                 </span>
             {% endif %}
         </div>
@@ -102,7 +129,7 @@
                 <span class="polytrans-usage-card__label">{{ __('Translation runs', 'polytrans') }}</span>
                 <span class="polytrans-usage-card__value">{{ translation_run_totals.runs|number_format(0, '.', ' ') }}</span>
                 <span class="polytrans-usage-card__note">
-                    {{ translation_run_totals.completed_runs }} {{ __('completed', 'polytrans') }}{% if translation_run_totals.failed_runs %}, {{ translation_run_totals.failed_runs }} {{ __('failed', 'polytrans') }}{% endif %}
+                    {{ translation_run_totals.completed_runs|esc_html }} {{ __('completed', 'polytrans') }}{% if translation_run_totals.failed_runs %}, {{ translation_run_totals.failed_runs|esc_html }} {{ __('failed', 'polytrans') }}{% endif %}
                 </span>
             </div>
 
@@ -116,17 +143,17 @@
 
             <div class="polytrans-usage-card polytrans-usage-card--primary">
                 <span class="polytrans-usage-card__label">{{ __('Full process cost', 'polytrans') }}</span>
-                <span class="polytrans-usage-card__value">{{ translation_run_totals.total_cost_display }}</span>
+                <span class="polytrans-usage-card__value">{{ translation_run_totals.total_cost_display|esc_html }}</span>
                 <span class="polytrans-usage-card__note">
-                    {{ translation_run_totals.cost_per_1000_characters_display }} / 1k {{ __('chars', 'polytrans') }} · {{ translation_run_totals.cost_per_1000_words_display }} / 1k {{ __('words', 'polytrans') }}
+                    {{ translation_run_totals.cost_per_1000_characters_display|esc_html }} / 1k {{ __('chars', 'polytrans') }} · {{ translation_run_totals.cost_per_1000_words_display|esc_html }} / 1k {{ __('words', 'polytrans') }}
                 </span>
             </div>
 
             <div class="polytrans-usage-card polytrans-usage-card--workflow">
                 <span class="polytrans-usage-card__label">{{ __('Workflow share', 'polytrans') }}</span>
-                <span class="polytrans-usage-card__value">{{ translation_run_totals.workflow_cost_display }}</span>
+                <span class="polytrans-usage-card__value">{{ translation_run_totals.workflow_cost_display|esc_html }}</span>
                 <span class="polytrans-usage-card__note">
-                    {{ translation_run_totals.workflow_share }}% {{ __('of priced process cost', 'polytrans') }} · {{ translation_run_totals.translation_cost_display }} {{ __('translation', 'polytrans') }}
+                    {{ translation_run_totals.workflow_share|esc_html }}% {{ __('of priced process cost', 'polytrans') }} · {{ translation_run_totals.translation_cost_display|esc_html }} {{ __('translation', 'polytrans') }}
                 </span>
             </div>
         </div>
@@ -155,15 +182,15 @@
                     <tr>
                         <td>
                             {% if row.edit_link %}
-                                <a href="{{ row.edit_link|esc_url }}">{{ row.title ?: __('(untitled)', 'polytrans') }}</a>
+                                <a href="{{ row.edit_link|esc_url }}">{{ row.title ? row.title|esc_html : __('(untitled)', 'polytrans') }}</a>
                             {% else %}
-                                {{ row.title ?: __('(post %d)', 'polytrans')|format(row.source_post_id) }}
+                                {{ row.title ? row.title|esc_html : __('(post %d)', 'polytrans')|format(row.source_post_id) }}
                             {% endif %}
-                            <br><small>{{ row.status }}</small>
+                            <br><small>{{ row.status|esc_html }}</small>
                         </td>
                         <td>
-                            {{ row.target_language ?: __('not reported', 'polytrans') }}
-                            <br><small>{{ row.translation_path ?: __('direct', 'polytrans') }}</small>
+                            {{ row.target_language ? row.target_language|esc_html : __('not reported', 'polytrans') }}
+                            <br><small>{{ row.translation_path ? row.translation_path|esc_html : __('direct', 'polytrans') }}</small>
                         </td>
                         <td class="num">
                             {{ row.source_characters|number_format(0, '.', ' ') }} {{ __('chars', 'polytrans') }}<br>
@@ -171,14 +198,14 @@
                         </td>
                         <td class="num">
                             {{ row.calls|number_format(0, '.', ' ') }}<br>
-                            <small>{{ row.translation_calls }} {{ __('tr', 'polytrans') }} / {{ row.workflow_calls }} {{ __('wf', 'polytrans') }}</small>
+                            <small>{{ row.translation_calls|esc_html }} {{ __('tr', 'polytrans') }} / {{ row.workflow_calls|esc_html }} {{ __('wf', 'polytrans') }}</small>
                         </td>
-                        <td class="num">{{ row.translation_cost_display }}</td>
-                        <td class="num">{{ row.workflow_cost_display }}</td>
-                        <td class="num">{{ row.total_cost_display }}</td>
+                        <td class="num">{{ row.translation_cost_display|esc_html }}</td>
+                        <td class="num">{{ row.workflow_cost_display|esc_html }}</td>
+                        <td class="num">{{ row.total_cost_display|esc_html }}</td>
                         <td class="num">
-                            {{ row.cost_per_1000_characters_display }} {{ __('chars', 'polytrans') }}<br>
-                            {{ row.cost_per_1000_words_display }} {{ __('words', 'polytrans') }}
+                            {{ row.cost_per_1000_characters_display|esc_html }} {{ __('chars', 'polytrans') }}<br>
+                            {{ row.cost_per_1000_words_display|esc_html }} {{ __('words', 'polytrans') }}
                         </td>
                     </tr>
                 {% endfor %}
@@ -191,22 +218,29 @@
             <p>{{ __('No AI calls recorded for this period yet.', 'polytrans') }}</p>
         </div>
     {% else %}
-        {% if daily|length > 1 %}
-            <h2>{{ __('Daily cost', 'polytrans') }}</h2>
+        {% if series|length > 1 %}
+            <h2>{{ __('Cost over time', 'polytrans') }}</h2>
             <div class="polytrans-usage-trend">
-                {% for row in daily %}
-                    {% set height = daily_max > 0 ? (row.total_usd / daily_max * 100)|round : 0 %}
-                    <div class="polytrans-usage-trend__bar"
-                         title="{{ row.label }}: {{ row.cost_display }} ({{ row.calls }} {{ __('calls', 'polytrans') }})">
-                        <span style="height: {{ height < 2 ? 2 : height }}%"></span>
+                {% for row in series %}
+                    {% set height = series_max > 0 ? (row.total_usd / series_max * 100)|round : 0 %}
+                    <div class="polytrans-usage-trend__bar{{ row.is_empty ? ' is-empty' : '' }}{{ row.is_partial ? ' is-partial' : '' }}"
+                         title="{{ row.label|esc_attr }}: {{ row.cost_display|esc_attr }} ({{ row.calls|esc_attr }} {{ __('calls', 'polytrans') }}){% if row.is_partial %} · {{ __('still in progress', 'polytrans') }}{% endif %}">
+                        {# An empty bucket keeps a hairline rather than vanishing, so a
+                           quiet stretch reads as quiet instead of as missing data. #}
+                        <span style="height: {{ (row.is_empty ? 0 : (height < 2 ? 2 : height))|esc_attr }}%"></span>
                     </div>
                 {% endfor %}
             </div>
-            {% set first_day = daily|first %}
-            {% set last_day = daily|last %}
+            {% if series_ticks %}
+                <div class="polytrans-usage-trend__axis">
+                    {% for tick in series_ticks %}
+                        <span>{{ tick|esc_html }}</span>
+                    {% endfor %}
+                </div>
+            {% endif %}
             <p class="description">
-                {{ first_day.label }} &ndash; {{ last_day.label }},
-                {{ __('peak', 'polytrans') }} {{ daily_max_display }}
+                {{ __('Peak', 'polytrans') }} {{ series_max_display|esc_html }}
+                &middot; {{ buckets[window.bucket]|esc_html }}
             </p>
         {% endif %}
 
@@ -225,14 +259,14 @@
             {% for breakdown in breakdowns %}
                 {% if breakdown.rows|length > 0 %}
                     <div class="polytrans-usage-column">
-                        <h2>{{ breakdown.title }}</h2>
+                        <h2>{{ breakdown.title|esc_html }}</h2>
                         {% if breakdown.note is defined %}
-                            <p class="description">{{ breakdown.note }}</p>
+                            <p class="description">{{ breakdown.note|esc_html }}</p>
                         {% endif %}
                         <table class="widefat striped polytrans-usage-table">
                             <thead>
                                 <tr>
-                                    <th>{{ breakdown.head }}</th>
+                                    <th>{{ breakdown.head|esc_html }}</th>
                                     <th class="num">{{ __('Calls', 'polytrans') }}</th>
                                     <th class="num">{{ __('Tokens', 'polytrans') }}</th>
                                     <th class="num">{{ __('Cost', 'polytrans') }}</th>
@@ -242,17 +276,17 @@
                                 {% for row in breakdown.rows %}
                                     <tr>
                                         <td>
-                                            {{ row.label }}
+                                            {{ row.label|esc_html }}
                                             {% if row.relay_calls > 0 %}
                                                 <span class="polytrans-usage-flag"
                                                       title="{{ __('Calls that produced a language the request did not ask for, on the way to the one it did.', 'polytrans')|esc_attr }}">
-                                                    {{ row.relay_calls }} {{ __('relayed', 'polytrans') }}
+                                                    {{ row.relay_calls|esc_html }} {{ __('relayed', 'polytrans') }}
                                                 </span>
                                             {% endif %}
                                             {% if row.unpriced_calls > 0 %}
                                                 <span class="polytrans-usage-flag"
                                                       title="{{ __('No price could be found, so what these calls cost is missing from the total. Either the model is absent from the price list, or nothing named the model that served the request.', 'polytrans')|esc_attr }}">
-                                                    {{ row.unpriced_calls }} {{ __('unpriced', 'polytrans') }}
+                                                    {{ row.unpriced_calls|esc_html }} {{ __('unpriced', 'polytrans') }}
                                                 </span>
                                             {% endif %}
                                         </td>
@@ -260,7 +294,7 @@
                                         <td class="num">
                                             {{ (row.tokens_input + row.tokens_output)|number_format(0, '.', ' ') }}
                                         </td>
-                                        <td class="num">{{ row.cost_display }}</td>
+                                        <td class="num">{{ row.cost_display|esc_html }}</td>
                                     </tr>
                                 {% endfor %}
                             </tbody>
@@ -287,15 +321,15 @@
                         <tr>
                             <td>
                                 {% if row.edit_link %}
-                                    <a href="{{ row.edit_link|esc_url }}">{{ row.title ?: __('(untitled)', 'polytrans') }}</a>
+                                    <a href="{{ row.edit_link|esc_url }}">{{ row.title ? row.title|esc_html : __('(untitled)', 'polytrans') }}</a>
                                 {% else %}
-                                    {{ row.title ?: __('(post %d)', 'polytrans')|format(row.post_id) }}
+                                    {{ row.title ? row.title|esc_html : __('(post %d)', 'polytrans')|format(row.post_id) }}
                                 {% endif %}
                             </td>
-                            <td class="num">{{ row.languages }}</td>
-                            <td class="num">{{ row.calls }}</td>
-                            <td class="num">{{ row.reasoning_share }}%</td>
-                            <td class="num">{{ row.cost_display }}</td>
+                            <td class="num">{{ row.languages|esc_html }}</td>
+                            <td class="num">{{ row.calls|esc_html }}</td>
+                            <td class="num">{{ row.reasoning_share|esc_html }}%</td>
+                            <td class="num">{{ row.cost_display|esc_html }}</td>
                         </tr>
                     {% endfor %}
                 </tbody>

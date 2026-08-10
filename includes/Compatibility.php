@@ -28,7 +28,9 @@ if (!defined('ABSPATH')) {
 // TEMPLATING & DEBUG
 // ============================================================================
 class_alias('PolyTrans\Templating\TwigEngine', 'PolyTrans_Twig_Engine');
-class_alias('PolyTrans\Debug\WorkflowDebug', 'PolyTrans_Workflow_Debug');
+if (file_exists(__DIR__ . '/Debug/WorkflowDebug.php')) {
+    class_alias('PolyTrans\Debug\WorkflowDebug', 'PolyTrans_Workflow_Debug');
+}
 
 // ============================================================================
 // INTERFACES
@@ -65,7 +67,9 @@ class_alias('PolyTrans\Menu\AssistantsMenu', 'PolyTrans_Assistants_Menu');
 // PROVIDERS MODULE
 // ============================================================================
 class_alias('PolyTrans\Providers\ProviderRegistry', 'PolyTrans_Provider_Registry');
-class_alias('PolyTrans\Providers\Google\GoogleProvider', 'PolyTrans_Google_Provider');
+if (file_exists(__DIR__ . '/Providers/Google/GoogleProvider.php')) {
+    class_alias('PolyTrans\Providers\Google\GoogleProvider', 'PolyTrans_Google_Provider');
+}
 class_alias('PolyTrans\Providers\OpenAI\OpenAIClient', 'PolyTrans_OpenAI_Client');
 class_alias('PolyTrans\Providers\OpenAI\OpenAIProvider', 'PolyTrans_OpenAI_Provider');
 class_alias('PolyTrans\Providers\OpenAI\OpenAISettingsProvider', 'PolyTrans_OpenAI_Settings_Provider');
@@ -188,4 +192,3 @@ class_alias('PolyTrans\PostProcessing\Providers\ArticlesDataProvider', 'PolyTran
  * 7. Remove old class file
  * 8. Keep alias for backward compatibility
  */
-

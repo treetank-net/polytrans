@@ -54,7 +54,6 @@ class PolyTrans
 
         // AJAX handlers
         add_action('wp_ajax_polytrans_schedule_translation', [$this, 'ajax_schedule_translation']);
-        add_action('wp_ajax_polytrans_search_users', [$this, 'ajax_search_users']);
         add_action('wp_ajax_polytrans_refresh_logs', [PolyTrans_Logs_Manager::class, 'ajax_refresh_logs']);
         // Post status transition for notifications
         add_action('transition_post_status', [$this, 'handle_post_status_transition'], 10, 3);
@@ -256,6 +255,9 @@ class PolyTrans
 
     /**
      * AJAX handler for user search
+     *
+     * @deprecated The endpoint is registered by Core\UserAutocomplete. Kept as a
+     * compatibility shim for integrations that call the legacy method directly.
      */
     public function ajax_search_users()
     {

@@ -65,4 +65,3 @@ class ClaudeProvider implements TranslationProviderInterface
         return [];
     }
 }
-

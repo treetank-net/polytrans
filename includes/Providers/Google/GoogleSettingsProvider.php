@@ -127,4 +127,3 @@ class GoogleSettingsProvider implements SettingsProviderInterface
         return [];
     }
 }
-

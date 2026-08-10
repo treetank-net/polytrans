@@ -5,7 +5,35 @@ All notable changes to the PolyTrans plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.19.1] - 2026-08-10
+
+### Security
+- **The translation REST endpoints no longer accept unauthenticated requests just because no secret has been set.** `POST /polytrans/v1/translation/translate` and `/translation/receive-post` treated an empty `translation_receiver_secret` as "allow everything", and that is the state a fresh install is in — so on any site that had not finished configuring multi-server mode, an anonymous caller could start billable provider calls and have posts created. An endpoint is now open only when the authentication method is explicitly set to `none`, which is a decision someone made; a missing secret is a half-finished configuration and is refused, with a log line saying which setting to fill in. Sites that relied on the previous behaviour must either set a secret or select `none` deliberately.
+- Stopped writing the entire incoming request body to the error log on every `post_param` authentication attempt — that log line contained the shared secret in plain text.
+- The receiver secret is compared with `hash_equals()` on both endpoints, rather than `!==` on one of them.
+- Sanitized and unslashed admin request values used by assistant/workflow refinement and post autocomplete; structured refinement JSON remains validated by its service before use.
+
+### Changed
+- Raised the minimum WordPress version to 6.0. The plugin already required PHP 8.1, while declaring support for WordPress 5.0/5.3 and calling `str_starts_with()`, which WordPress only polyfills from 5.9 — the declared floor was fiction.
+- `readme.txt` is now the readme published to the plugin directory, in the directory's own format; `README.md` is the repository readme and no longer carries plugin headers. Two sets of headers is how the stable tag came to say 1.9.5 while the plugin said 1.19.0.
+- Release ZIP contents are now defined by a single `.distignore` file. The previous split between `.gitattributes` and `.gitlab-ci.yml` had drifted, and the package shipped a dangling `AGENTS.md` symlink, two hidden files, a directory of browser debug logs and the local Docker Compose test setup.
+- Dynamic values in admin Twig templates are now escaped explicitly, while trusted raw HTML exceptions remain documented because template autoescape is intentionally disabled.
+- Upgraded the WordPress Coding Standards tooling and added blocking PHPCS and Plugin Check gates to CI.
+
+### Added
+- Added absolute date ranges to the AI Costs dashboard, replacing the fixed list of periods: a preset, a hand-entered start and end, or a range narrowed one field at a time.
+- Added selectable series resolution (hourly, daily, weekly, monthly) with an automatic default; a range too long for the resolution asked for is shown at a coarser one and says so.
+- Added gap filling to the cost series, so a bucket with no calls in it renders as nothing spent rather than being left out of the chart.
+- Added an index on (activity, created_at), which is the shape most dashboard queries have.
+
+### Fixed
+- Fixed report periods being measured from the database server's clock while rows are stamped in the site's timezone. The two differ by the site's UTC offset, which was invisible across a thirty-day window and is the whole of an hour-wide one.
+- Marked the bucket a report ends inside as incomplete, instead of letting a part-full final bar read as a collapse in spending.
+- Release packages no longer emit autoloader warnings for the optional Google and debug classes that are intentionally excluded from the distribution ZIP.
+
+### Changed
+- Changed the dashboard's period parameter from `?days=` to `?preset=`/`?from=`/`?to=`/`?bucket=`. Saved links using the old parameter fall back to the default period.
+- Raised the minimum WordPress version to 6.0, for the timezone functions and string APIs the plugin uses.
 
 ## [1.19.0] - 2026-08-07
 

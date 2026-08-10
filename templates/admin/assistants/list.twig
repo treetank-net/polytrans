@@ -1,6 +1,6 @@
 <div class="wrap">
     <h1 class="wp-heading-inline">{{ __('AI Assistants', 'polytrans') }}</h1>
-    <a href="{{ polytrans_admin_url('polytrans-assistants&action=new') }}" class="page-title-action">
+    <a href="{{ polytrans_admin_url('polytrans-assistants&action=new')|esc_url }}" class="page-title-action">
         {{ __('Add New', 'polytrans') }}
     </a>
     <hr class="wp-header-end">
@@ -46,7 +46,7 @@
                     <tr>
                         <td class="column-name">
                             <strong>
-                                <a href="{{ polytrans_admin_url('polytrans-assistants&action=edit&assistant_id=' ~ assistant.id) }}">
+                                <a href="{{ polytrans_admin_url('polytrans-assistants&action=edit&assistant_id=' ~ assistant.id)|esc_url }}">
                                     {{ assistant.name|esc_html }}
                                 </a>
                             </strong>
@@ -86,10 +86,10 @@
                             {% endif %}
                         </td>
                         <td class="column-actions">
-                            <a href="{{ polytrans_admin_url('polytrans-assistants&action=edit&assistant_id=' ~ assistant.id) }}" class="button button-small">
+                            <a href="{{ polytrans_admin_url('polytrans-assistants&action=edit&assistant_id=' ~ assistant.id)|esc_url }}" class="button button-small">
                                 {{ __('Edit', 'polytrans') }}
                             </a>
-                            <a href="{{ polytrans_admin_url('polytrans-assistants&action=test&assistant_id=' ~ assistant.id) }}" class="button button-small">
+                            <a href="{{ polytrans_admin_url('polytrans-assistants&action=test&assistant_id=' ~ assistant.id)|esc_url }}" class="button button-small">
                                 {{ __('Test', 'polytrans') }}
                             </a>
                             <button type="button" class="button button-small button-link-delete assistant-delete" data-assistant-id="{{ assistant.id|esc_attr }}">

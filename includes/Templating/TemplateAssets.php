@@ -131,4 +131,3 @@ class TemplateAssets
         return self::$assets;
     }
 }
-

@@ -38,4 +38,3 @@ class ChatClientFactory
         return null;
     }
 }
-

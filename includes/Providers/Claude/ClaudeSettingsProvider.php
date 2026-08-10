@@ -611,4 +611,3 @@ class ClaudeSettingsProvider implements SettingsProviderInterface
     }
     
 }
-

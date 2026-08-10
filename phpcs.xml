@@ -1,41 +1,79 @@
 <?xml version="1.0"?>
-<ruleset xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" name="PolyTrans Coding Standards" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/squizlabs/PHP_CodeSniffer/master/phpcs.xsd">
-    <description>Coding standards for PolyTrans plugin</description>
+<ruleset xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" name="PolyTrans" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/squizlabs/PHP_CodeSniffer/master/phpcs.xsd">
+    <description>
+        Blocking profile: the rules a WordPress.org review actually turns on — output
+        escaping, input sanitisation, nonces, SQL, i18n, deprecated and discouraged APIs.
 
-    <!-- What to scan -->
+        Deliberately no formatting or indentation rules. The previous ruleset pulled in
+        WordPress-Core wholesale, which demands tabs; the codebase uses spaces, so 35 251
+        of its 35 661 findings were "tabs must be used" and the profile was useless as a
+        gate. Formatting is not what a reviewer rejects a plugin over.
+    </description>
+
     <file>includes/</file>
     <file>polytrans.php</file>
-    
-    <!-- What to exclude -->
+
     <exclude-pattern>*/vendor/*</exclude-pattern>
     <exclude-pattern>*/node_modules/*</exclude-pattern>
     <exclude-pattern>*/tests/*</exclude-pattern>
+    <!-- Not shipped (see .distignore): a standalone CLI worker script that runs outside
+         WordPress, so plugin-prefix rules for globals do not apply to it. -->
+    <exclude-pattern>*/includes/process-task.php</exclude-pattern>
+    <exclude-pattern>*/includes/Debug/*</exclude-pattern>
+    <exclude-pattern>*/includes/Menu/TagTranslation_temp.php</exclude-pattern>
     <exclude-pattern>*/coverage/*</exclude-pattern>
     <exclude-pattern>*.min.js</exclude-pattern>
     <exclude-pattern>*.min.css</exclude-pattern>
 
-    <!-- How to scan -->
-    <arg value="sp"/> <!-- Show sniff and progress -->
+    <arg value="sp"/>
     <arg name="basepath" value="./"/>
     <arg name="colors"/>
     <arg name="extensions" value="php"/>
-    <arg name="parallel" value="50"/>
+    <arg name="parallel" value="20"/>
 
-    <!-- Rules: Check PHP version compatibility -->
-    <config name="minimum_supported_wp_version" value="5.0"/>
+    <config name="minimum_supported_wp_version" value="6.0"/>
 
-    <!-- Rules: WordPress Coding Standards -->
-    <rule ref="WordPress-Core">
-        <exclude name="WordPress.Files.FileName.InvalidClassFileName"/>
-        <exclude name="WordPress.Files.FileName.NotHyphenatedLowercase"/>
+    <!-- Security: escaping, sanitisation, nonces. The whole reason this profile exists. -->
+    <rule ref="WordPress.Security"/>
+
+    <!-- Database access. Warnings for direct queries are expected (four custom tables);
+         the errors are not, and this keeps them visible. -->
+    <rule ref="WordPress.DB"/>
+
+    <!-- Internationalisation, including the text domain. -->
+    <rule ref="WordPress.WP.I18n">
+        <properties>
+            <property name="text_domain" type="array">
+                <element value="polytrans"/>
+                <element value="default"/>
+            </property>
+        </properties>
     </rule>
-    <rule ref="WordPress-Docs"/>
-    <rule ref="WordPress-Extra"/>
 
-    <!-- Rules: No end of file issues -->
+    <!-- APIs WordPress asks you not to use, and the enqueue rules from the review email. -->
+    <rule ref="WordPress.WP.DeprecatedFunctions"/>
+    <rule ref="WordPress.WP.DeprecatedParameters"/>
+    <rule ref="WordPress.WP.DeprecatedClasses"/>
+    <rule ref="WordPress.WP.AlternativeFunctions"/>
+    <rule ref="WordPress.WP.EnqueuedResources"/>
+    <rule ref="WordPress.WP.GlobalVariablesOverride"/>
+    <rule ref="WordPress.PHP.DevelopmentFunctions"/>
+    <rule ref="WordPress.PHP.DiscouragedPHPFunctions"/>
+
+    <!-- Everything global must carry the plugin's prefix. -->
+    <rule ref="WordPress.NamingConventions.PrefixAllGlobals">
+        <properties>
+            <property name="prefixes" type="array">
+                <element value="polytrans"/>
+                <element value="POLYTRANS"/>
+                <element value="PolyTrans"/>
+            </property>
+        </properties>
+    </rule>
+
+    <!-- Basic hygiene that costs nothing to keep green. -->
+    <rule ref="Generic.PHP.DisallowShortOpenTag"/>
+    <rule ref="Generic.PHP.DisallowAlternativePHPTags"/>
+    <rule ref="Squiz.PHP.Eval"/>
     <rule ref="PSR2.Files.EndFileNewline"/>
-
-    <!-- Check for cross-version support for PHP 7.4+ -->
-    <config name="testVersion" value="7.4-"/>
-    <!-- Note: PHPCompatibility would be here but requires separate installation -->
 </ruleset>

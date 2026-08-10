@@ -39,4 +39,3 @@ interface ChatClientInterface
      */
     public function extract_content($response);
 }
-

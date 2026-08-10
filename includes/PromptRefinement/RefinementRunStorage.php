@@ -90,8 +90,9 @@ final class RefinementRunStorage
 
         $table_name = self::tableName();
 
-        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Runtime lookup by run ID in plugin-owned table.
-        $row = $wpdb->get_row(
+		// phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter -- Table name is produced by tableName() from $wpdb->prefix; the run ID is prepared below.
+		$row = $wpdb->get_row(
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name from $wpdb->prefix; the run ID is prepared.
             $wpdb->prepare("SELECT payload, expires_at FROM {$table_name} WHERE run_id = %s", $runId),
             ARRAY_A
         );
@@ -129,10 +130,10 @@ final class RefinementRunStorage
 
         $table_name = self::tableName();
 
-        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Runtime maintenance stats for plugin-owned table.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Runtime maintenance stats for plugin-owned table.
         $row = $wpdb->get_row("SELECT COUNT(*) AS total_runs, COALESCE(SUM(payload_size), 0) AS total_payload_size, MIN(expires_at) AS oldest_expires_at, MAX(expires_at) AS newest_expires_at FROM {$table_name}", ARRAY_A);
 
-        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Runtime maintenance stats for plugin-owned table.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Runtime maintenance stats for plugin-owned table.
         $expired_count = (int) $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$table_name} WHERE expires_at < %s", current_time('mysql', true)));
 
         return [
@@ -159,7 +160,7 @@ final class RefinementRunStorage
         self::createTable();
         $stats = self::stats();
 
-        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Manual maintenance for plugin-owned runtime table.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Manual maintenance for plugin-owned runtime table; the only interpolated value is the table name, built from $wpdb->prefix, and a table name cannot be a prepared value.
         $truncated = $wpdb->query("TRUNCATE TABLE " . self::tableName());
         if ($truncated !== false) {
             return (int) ($stats['total_runs'] ?? 0);
@@ -215,7 +216,7 @@ final class RefinementRunStorage
 
         update_option('polytrans_refinement_runs_cleanup_at', time(), false);
 
-        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Periodic cleanup for plugin-owned runtime table.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Periodic cleanup for plugin-owned runtime table; the table name comes from $wpdb->prefix and the value is prepared.
         $deleted = $wpdb->query($wpdb->prepare("DELETE FROM " . self::tableName() . " WHERE expires_at < %s", current_time('mysql', true)));
 
         return is_int($deleted) ? $deleted : 0;
@@ -232,7 +233,7 @@ final class RefinementRunStorage
     {
         global $wpdb;
 
-        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Runtime lookup by run ID in plugin-owned table.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Runtime lookup by run ID in plugin-owned table; the table name comes from $wpdb->prefix and the run ID is prepared.
         return (bool) $wpdb->get_var($wpdb->prepare("SELECT id FROM " . self::tableName() . " WHERE run_id = %s", $runId));
     }
 

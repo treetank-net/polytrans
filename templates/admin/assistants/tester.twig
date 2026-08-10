@@ -2,10 +2,10 @@
     <h1>{{ __('Test Assistant', 'polytrans') }}: {{ assistant.name|esc_html }}</h1>
 
     <p>
-        <a href="{{ polytrans_admin_url('polytrans-assistants') }}" class="button">
+        <a href="{{ polytrans_admin_url('polytrans-assistants')|esc_url }}" class="button">
             {{ __('Back to Assistants', 'polytrans') }}
         </a>
-        <a href="{{ polytrans_admin_url('polytrans-assistants&action=edit&assistant_id=' ~ assistant.id) }}" class="button">
+        <a href="{{ polytrans_admin_url('polytrans-assistants&action=edit&assistant_id=' ~ assistant.id)|esc_url }}" class="button">
             {{ __('Edit Assistant', 'polytrans') }}
         </a>
     </p>
@@ -105,7 +105,7 @@
                         <tr>
                             <th scope="row"><label for="assistant-refine-objective">{{ __('Primary Purpose', 'polytrans') }}</label></th>
                             <td>
-                                <textarea id="assistant-refine-objective" class="large-text code" rows="3" placeholder="{{ __('Describe what this prompt must still do after refinement.', 'polytrans') }}">{{ assistant.description|default('')|e('html') }}</textarea>
+                                <textarea id="assistant-refine-objective" class="large-text code" rows="3" placeholder="{{ __('Describe what this prompt must still do after refinement.', 'polytrans') }}">{{ assistant.description|default('')|esc_textarea }}</textarea>
                                 <p>
                                     <button type="button" id="assistant-generate-objective-btn" class="button">
                                         {{ __('Generate from Assistant Prompt', 'polytrans') }}
@@ -127,11 +127,11 @@
                                 <div class="assistant-refinement-prompt-grid">
                                     <div class="assistant-refinement-prompt-field">
                                         <label for="assistant-refine-evaluator-system-prompt"><strong>{{ __('System Prompt', 'polytrans') }}</strong></label>
-                                        <textarea id="assistant-refine-evaluator-system-prompt" class="large-text code" rows="10">{{ default_evaluator_system_prompt|e('html') }}</textarea>
+                                        <textarea id="assistant-refine-evaluator-system-prompt" class="large-text code" rows="10">{{ default_evaluator_system_prompt|esc_textarea }}</textarea>
                                     </div>
                                     <div class="assistant-refinement-prompt-field">
                                         <label for="assistant-refine-evaluator-template"><strong>{{ __('User Message Template', 'polytrans') }}</strong></label>
-                                        <textarea id="assistant-refine-evaluator-template" class="large-text code" rows="10">{{ default_evaluator_prompt_template|e('html') }}</textarea>
+                                        <textarea id="assistant-refine-evaluator-template" class="large-text code" rows="10">{{ default_evaluator_prompt_template|esc_textarea }}</textarea>
                                     </div>
                                 </div>
                                 <p class="description">{{ __('Template variables: criteria, prompt_objective, interpolated_system_prompt, interpolated_user_message, assistant_output, source_language, target_language, include_expected_output_schema, expected_output_schema.', 'polytrans') }}</p>
@@ -143,11 +143,11 @@
                                 <div class="assistant-refinement-prompt-grid">
                                     <div class="assistant-refinement-prompt-field">
                                         <label for="assistant-refine-adjuster-system-prompt"><strong>{{ __('System Prompt', 'polytrans') }}</strong></label>
-                                        <textarea id="assistant-refine-adjuster-system-prompt" class="large-text code" rows="12">{{ default_adjuster_system_prompt|e('html') }}</textarea>
+                                        <textarea id="assistant-refine-adjuster-system-prompt" class="large-text code" rows="12">{{ default_adjuster_system_prompt|esc_textarea }}</textarea>
                                     </div>
                                     <div class="assistant-refinement-prompt-field">
                                         <label for="assistant-refine-adjuster-template"><strong>{{ __('User Message Template', 'polytrans') }}</strong></label>
-                                        <textarea id="assistant-refine-adjuster-template" class="large-text code" rows="12">{{ default_adjuster_prompt_template|e('html') }}</textarea>
+                                        <textarea id="assistant-refine-adjuster-template" class="large-text code" rows="12">{{ default_adjuster_prompt_template|esc_textarea }}</textarea>
                                     </div>
                                 </div>
                                 <p class="description">{{ __('Template variables: criteria, prompt_objective, adjust_expected_output_schema, non_interpolated_system_prompt, non_interpolated_user_message_template, non_interpolated_expected_output_schema, evaluations, evaluations_json.', 'polytrans') }}</p>

@@ -94,6 +94,49 @@
     background: #135e96;
 }
 
+/* A bucket with no calls in it. It keeps a baseline rather than disappearing, so a
+   quiet stretch reads as quiet and not as a gap in the data. */
+.polytrans-usage-trend__bar.is-empty {
+    border-bottom: 1px solid #dcdcde;
+}
+
+/* The bucket the window ends inside. Its total is real but not yet complete, and an
+   unmarked short bar at the right edge reads as a sudden collapse in spending. */
+.polytrans-usage-trend__bar.is-partial span {
+    background: repeating-linear-gradient(
+        135deg,
+        #2271b1,
+        #2271b1 3px,
+        #6f9fc8 3px,
+        #6f9fc8 6px
+    );
+}
+
+.polytrans-usage-trend__axis {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 4px;
+    font-size: 11px;
+    color: #646970;
+}
+
+/* The middle tick sits over the middle bar; the outer two hug the ends. */
+.polytrans-usage-trend__axis span:nth-child(2) {
+    text-align: center;
+}
+
+.polytrans-usage-filters__separator {
+    color: #646970;
+}
+
+.polytrans-usage-range {
+    margin-top: -8px;
+}
+
+.polytrans-usage-range__notice {
+    color: #996800;
+}
+
 .polytrans-usage-columns {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));

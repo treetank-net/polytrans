@@ -1215,7 +1215,9 @@ class AssistantsMenu
         $run_id = isset($_POST['run_id']) ? sanitize_text_field(wp_unslash($_POST['run_id'])) : '';
         $criteria = isset($_POST['criteria']) ? sanitize_textarea_field(wp_unslash($_POST['criteria'])) : '';
         $prompt_objective = isset($_POST['prompt_objective']) ? sanitize_textarea_field(wp_unslash($_POST['prompt_objective'])) : '';
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Admin prompt/config text may contain XML/HTML markers; it is passed to refinement/description services as JSON, and returned data is serialized by wp_send_json_* instead of rendered as HTML.
         $evaluator_system_prompt = isset($_POST['evaluator_system_prompt']) ? wp_unslash($_POST['evaluator_system_prompt']) : '';
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Admin prompt/config text may contain XML/HTML markers; it is passed to refinement/description services as JSON, and returned data is serialized by wp_send_json_* instead of rendered as HTML.
         $evaluator_prompt_template = isset($_POST['evaluator_prompt_template']) ? wp_unslash($_POST['evaluator_prompt_template']) : '';
 
         $result = (new AssistantRefinementService())->evaluateRun(
@@ -1247,7 +1249,9 @@ class AssistantsMenu
         $target_language = isset($_POST['target_language']) ? sanitize_text_field(wp_unslash($_POST['target_language'])) : 'pl';
         $criteria = isset($_POST['criteria']) ? sanitize_textarea_field(wp_unslash($_POST['criteria'])) : '';
         $prompt_objective = isset($_POST['prompt_objective']) ? sanitize_textarea_field(wp_unslash($_POST['prompt_objective'])) : '';
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Admin prompt/config text may contain XML/HTML markers; it is passed to refinement/description services as JSON, and returned data is serialized by wp_send_json_* instead of rendered as HTML.
         $evaluator_system_prompt = isset($_POST['evaluator_system_prompt']) ? wp_unslash($_POST['evaluator_system_prompt']) : '';
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Admin prompt/config text may contain XML/HTML markers; it is passed to refinement/description services as JSON, and returned data is serialized by wp_send_json_* instead of rendered as HTML.
         $evaluator_prompt_template = isset($_POST['evaluator_prompt_template']) ? wp_unslash($_POST['evaluator_prompt_template']) : '';
         $override_system_prompt = array_key_exists('override_system_prompt', $_POST) // phpcs:ignore WordPress.Security.NonceVerification.Missing -- protected by check_ajax_referer above
             ? wp_unslash($_POST['override_system_prompt']) // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- trusted admin test payload
@@ -1290,10 +1294,14 @@ class AssistantsMenu
         $assistant_id = isset($_POST['assistant_id']) ? intval($_POST['assistant_id']) : 0;
         $criteria = isset($_POST['criteria']) ? sanitize_textarea_field(wp_unslash($_POST['criteria'])) : '';
         $prompt_objective = isset($_POST['prompt_objective']) ? sanitize_textarea_field(wp_unslash($_POST['prompt_objective'])) : '';
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Admin prompt/config text may contain XML/HTML markers; it is passed to refinement/description services as JSON, and returned data is serialized by wp_send_json_* instead of rendered as HTML.
         $adjuster_system_prompt = isset($_POST['adjuster_system_prompt']) ? wp_unslash($_POST['adjuster_system_prompt']) : '';
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Admin prompt/config text may contain XML/HTML markers; it is passed to refinement/description services as JSON, and returned data is serialized by wp_send_json_* instead of rendered as HTML.
         $adjuster_prompt_template = isset($_POST['adjuster_prompt_template']) ? wp_unslash($_POST['adjuster_prompt_template']) : '';
-        $evaluations_payload = $_POST['evaluations'] ?? '[]'; // phpcs:ignore WordPress.Security.NonceVerification.Missing -- protected by check_ajax_referer above
-        $refinement_history_payload = $_POST['refinement_history'] ?? '[]'; // phpcs:ignore WordPress.Security.NonceVerification.Missing -- protected by check_ajax_referer above
+        // phpcs:ignore WordPress.Security.NonceVerification.Missing, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized, WordPress.Security.ValidatedSanitizedInput.MissingUnslash -- JSON stays raw so AssistantRefinementService::decodeEvaluations() unslashes, json_decodes, and validates it before prompt rendering.
+        $evaluations_payload = $_POST['evaluations'] ?? '[]';
+        // phpcs:ignore WordPress.Security.NonceVerification.Missing, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized, WordPress.Security.ValidatedSanitizedInput.MissingUnslash -- JSON stays raw so AssistantRefinementService::decodeRefinementHistory() unslashes, json_decodes, and validates it before prompt rendering.
+        $refinement_history_payload = $_POST['refinement_history'] ?? '[]';
         $current_system_prompt = array_key_exists('current_system_prompt', $_POST) // phpcs:ignore WordPress.Security.NonceVerification.Missing -- protected by check_ajax_referer above
             ? wp_unslash($_POST['current_system_prompt']) // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- trusted admin test payload
             : null;
@@ -1382,14 +1390,19 @@ class AssistantsMenu
             'name' => isset($_POST['name']) ? sanitize_text_field(wp_unslash($_POST['name'])) : (string) ($stored_assistant['name'] ?? ''),
             'description' => isset($_POST['description']) ? wp_kses_post(wp_unslash($_POST['description'])) : (string) ($stored_assistant['description'] ?? ''),
             'provider' => $provider,
+            // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Admin prompt-pack text may contain XML/HTML markers; it is passed to refinement/description services as JSON, and returned data is serialized by wp_send_json_* instead of rendered as HTML.
             'system_prompt' => isset($_POST['system_prompt']) ? (string) wp_unslash($_POST['system_prompt']) : (string) ($stored_assistant['system_prompt'] ?? ''),
+            // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Admin prompt-pack text may contain XML/HTML markers; it is passed to refinement/description services as JSON, and returned data is serialized by wp_send_json_* instead of rendered as HTML.
             'user_message_template' => isset($_POST['user_message_template']) ? (string) wp_unslash($_POST['user_message_template']) : (string) ($stored_assistant['user_message_template'] ?? ''),
             'expected_format' => isset($_POST['response_format']) ? sanitize_text_field(wp_unslash($_POST['response_format'])) : (string) ($stored_assistant['expected_format'] ?? 'text'),
+            // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Admin prompt-pack JSON/schema text may contain XML/HTML markers; it is passed to refinement/description services as JSON, and returned data is serialized by wp_send_json_* instead of rendered as HTML.
             'expected_output_schema' => isset($_POST['expected_output_schema']) ? (string) wp_unslash($_POST['expected_output_schema']) : ($stored_assistant['expected_output_schema'] ?? null),
             'api_parameters' => $api_parameters,
         ]);
 
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Admin prompt/config text may contain XML/HTML markers; it is passed to refinement/description services as JSON, and returned data is serialized by wp_send_json_* instead of rendered as HTML.
         $system_prompt_template = isset($_POST['description_system_prompt']) ? (string) wp_unslash($_POST['description_system_prompt']) : '';
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Admin prompt/config text may contain XML/HTML markers; it is passed to refinement/description services as JSON, and returned data is serialized by wp_send_json_* instead of rendered as HTML.
         $prompt_template = isset($_POST['description_prompt_template']) ? (string) wp_unslash($_POST['description_prompt_template']) : '';
 
         $result = (new DescriptionGeneratorService())->generateAssistantDescription(

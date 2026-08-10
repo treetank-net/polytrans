@@ -97,7 +97,7 @@ From `composer.json`:
     "phpunit/phpunit": "^10.5",
     "pestphp/pest": "^2.35",
     "pestphp/pest-plugin-arch": "^2.7",
-    "wp-coding-standards/wpcs": "^2.3",
+    "wp-coding-standards/wpcs": "^3.1",
     "phpmd/phpmd": "^2.10",
     "squizlabs/php_codesniffer": "^3.6"
   },

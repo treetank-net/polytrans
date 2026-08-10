@@ -44,6 +44,7 @@ final class AsyncJobRunner
         $response = wp_remote_post(admin_url('admin-ajax.php'), [
             'timeout'   => 0.1,
             'blocking'  => false,
+            // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Core's own filter, applied here exactly as WP_Http does; not a hook of ours to prefix.
             'sslverify' => apply_filters('https_local_ssl_verify', false),
             'body'      => [
                 'action'       => 'polytrans_async_worker',
@@ -146,10 +147,19 @@ final class AsyncJobRunner
 
     /**
      * Called by the loopback worker endpoint. Executes the job.
+     *
+     * Authenticated by a per-job HMAC token, not by a nonce, and deliberately so: the
+     * caller is the site itself over a loopback request with no logged-in user and no
+     * session, which is exactly what a nonce cannot represent. The token is derived from
+     * the job ID with wp_hash() and compared with hash_equals(); a request that does not
+     * carry the token for an existing job gets a 403 and never reaches the job payload.
+     * This is also why the action is registered for wp_ajax_nopriv_.
      */
     public static function executeWorker(): void
     {
+        // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Authenticated by the per-job HMAC token verified below; see the method docblock.
         $job_id = isset($_POST['job_id']) ? sanitize_text_field(wp_unslash($_POST['job_id'])) : '';
+        // phpcs:ignore WordPress.Security.NonceVerification.Missing -- The token being verified; a nonce is not available on a loopback request with no user session.
         $token  = isset($_POST['worker_token']) ? sanitize_text_field(wp_unslash($_POST['worker_token'])) : '';
 
         if ($job_id === '' || !hash_equals(self::workerToken($job_id), $token)) {

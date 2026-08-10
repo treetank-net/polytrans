@@ -993,7 +993,7 @@ class BackgroundProcessor
 
             // Check the table columns
             // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name from trusted source ($wpdb->prefix)
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Table name from trusted source ($wpdb->prefix)
             $columns = $wpdb->get_results("SHOW COLUMNS FROM `{$table_name}`");
             $column_names = [];
 

@@ -7,6 +7,7 @@
             <strong>{{ __('Note:', 'polytrans')|esc_html }}</strong>
             {% set settings_url = admin_url('admin.php?page=polytrans')|esc_url %}
             {% set settings_link = '<a href="' ~ settings_url ~ '">' ~ __('Translation Settings → Tag Settings', 'polytrans')|esc_html ~ '</a>' %}
+            {# This link is built from an escaped WordPress admin URL and translated label, so the anchor is safe to render as HTML. #}
             {{ __('To add or remove tags from the translation list, please go to %s.', 'polytrans')|format(settings_link)|raw }}
         </p>
     </div>
@@ -26,7 +27,7 @@
     <table class="widefat fixed striped" id="tag-translation-table">
         <thead>
             <tr>
-                <th>{{ source_lang_name }} {{ __('Tag', 'polytrans')|esc_html }}</th>
+                <th>{{ source_lang_name|esc_html }} {{ __('Tag', 'polytrans')|esc_html }}</th>
                 {% for lang in langs %}
                     {% if lang != source_language %}
                         <th>{{ lang|upper|esc_html }} {{ __('Translation', 'polytrans')|esc_html }}</th>
@@ -60,4 +61,3 @@
         </tbody>
     </table>
 </div>
-

@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- PHP 7.4+, WordPress, Polylang
+- PHP 8.1+, WordPress, Polylang
 - Composer, Git
 - Docker (recommended for development)
 

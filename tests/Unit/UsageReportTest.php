@@ -14,6 +14,7 @@ declare(strict_types=1);
  */
 
 use PolyTrans\Core\UsageReport;
+use PolyTrans\Core\UsageWindow;
 
 if (!function_exists('get_the_title')) {
     function get_the_title($post_id)
@@ -107,12 +108,18 @@ beforeEach(function () {
     $wpdb = new PolyTransRecordingWpdb();
     $this->wpdb = $wpdb;
     $GLOBALS['polytrans_test_titles'] = [11 => 'Artykuł o cłach'];
+    // Pinned so that a window resolved in a test covers a known set of instants.
+    $GLOBALS['polytrans_test_now'] = new DateTimeImmutable('2026-08-10 14:37:00', wp_timezone());
+});
+
+afterEach(function () {
+    unset($GLOBALS['polytrans_test_now']);
 });
 
 describe('grouping safety', function () {
     it('refuses a column that is not on the allow-list', function () {
         // The column arrives from a request parameter in the dashboard.
-        $result = UsageReport::by('model; DROP TABLE wp_posts', ['days' => 30]);
+        $result = UsageReport::by('model; DROP TABLE wp_posts', ['from' => '2026-07-11 00:00:00']);
 
         expect($result)->toBe([]);
         expect($this->wpdb->last_data_query())->toBe('');
@@ -176,14 +183,28 @@ describe('grouping safety', function () {
 });
 
 describe('filters', function () {
-    it('binds the period as a number of days', function () {
-        UsageReport::totals(['days' => 7]);
+    it('bounds the period with instants rather than with the database clock', function () {
+        // Rows are stamped with current_time('mysql'), which is the site's timezone;
+        // NOW() is the database server's. Over an hour-wide window the difference
+        // between the two is the entire result.
+        UsageReport::totals(['from' => '2026-08-10 13:00:00', 'to' => '2026-08-10 14:00:00']);
 
-        expect($this->wpdb->last_data_query())->toContain('INTERVAL 7 DAY');
+        $query = $this->wpdb->last_data_query();
+
+        expect($query)->toContain("created_at >= '2026-08-10 13:00:00'");
+        expect($query)->toContain("created_at < '2026-08-10 14:00:00'");
+        expect($query)->not->toContain('NOW()');
     });
 
-    it('leaves the query unfiltered when the period is all time', function () {
-        UsageReport::totals(['days' => 0]);
+    it('treats the end of the period as exclusive', function () {
+        // Half-open, so a row on the boundary belongs to one period and not to both.
+        UsageReport::totals(['to' => '2026-08-10 14:00:00']);
+
+        expect($this->wpdb->last_data_query())->toContain('created_at <')->not->toContain('created_at <=');
+    });
+
+    it('leaves the query unfiltered when no period is given', function () {
+        UsageReport::totals([]);
 
         expect($this->wpdb->last_data_query())->not->toContain('WHERE');
     });
@@ -219,9 +240,31 @@ describe('filters', function () {
     });
 
     it('restricts the article ranking to rows that name an original', function () {
-        UsageReport::top_posts(['days' => 30]);
+        UsageReport::top_posts(['from' => '2026-07-11 00:00:00']);
 
         expect($this->wpdb->last_data_query())->toContain('source_post_id IS NOT NULL');
+    });
+
+    it('never dates a query from the database server clock', function () {
+        // A regression guard rather than a style rule: every one of these once read
+        // NOW(), and the skew that introduced is invisible at the day scale the
+        // dashboard used to be limited to.
+        $window = UsageWindow::create(
+            new DateTimeImmutable('2026-08-10 00:00:00', wp_timezone()),
+            new DateTimeImmutable('2026-08-10 14:37:00', wp_timezone())
+        );
+        $args = ['from' => '2026-08-10 00:00:00', 'to' => '2026-08-10 14:37:00'];
+
+        UsageReport::totals($args);
+        UsageReport::by('model', $args);
+        UsageReport::series($window);
+        UsageReport::top_posts($args);
+        UsageReport::translation_runs($args);
+        UsageReport::translation_run_totals($args);
+
+        foreach ($this->wpdb->queries as $query) {
+            expect($query)->not->toContain('NOW()');
+        }
     });
 });
 
@@ -283,12 +326,16 @@ describe('result handling', function () {
     it('returns zeroed totals when the table is not there yet', function () {
         $this->wpdb->table_present = false;
 
-        $totals = UsageReport::totals(['days' => 30]);
+        $totals = UsageReport::totals(['from' => '2026-07-11 00:00:00']);
+        $window = UsageWindow::create(
+            new DateTimeImmutable('2026-08-09 00:00:00', wp_timezone()),
+            new DateTimeImmutable('2026-08-10 00:00:00', wp_timezone())
+        );
 
         expect($totals['calls'])->toBe(0);
         expect($totals['total_usd'])->toBeNull();
         expect(UsageReport::by('model'))->toBe([]);
-        expect(UsageReport::daily())->toBe([]);
+        expect(UsageReport::series($window))->toBe([]);
         expect(UsageReport::top_posts())->toBe([]);
     });
 
@@ -339,13 +386,13 @@ describe('result handling', function () {
             'tokens_reasoning' => '2000',
         ]];
 
-        $rows = UsageReport::translation_runs(['days' => 30, 'activity' => 'workflow_step']);
+        $rows = UsageReport::translation_runs(['from' => '2026-07-11 00:00:00', 'activity' => 'workflow_step']);
         $row = $rows[0];
 
         expect($this->wpdb->last_data_query())
             ->toContain('LEFT JOIN wp_polytrans_usage u ON u.run_id = r.run_id')
             ->toContain('EXISTS (SELECT 1 FROM wp_polytrans_usage uf_activity')
-            ->toContain('r.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)');
+            ->toContain("r.created_at >= '2026-07-11 00:00:00'");
         expect($row['title'])->toBe('Artykuł o cłach');
         expect($row['calls'])->toBe(5);
         expect($row['translation_calls'])->toBe(2);
@@ -378,12 +425,12 @@ describe('result handling', function () {
             'tokens_reasoning' => '4000',
         ];
 
-        $totals = UsageReport::translation_run_totals(['days' => 30]);
+        $totals = UsageReport::translation_run_totals(['from' => '2026-07-11 00:00:00']);
 
         expect($this->wpdb->last_data_query())
             ->toContain('LEFT JOIN (')
             ->toContain('GROUP BY run_id')
-            ->toContain('r.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)');
+            ->toContain("r.created_at >= '2026-07-11 00:00:00'");
         expect($totals['runs'])->toBe(2);
         expect($totals['source_characters'])->toBe(3000);
         expect($totals['source_words'])->toBe(600);
@@ -391,6 +438,90 @@ describe('result handling', function () {
         expect($totals['cost_per_1000_characters_display'])->toBe('$0.0082');
         expect($totals['cost_per_1000_words_display'])->toBe('$0.0410');
         expect($totals['workflow_share'])->toBe(59);
+    });
+});
+
+describe('time series', function () {
+    function polytrans_window($from, $to, $bucket = 'auto')
+    {
+        return UsageWindow::create(
+            new DateTimeImmutable($from, wp_timezone()),
+            new DateTimeImmutable($to, wp_timezone()),
+            $bucket
+        );
+    }
+
+    it('buckets by the resolution the window resolved to', function () {
+        UsageReport::series(polytrans_window('2026-08-10 00:00:00', '2026-08-10 06:00:00'));
+
+        expect($this->wpdb->last_data_query())
+            ->toContain('DATE_ADD(DATE(created_at), INTERVAL HOUR(created_at) HOUR)');
+    });
+
+    it('builds bucket terms without percent signs', function () {
+        // DATE_FORMAT would be the obvious way to write these, and its patterns are
+        // full of '%', which $wpdb->prepare() reads as placeholders. The damage only
+        // shows on the paths that bind a parameter, so it would pass a casual test.
+        foreach (['hour', 'day', 'week', 'month'] as $bucket) {
+            $this->wpdb->queries = [];
+            UsageReport::series(polytrans_window('2026-08-01 00:00:00', '2026-08-10 00:00:00', $bucket));
+
+            expect($this->wpdb->last_data_query())->not->toContain('%');
+        }
+    });
+
+    it('fills a bucket the query returned nothing for', function () {
+        // The database only returns buckets that contain rows. A chart drawn from
+        // those alone drops the quiet hours and misstates the shape either side.
+        $this->wpdb->rows = [[
+            'bucket' => '2026-08-10 02:00:00',
+            'calls' => '3',
+            'total_usd' => '0.006',
+            'unpriced_calls' => '0',
+            'relay_calls' => '0',
+            'tokens_input' => '900',
+            'tokens_output' => '300',
+            'tokens_cached_read' => '0',
+            'tokens_reasoning' => '0',
+        ]];
+
+        $series = UsageReport::series(polytrans_window('2026-08-10 00:00:00', '2026-08-10 04:00:00', 'hour'));
+
+        expect($series)->toHaveCount(4);
+        expect(array_column($series, 'bucket'))->toBe([
+            '2026-08-10 00:00:00',
+            '2026-08-10 01:00:00',
+            '2026-08-10 02:00:00',
+            '2026-08-10 03:00:00',
+        ]);
+        expect($series[2]['calls'])->toBe(3);
+        expect($series[2]['is_empty'])->toBeFalse();
+    });
+
+    it('reports an empty bucket as nothing spent, not as nothing known', function () {
+        // NULL is reserved for a call that ran and could not be priced. An hour in
+        // which nothing happened cost zero, and the two must not render alike.
+        $series = UsageReport::series(polytrans_window('2026-08-10 00:00:00', '2026-08-10 02:00:00', 'hour'));
+
+        expect($series[0]['is_empty'])->toBeTrue();
+        expect($series[0]['total_usd'])->toBe('0');
+        expect($series[0]['cost_display'])->toBe('$0');
+    });
+
+    it('marks the bucket the window ends inside', function () {
+        // Its total is real but incomplete; unmarked, a short final bar reads as a
+        // sudden collapse in spending.
+        $series = UsageReport::series(polytrans_window('2026-08-10 12:00:00', '2026-08-10 14:37:00', 'hour'));
+
+        expect($series)->toHaveCount(3);
+        expect($series[0]['is_partial'])->toBeFalse();
+        expect($series[2]['is_partial'])->toBeTrue();
+    });
+
+    it('labels buckets for a reader rather than with the raw key', function () {
+        $series = UsageReport::series(polytrans_window('2026-08-10 12:00:00', '2026-08-10 14:00:00', 'hour'));
+
+        expect($series[0]['label'])->toBe('10 Aug, 12:00');
     });
 });
 

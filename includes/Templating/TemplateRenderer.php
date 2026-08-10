@@ -370,4 +370,3 @@ class TemplateRenderer
         return self::$templates_dir;
     }
 }
-
