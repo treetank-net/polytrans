@@ -1,6 +1,6 @@
 # Plan zgłoszenia do katalogu WordPress.org
 
-Stan bazowy zmierzony 2026-08-10 na WP 6.8 + Plugin Check 2.0.0
+Stan bazowy zmierzony 2026-08-11 na WP 6.8 + Plugin Check 2.0.0
 (`wp plugin check polytrans --exclude-directories=vendor,node_modules`):
 **29 ERROR / 132 WARNING**. Cel: **0 ERROR** i świadomie zaakceptowane WARNING-i.
 
@@ -12,7 +12,7 @@ pozostają do świadomej oceny przed submitem.
 Weryfikacja wykonana 2026-08-10:
 
 - PHPCS: 0 błędów.
-- Pest: Unit — 480 testów / 1357 asercji; Architecture — 6 testów / 48 asercji.
+- Pest: Unit — 480 testów / 1357 asercji; Architecture — 7 testów / 61 asercji.
   Suite'y uruchomiono w osobnych procesach, tak jak w CI.
 - Plugin Check na paczce dystrybucyjnej: 0 ERROR / 26 WARNING
   (WP 6.8, Plugin Check 2.0.0).
@@ -25,7 +25,7 @@ Jak odtworzyć pomiar — patrz `docs/development/plugin-check.md`.
 
 | # | Problem | Plik | Status |
 |---|---|---|---|
-| 1.1 | Stable tag, plugin header, constant and changelog are aligned at 1.19.1 | `readme.txt`, `polytrans.php`, `CHANGELOG.md` | ☑ |
+| 1.1 | Stable tag, plugin header, constant and changelog are aligned at 1.19.2 | `readme.txt`, `polytrans.php`, `CHANGELOG.md` | ☑ |
 | 1.2 | `outdated_tested_upto_header`: Tested up to 6.9 < 7.0 | `readme.txt` | ☑ |
 | 1.3 | `readme_mismatched_header_requires`: readme 5.0 ≠ header 5.3 | `readme.txt`, `polytrans.php` | ☑ |
 | 1.4 | `wp_function_not_compatible_with_requires_wp` ×7 — `wp_timezone()`, `current_datetime()`, `wp_date()` (WP 5.3), `str_starts_with()` (WP 5.9) | podniesienie `Requires at least` do 6.0 | ☑ |

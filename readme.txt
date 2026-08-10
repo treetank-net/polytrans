@@ -4,7 +4,7 @@ Tags: translation, multilingual, ai, openai, polylang
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 1.19.1
+Stable tag: 1.19.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -126,6 +126,9 @@ Only the content being translated: title, body, excerpt, and SEO metadata if you
 
 == Changelog ==
 
+= 1.19.2 =
+* Maintenance release: hardened the shell-runner CI workspace and added a regression guard for Docker permissions. No runtime behavior changed.
+
 = 1.19.1 =
 * Added a translation-run ledger grouping relay hops and workflow calls into one process per article and target language.
 * Added source-text metrics and cost-per-1,000-characters projections to the AI Costs dashboard.
@@ -142,6 +145,9 @@ Only the content being translated: title, body, excerpt, and SEO metadata if you
 For the complete history see CHANGELOG.md in the plugin folder.
 
 == Upgrade Notice ==
+
+= 1.19.2 =
+Maintenance release; no runtime behavior changed.
 
 = 1.19.1 =
 Adds per-process cost reporting. The AI Costs dashboard changed its period parameters; saved links using the old `?days=` parameter fall back to the default period.
