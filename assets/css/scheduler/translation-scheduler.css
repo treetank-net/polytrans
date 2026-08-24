@@ -89,3 +89,23 @@
     height: 16px;
     font-size: 16px;
 }
+
+/*
+ * Icon buttons.
+ *
+ * WordPress 7.1 added `.wp-core-ui .button .dashicons { line-height: 1.9; vertical-align: top; }`
+ * to buttons.css. Those two declarations only work together: the 20px glyph gets a
+ * 38px line box, and `top` aligns that box with the top of the button's own 38px
+ * line. An inline `vertical-align: middle` overrides the `top` half and keeps the
+ * 38px line box, which drops the icon well below the label — which is what these
+ * buttons looked like on 7.1.
+ *
+ * Flex centering sidesteps the whole question: `vertical-align` no longer applies,
+ * and the icon is centred whether its line box is 38px (7.1) or 20px (6.x).
+ */
+.polytrans-icon-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+}

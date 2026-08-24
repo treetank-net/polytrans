@@ -2,6 +2,8 @@
 
 namespace PolyTrans\PostProcessing\Managers;
 
+use PolyTrans\Core\Diagnostics;
+
 /**
  * Workflow Storage Manager
  * 
@@ -100,8 +102,7 @@ class WorkflowStorageManager
 
         dbDelta($sql);
 
-        // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-        error_log("[PolyTrans] Created workflows table: $table_name");
+        Diagnostics::log("Created workflows table: $table_name");
     }
 
     /**
@@ -159,11 +160,9 @@ class WorkflowStorageManager
         update_option(self::MIGRATION_FLAG, true);
 
         // Log results
-        // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-        error_log("[PolyTrans] Workflow migration complete: $migrated_count workflows migrated");
+        Diagnostics::log("Workflow migration complete: $migrated_count workflows migrated");
         if (!empty($errors)) {
-            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-            error_log("[PolyTrans] Migration errors: " . implode("; ", $errors));
+            Diagnostics::log("Migration errors: " . implode("; ", $errors));
         }
 
         return [

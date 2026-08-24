@@ -2,6 +2,8 @@
 
 namespace PolyTrans\Receiver\Managers;
 
+use PolyTrans\Core\Diagnostics;
+
 /**
  * Handles taxonomy (categories and tags) setup for translated posts.
  */
@@ -84,8 +86,7 @@ class TaxonomyManager
 
         if ($translated_tag_ids) {
             wp_set_post_tags($new_post_id, $translated_tag_ids);
-            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Intentional error logging for debugging
-            error_log("[polytrans] Set translated tags for post $new_post_id: " . implode(',', $translated_tag_ids));
+            Diagnostics::log("Set translated tags for post $new_post_id: " . implode(',', $translated_tag_ids));
         }
     }
 

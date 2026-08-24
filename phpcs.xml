@@ -16,9 +16,6 @@
     <exclude-pattern>*/vendor/*</exclude-pattern>
     <exclude-pattern>*/node_modules/*</exclude-pattern>
     <exclude-pattern>*/tests/*</exclude-pattern>
-    <!-- Not shipped (see .distignore): a standalone CLI worker script that runs outside
-         WordPress, so plugin-prefix rules for globals do not apply to it. -->
-    <exclude-pattern>*/includes/process-task.php</exclude-pattern>
     <exclude-pattern>*/includes/Debug/*</exclude-pattern>
     <exclude-pattern>*/includes/Menu/TagTranslation_temp.php</exclude-pattern>
     <exclude-pattern>*/coverage/*</exclude-pattern>
@@ -35,6 +32,19 @@
 
     <!-- Security: escaping, sanitisation, nonces. The whole reason this profile exists. -->
     <rule ref="WordPress.Security"/>
+
+    <!-- Our own sanitizers, so prompt and workflow input can be sanitised for real
+         instead of annotated as "trusted admin input". sanitize_text_field() cannot be
+         used on a prompt: it collapses the newlines and eats the markers that make the
+         prompt work. See PolyTrans\Core\InputSanitizer for what these do keep out. -->
+    <rule ref="WordPress.Security.ValidatedSanitizedInput">
+        <properties>
+            <property name="customSanitizingFunctions" type="array">
+                <element value="sanitize_prompt_template"/>
+                <element value="sanitize_input_deep"/>
+            </property>
+        </properties>
+    </rule>
 
     <!-- Database access. Warnings for direct queries are expected (four custom tables);
          the errors are not, and this keeps them visible. -->

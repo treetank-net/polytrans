@@ -528,10 +528,10 @@ jQuery(function ($) {
         var sectionVisible = $addMoreSection.is(':visible');
 
         if (hasTranslations && hasAvailableLangs && !sectionVisible) {
-            $addMoreBtn.show();
+            $addMoreBtn.removeClass('hidden');
         } else if (!hasTranslations || !hasAvailableLangs) {
             // Hide both button and section if conditions aren't met
-            $addMoreBtn.hide();
+            $addMoreBtn.addClass('hidden');
             $addMoreSection.hide();
         }
     }
@@ -539,14 +539,14 @@ jQuery(function ($) {
     // Show add more section
     $addMoreBtn.on('click', function () {
         $addMoreSection.show();
-        $addMoreBtn.hide();
+        $addMoreBtn.addClass('hidden');
         $addMoreLangs.val([]);
     });
 
     // Cancel add more
     $addMoreCancel.on('click', function () {
         $addMoreSection.hide();
-        $addMoreBtn.show();
+        $addMoreBtn.removeClass('hidden');
         $addMoreLangs.val([]);
     });
 
@@ -574,7 +574,7 @@ jQuery(function ($) {
         }, function (resp) {
             if (resp && resp.success) {
                 $addMoreSection.hide();
-                $addMoreBtn.show();
+                $addMoreBtn.removeClass('hidden');
                 $addMoreLangs.val([]);
                 fetchStatusAndRender();
                 startPolling();
@@ -610,11 +610,11 @@ jQuery(function ($) {
             if (resp && resp.success) {
                 location.reload();
             } else {
-                $btn.prop('disabled', false).html('<span class="dashicons dashicons-editor-unlink" style="vertical-align:middle;"></span> Detach from source');
+                $btn.prop('disabled', false).html('<span class="dashicons dashicons-editor-unlink" aria-hidden="true"></span> Detach from source');
                 alert('Failed to detach: ' + (resp.data && resp.data.message ? resp.data.message : 'Unknown error'));
             }
         }).fail(function () {
-            $btn.prop('disabled', false).html('<span class="dashicons dashicons-editor-unlink" style="vertical-align:middle;"></span> Detach from source');
+            $btn.prop('disabled', false).html('<span class="dashicons dashicons-editor-unlink" aria-hidden="true"></span> Detach from source');
             alert('Connection error. Please try again.');
         });
     });

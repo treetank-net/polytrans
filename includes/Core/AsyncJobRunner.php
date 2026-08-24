@@ -215,7 +215,7 @@ final class AsyncJobRunner
         }
 
         if (function_exists('set_time_limit')) {
-            // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.set_time_limit_set_time_limit -- Best-effort for long-running async jobs; disabled on some hosts.
+            // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.set_time_limit_set_time_limit, Squiz.PHP.DiscouragedFunctions.Discouraged -- Best-effort for long-running async jobs; guarded by function_exists() and silenced because hosts disable it.
             @set_time_limit(300);
         }
 
@@ -293,7 +293,7 @@ final class AsyncJobRunner
      */
     private static function dispatchBackgroundLoopback(string $job_id, string $job_type)
     {
-        if (!function_exists('home_url') || !function_exists('add_query_arg') || !function_exists('wp_create_nonce')) {
+        if (!function_exists('home_url') || !function_exists('add_query_arg')) {
             return new \WP_Error('missing_background_helpers', 'WordPress URL helpers are unavailable.');
         }
 
@@ -306,12 +306,7 @@ final class AsyncJobRunner
             'action' => 'async_job',
         ], defined('HOUR_IN_SECONDS') ? HOUR_IN_SECONDS : 3600);
 
-        $url = add_query_arg([
-            'polytrans_bg' => 1,
-            'token' => $token,
-            'action' => 'async_job',
-            'nonce' => wp_create_nonce('polytrans_bg_process'),
-        ], home_url('/'));
+        $url = BackgroundProcessor::dispatch_url($token, 'async_job');
 
         return wp_remote_post($url, [
             'timeout' => 0.1,
@@ -390,8 +385,7 @@ final class AsyncJobRunner
             LogsManager::log($message, $level, $context);
         } catch (\Throwable $e) {
             $context_string = function_exists('wp_json_encode') ? wp_json_encode($context) : json_encode($context);
-            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-            error_log('[polytrans] [' . $level . '] ' . $message . ' | Context: ' . $context_string);
+            Diagnostics::log('[' . $level . '] ' . $message . ' | Context: ' . $context_string);
         }
     }
 }

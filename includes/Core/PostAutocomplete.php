@@ -37,6 +37,26 @@ class PostAutocomplete
     }
 
     /**
+     * Drops posts the current user has no business reading.
+     *
+     * These endpoints require `edit_posts` and query `private` posts, and they return the
+     * full `post_content`. `edit_posts` is a "can author something" capability, not "can
+     * read everything", so without a per-post check a Contributor could read every private
+     * draft on the site through an autocomplete field. `edit_post` is the right gate here:
+     * the picked post is what a workflow will be run against.
+     *
+     * @param array $posts Posts from get_posts().
+     * @return array Posts the current user may edit.
+     */
+    private function filter_readable_posts(array $posts): array
+    {
+        return array_values(array_filter(
+            $posts,
+            fn ($post) => current_user_can('edit_post', $post->ID)
+        ));
+    }
+
+    /**
      * AJAX handler for post search
      */
     public function ajax_search_posts()
@@ -86,7 +106,7 @@ class PostAutocomplete
             ];
         }
 
-        $posts = get_posts($args);
+        $posts = $this->filter_readable_posts(get_posts($args));
 
         $results = [];
         foreach ($posts as $post) {
@@ -203,13 +223,17 @@ class PostAutocomplete
             ];
         }
 
-        $cache_key = 'polytrans_recent_posts_' . md5($language . '_' . $limit . '_' . ($include_translations ? 'with_translations' : 'originals_only'));
+        // The user ID belongs in the key. The list is filtered by what this user may edit,
+        // so a cache shared between users would serve one user's private drafts to another.
+        $cache_key = 'polytrans_recent_posts_' . md5(
+            get_current_user_id() . '_' . $language . '_' . $limit . '_' . ($include_translations ? 'with_translations' : 'originals_only')
+        );
         $cached = \get_transient($cache_key);
         if (is_array($cached)) {
             wp_send_json_success(['posts' => $cached]);
         }
 
-        $posts = get_posts($args);
+        $posts = $this->filter_readable_posts(get_posts($args));
 
         $results = [];
         foreach ($posts as $post) {
@@ -274,6 +298,13 @@ class PostAutocomplete
         $post = get_post($post_id);
         if (!$post) {
             wp_send_json_error(['message' => 'Post not found']);
+            return;
+        }
+
+        // `edit_posts` above only says this user may author content. Handing back the full
+        // content of one specific post takes a capability on that post.
+        if (!current_user_can('edit_post', $post_id)) {
+            wp_send_json_error(['message' => 'Unauthorized'], 403);
             return;
         }
 

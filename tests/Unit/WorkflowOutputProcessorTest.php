@@ -7,7 +7,7 @@ use PolyTrans\PostProcessing\WorkflowOutputProcessor;
 if (!function_exists('get_current_user_id')) {
     function get_current_user_id()
     {
-        return 1;
+        return $GLOBALS['polytrans_test_current_user'] ?? 1;
     }
 }
 
@@ -103,6 +103,28 @@ if (!function_exists('wp_strip_all_tags')) {
     }
 }
 
+// --- Atrybucja: śledzimy każdą podmianę użytkownika, żeby dało się sprawdzić zakres. ---
+
+if (!function_exists('wp_set_current_user')) {
+    function wp_set_current_user($user_id)
+    {
+        $GLOBALS['polytrans_test_current_user'] = (int) $user_id;
+        $GLOBALS['polytrans_test_user_swaps'][] = (int) $user_id;
+
+        return (object) ['ID' => (int) $user_id];
+    }
+}
+
+// get_user_by() is stubbed by whichever unit-test file happens to declare it first
+// (MetadataManagerTest does), so this file must not assume which user object comes back.
+// What it does control is the capability answer, which is the branch under test.
+if (!function_exists('user_can')) {
+    function user_can($user, $capability, ...$args)
+    {
+        return (bool) ($GLOBALS['polytrans_test_user_can'] ?? false);
+    }
+}
+
 beforeEach(function () {
     $GLOBALS['polytrans_test_posts'] = [
         123 => (object) [
@@ -127,6 +149,9 @@ beforeEach(function () {
     $GLOBALS['polytrans_test_post_meta'] = [
         123 => [],
     ];
+    $GLOBALS['polytrans_test_current_user'] = 7;   // who actually made the request
+    $GLOBALS['polytrans_test_user_swaps'] = [];
+    $GLOBALS['polytrans_test_user_can'] = false;   // each test states what it needs
 });
 
 it('preserves uppercase post meta keys in production context refresh', function () {
@@ -158,4 +183,64 @@ it('preserves uppercase post meta keys in production context refresh', function 
     expect($GLOBALS['polytrans_test_post_meta'][123])->not->toHaveKey('translation_review');
     expect($result['updated_context']['translated']['meta']['TRANSLATION_REVIEW'])
         ->toBe('Review notes from the first assistant step.');
+});
+
+
+/*
+ * Atrybucja kredytuje zmianę, ale nie pożycza uprawnień.
+ *
+ * wp_set_current_user() odpowiada na dwa pytania naraz: kto jest zapisany jako autor
+ * zmiany i czyje uprawnienia obowiązują w czasie jej wykonywania. Feature potrzebuje
+ * tylko pierwszego, dlatego podmiana obejmuje wyłącznie sam zapis i zawsze się cofa.
+ */
+
+it('credits the attributed user, and only for the duration of the write', function () {
+    $GLOBALS['polytrans_test_user_can'] = true;
+    $processor = WorkflowOutputProcessor::get_instance();
+
+    $result = $processor->process_step_outputs(
+        ['success' => true, 'data' => ['ai_response' => 'Notes']],
+        [['type' => 'update_post_meta', 'source_variable' => 'ai_response', 'target' => 'NOTES']],
+        ['translated_post_id' => 123, 'target_language' => 'pl'],
+        false,
+        ['name' => 'W', 'attribution_user' => 42]
+    );
+
+    expect($result['success'])->toBeTrue();
+    // Swapped in for the write, swapped straight back out.
+    expect($GLOBALS['polytrans_test_user_swaps'])->toBe([42, 7]);
+    expect(get_current_user_id())->toBe(7);
+});
+
+it('ignores an attribution user who cannot edit the post', function () {
+    $GLOBALS['polytrans_test_user_can'] = false;
+    $processor = WorkflowOutputProcessor::get_instance();
+
+    $result = $processor->process_step_outputs(
+        ['success' => true, 'data' => ['ai_response' => 'Notes']],
+        [['type' => 'update_post_meta', 'source_variable' => 'ai_response', 'target' => 'NOTES']],
+        ['translated_post_id' => 123, 'target_language' => 'pl'],
+        false,
+        ['name' => 'W', 'attribution_user' => 42]
+    );
+
+    // The write still happens — as the requesting user, with no borrowed identity.
+    expect($result['success'])->toBeTrue();
+    expect($GLOBALS['polytrans_test_user_swaps'])->toBe([]);
+    expect(get_current_user_id())->toBe(7);
+});
+
+it('does not swap users in test mode', function () {
+    $GLOBALS['polytrans_test_user_can'] = true;
+    $processor = WorkflowOutputProcessor::get_instance();
+
+    $processor->process_step_outputs(
+        ['success' => true, 'data' => ['ai_response' => 'Notes']],
+        [['type' => 'update_post_meta', 'source_variable' => 'ai_response', 'target' => 'NOTES']],
+        ['translated_post_id' => 123, 'target_language' => 'pl'],
+        true,
+        ['name' => 'W', 'attribution_user' => 42]
+    );
+
+    expect($GLOBALS['polytrans_test_user_swaps'])->toBe([]);
 });

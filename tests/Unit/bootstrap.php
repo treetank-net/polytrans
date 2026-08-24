@@ -10,6 +10,10 @@ if (!defined('ABSPATH')) {
     define('ABSPATH', dirname(__DIR__, 2) . '/');
 }
 
+// Namespaced sanitizer functions: PSR-4 covers classes only, and the file guards itself
+// on ABSPATH, so it can only be loaded once the constant above exists.
+require_once dirname(__DIR__, 2) . '/includes/Core/sanitizers.php';
+
 if (!defined('POLYTRANS_PLUGIN_DIR')) {
     define('POLYTRANS_PLUGIN_DIR', dirname(__DIR__, 2) . '/');
 }
@@ -98,6 +102,18 @@ if (!function_exists('wp_json_encode')) {
 if (!function_exists('sanitize_text_field')) {
     function sanitize_text_field($str) {
         return htmlspecialchars(strip_tags($str), ENT_QUOTES, 'UTF-8');
+    }
+}
+
+if (!function_exists('wp_check_invalid_utf8')) {
+    function wp_check_invalid_utf8($string, $strip = false) {
+        if ($string === '') {
+            return '';
+        }
+        if (function_exists('mb_check_encoding') && mb_check_encoding($string, 'UTF-8')) {
+            return $string;
+        }
+        return $strip ? (string) mb_convert_encoding($string, 'UTF-8', 'UTF-8') : '';
     }
 }
 
@@ -252,6 +268,10 @@ if (!class_exists('WP_User')) {
         public $ID;
         public $user_email;
         public $roles = [];
+        // Declared, not dynamic: PHP 8.2 deprecates dynamic properties, and stubs that
+        // set display_name were reporting a deprecation for every test that touched them.
+        public $display_name = '';
+        public $user_login = '';
 
         public function __construct($id = 0, $email = '', $roles = [])
         {

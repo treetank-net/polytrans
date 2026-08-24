@@ -8,6 +8,7 @@ use PolyTrans\Assistants\AssistantManager;
 use PolyTrans\Assistants\AssistantExecutor;
 use PolyTrans\Core\LogsManager;
 use PolyTrans\Providers\ProviderRegistry;
+use PolyTrans\Core\Diagnostics;
 
 /**
  * OpenAI Provider
@@ -212,8 +213,7 @@ class OpenAIProvider implements TranslationProviderInterface
                 'error' => null
             ];
         } catch (\Exception $e) {
-            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Intentional error logging for debugging
-            error_log("[polytrans] OpenAI translation error: " . $e->getMessage());
+            Diagnostics::log("OpenAI translation error: " . $e->getMessage());
             LogsManager::log("OpenAI: exception: " . $e->getMessage(), "error");
             return [
                 'success' => false,

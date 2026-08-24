@@ -6,6 +6,7 @@ use PolyTrans\Providers\SettingsProviderInterface;
 use PolyTrans\Providers\ReasoningEffortField;
 use PolyTrans\Core\Http\HttpClient;
 use PolyTrans\Core\Http\HttpResponse;
+use PolyTrans\Core\Diagnostics;
 
 /**
  * Gemini Settings Provider
@@ -163,8 +164,7 @@ class GeminiSettingsProvider implements SettingsProviderInterface
             $response = $client->get($url);
             
             if ($response->is_error()) {
-                // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Intentional error logging for debugging
-                error_log('PolyTrans: Gemini API validation error: ' . $response->get_error_message());
+                Diagnostics::log('Gemini API validation error: ' . $response->get_error_message());
                 return false;
             }
             
@@ -182,13 +182,11 @@ class GeminiSettingsProvider implements SettingsProviderInterface
             }
             
             // Log for debugging
-            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Intentional error logging for debugging
-            error_log('PolyTrans: Gemini API validation failed. Status: ' . $response->get_status_code());
+            Diagnostics::log('Gemini API validation failed. Status: ' . $response->get_status_code());
             
             return false;
         } catch (\Exception $e) {
-            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Intentional error logging for debugging
-            error_log('PolyTrans: Gemini API validation exception: ' . $e->getMessage());
+            Diagnostics::log('Gemini API validation exception: ' . $e->getMessage());
             return false;
         }
     }
@@ -210,8 +208,7 @@ class GeminiSettingsProvider implements SettingsProviderInterface
             $response = $client->get($url);
             
             if ($response->is_error()) {
-                // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Intentional error logging for debugging
-                error_log('PolyTrans: Failed to fetch Gemini agents: ' . $response->get_error_message());
+                Diagnostics::log('Failed to fetch Gemini agents: ' . $response->get_error_message());
                 return [];
             }
             
@@ -244,12 +241,10 @@ class GeminiSettingsProvider implements SettingsProviderInterface
                     }
                 }
             } else {
-                // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Intentional error logging for debugging
-                error_log('PolyTrans: Gemini agents API returned status ' . $status_code);
+                Diagnostics::log('Gemini agents API returned status ' . $status_code);
             }
         } catch (\Exception $e) {
-            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Intentional error logging for debugging
-            error_log('PolyTrans: Exception fetching Gemini agents: ' . $e->getMessage());
+            Diagnostics::log('Exception fetching Gemini agents: ' . $e->getMessage());
         }
         
         return $assistants;
@@ -277,22 +272,19 @@ class GeminiSettingsProvider implements SettingsProviderInterface
             $response = $client->get($url);
             
             if (is_wp_error($response)) {
-                // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Intentional error logging for debugging
-                error_log('PolyTrans: Failed to fetch Gemini models: ' . $response->get_error_message());
+                Diagnostics::log('Failed to fetch Gemini models: ' . $response->get_error_message());
                 return [];
             }
 
             if ($response->get_status_code() !== 200) {
-                // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Intentional error logging for debugging
-                error_log('PolyTrans: Gemini models API returned status ' . $response->get_status_code());
+                Diagnostics::log('Gemini models API returned status ' . $response->get_status_code());
                 return [];
             }
 
             $data = $response->get_json(true);
 
             if (!isset($data['models']) || !is_array($data['models'])) {
-                // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Intentional error logging for debugging
-                error_log('PolyTrans: Gemini models API response missing data.');
+                Diagnostics::log('Gemini models API response missing data.');
                 return [];
             }
             
@@ -390,12 +382,10 @@ class GeminiSettingsProvider implements SettingsProviderInterface
                 return $grouped;
             }
             
-            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Intentional error logging for debugging
-            error_log('PolyTrans: Gemini models API returned no valid models after filtering.');
+            Diagnostics::log('Gemini models API returned no valid models after filtering.');
             return [];
         } catch (\Exception $e) {
-            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Intentional error logging for debugging
-            error_log('PolyTrans: Exception fetching Gemini models: ' . $e->getMessage());
+            Diagnostics::log('Exception fetching Gemini models: ' . $e->getMessage());
             return [];
         }
     }

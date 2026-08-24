@@ -18,6 +18,7 @@ use Twig\Loader\FilesystemLoader;
 use PolyTrans\Templating\TemplateAssets;
 use Twig\TwigFunction;
 use Twig\TwigFilter;
+use PolyTrans\Core\Diagnostics;
 
 if (!defined('ABSPATH')) {
     exit;
@@ -143,8 +144,7 @@ class TemplateRenderer
             
             return $return;
         } catch (\Throwable $e) {
-            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Intentional error logging for debugging
-            error_log(sprintf(
+            Diagnostics::log(sprintf(
                 '[PolyTrans] Template rendering failed: %s. Template: %s',
                 $e->getMessage(),
                 $template

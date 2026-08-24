@@ -6,8 +6,13 @@ stages:
 
 variables:
   PHP_VERSION: "8.1"
-  WP_CORE_VERSION: "6.8"
-  PLUGIN_CHECK_VERSION: "2.0.0"
+  # Both empty on purpose = current release. A pinned pair hides exactly the failures
+  # this gate exists to catch: `outdated_tested_upto_header` is an ERROR the moment
+  # WordPress ships a new version, and Plugin Check adds sniffs between releases. Pinned
+  # to 6.8 / 2.0.0, the pipeline stayed green while the reviewer's run on 7.1 reported an
+  # error. Pin them again only to reproduce a specific historical run.
+  WP_CORE_VERSION: ""
+  PLUGIN_CHECK_VERSION: ""
   # A previous Docker job may have left root-owned dependency files in the
   # reused shell-runner checkout. The gate jobs clean those exact paths below.
   GIT_CLEAN_FLAGS: "none"
@@ -118,10 +123,10 @@ plugin-check:
       -w /var/www/html
       --user root
       wordpress:cli-php8.2
-      sh -c "php -d memory_limit=2G /usr/local/bin/wp core download --version=${WP_CORE_VERSION} --allow-root --force
+      sh -c "php -d memory_limit=2G /usr/local/bin/wp core download ${WP_CORE_VERSION:+--version=$WP_CORE_VERSION} --allow-root --force
       && php -d memory_limit=2G /usr/local/bin/wp config create --allow-root --dbname=wp --dbuser=root --dbpass=pcp --dbhost=$DB --skip-check --force
       && php -d memory_limit=2G /usr/local/bin/wp core install --allow-root --url=http://example.test --title=pcp --admin_user=a --admin_password=a --admin_email=a@example.test --skip-email
-      && php -d memory_limit=2G /usr/local/bin/wp plugin install plugin-check --version=${PLUGIN_CHECK_VERSION} --allow-root --activate
+      && php -d memory_limit=2G /usr/local/bin/wp plugin install plugin-check ${PLUGIN_CHECK_VERSION:+--version=$PLUGIN_CHECK_VERSION} --allow-root --activate
       && php -d memory_limit=2G /usr/local/bin/wp plugin check polytrans --allow-root --exclude-directories=vendor,node_modules --format=csv"
       | tee pcp-report.csv
     - |

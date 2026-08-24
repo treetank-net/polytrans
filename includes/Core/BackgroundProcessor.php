@@ -44,176 +44,134 @@ class BackgroundProcessor
             }
         }
 
-        // Method 1: Try PHP execution functions if available
-        if (self::is_exec_available()) {
-            return self::spawn_exec($args, $action);
-        }
-
-        // Method 2: Use direct loopback HTTP request (most compatible)
+        // A loopback HTTP request, always. The earlier alternative shelled out to the
+        // PHP binary with a bootstrap script that included wp-load.php directly — a
+        // pattern the WordPress.org guidelines forbid, which also never ran in a release
+        // because that script is excluded from the distribution ZIP, so every host with
+        // exec() enabled silently got a failed dispatch and no fallback.
         return self::spawn_http_request($args, $action);
     }
 
     /**
-     * Check if exec() is available
-     * 
-     * @return bool True if exec() is available
+     * Sign a dispatch token for the loopback endpoint.
+     *
+     * Not a nonce, and deliberately so: wp_create_nonce() binds the value to the
+     * current user ID and session token. A loopback request carries no cookies, so
+     * the nonce is created for the logged-in admin and verified as an anonymous
+     * visitor — it can never match, and the dispatch fails with "Invalid nonce" on
+     * every host. The signature is derived from the one-time token with wp_hash()
+     * (site salts, no session) and compared with hash_equals(). The token itself is
+     * single-use: its transient is deleted as soon as the task has been handed over.
+     *
+     * @param string $token The dispatch token stored in the transient.
+     * @return string
      */
-    private static function is_exec_available()
+    public static function dispatch_signature($token)
     {
-        // Common disabled functions in PHP
-        $disabled_functions = array_map('trim', explode(',', ini_get('disable_functions')));
-        $exec_disabled = in_array('exec', $disabled_functions);
-        $system_disabled = in_array('system', $disabled_functions);
-        $shell_exec_disabled = in_array('shell_exec', $disabled_functions);
-
-        // Check if any exec function is available
-        if (!$exec_disabled && function_exists('exec')) {
-            return true;
-        }
-
-        if (!$shell_exec_disabled && function_exists('shell_exec')) {
-            return true;
-        }
-
-        if (!$system_disabled && function_exists('system')) {
-            return true;
-        }
-
-        return false;
+        return wp_hash('polytrans_bg|' . $token);
     }
 
     /**
-     * Spawn a background process using exec() or equivalent
-     * 
-     * @param array $args Arguments to pass to the process
-     * @param string $action The action to perform
-     * @return bool True if successful
+     * Build the loopback endpoint URL for a stored dispatch token.
+     *
+     * @param string $token  The dispatch token stored in the transient.
+     * @param string $action The action the endpoint should run.
+     * @return string
      */
-    private static function spawn_exec($args, $action)
+    public static function dispatch_url($token, $action)
     {
-        // Generate a unique token for this process
-        $token = md5(uniqid(wp_rand(), true));
+        return add_query_arg([
+            'polytrans_bg' => 1,
+            'token' => $token,
+            'action' => $action,
+            'signature' => self::dispatch_signature($token),
+        ], home_url('/'));
+    }
 
-        // Store the args in a transient for retrieval by the background process
-        set_transient('polytrans_bg_' . $token, [
-            'args' => $args,
-            'action' => $action
-        ], 3600); // expires in 1 hour
-
-        // Get path to the process task file
-        $process_file = POLYTRANS_PLUGIN_DIR . 'includes/process-task.php';
-        
-        if (!file_exists($process_file)) {
-            self::log("Background process spawn failed: process-task.php not found at $process_file", "error", [
-                'action' => $action,
-                'plugin_dir' => POLYTRANS_PLUGIN_DIR
-            ]);
-            return false;
+    /**
+     * Handle an incoming loopback dispatch request.
+     *
+     * Registered on init; authenticated by the HMAC signature above.
+     *
+     * @return void
+     */
+    public static function handle_request()
+    {
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Loopback dispatch, authenticated by the HMAC signature verified below; see dispatch_signature().
+        if (!isset($_GET['polytrans_bg'], $_GET['token'], $_GET['signature'])) {
+            return;
         }
 
-        // Get PHP binary
-        $php_binary = PHP_BINARY ?: 'php';
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Loopback dispatch, authenticated by the HMAC signature verified below; see dispatch_signature().
+        $token = sanitize_key(wp_unslash($_GET['token']));
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- This is the credential being verified; a nonce cannot be used on a request with no user session.
+        $signature = sanitize_text_field(wp_unslash($_GET['signature']));
 
-        // Build command with token as argument
-        // Note: We use transient for error logging instead of file (works with S3 uploads)
-        $cmd = "$php_binary $process_file $token > /dev/null 2>&1 &";
+        if ($token === '' || !hash_equals(self::dispatch_signature($token), $signature)) {
+            LogsManager::log(
+                'Background process request: invalid signature. Token: ' . ($token ?: 'missing'),
+                'error',
+                ['token' => $token]
+            );
+            return;
+        }
 
-        // Try multiple command execution methods
-        $success = false;
-        $output = '';
+        $data = get_transient('polytrans_bg_' . $token);
 
-        if (function_exists('exec')) {
-            @exec($cmd, $output, $return_var);
-            $success = ($return_var === 0);
-            if ($success) {
-                $log_context = [
-                    'cmd' => $cmd,
+        // Set headers to prevent caching and handle long-running process
+        header('Content-Type: text/html; charset=' . get_bloginfo('charset'));
+        header('X-Robots-Tag: noindex, nofollow');
+        header('Connection: close');
+
+        if (function_exists('ignore_user_abort')) {
+            ignore_user_abort(true);
+        }
+        if (function_exists('set_time_limit')) {
+            // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, Squiz.PHP.DiscouragedFunctions.Discouraged -- Best-effort for background processing; disabled on some hosts.
+            @set_time_limit(0);
+        }
+        // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- Buffer may be absent depending on server config.
+        @ob_end_flush();
+        flush();
+        if (function_exists('fastcgi_finish_request')) {
+            fastcgi_finish_request();
+        }
+
+        if (!$data) {
+            LogsManager::log(
+                'Background process request: no data found for token ' . $token,
+                'error',
+                ['token' => $token]
+            );
+            exit;
+        }
+
+        $args = $data['args'] ?? [];
+        $action = $data['action'] ?? 'process-translation';
+
+        // Consume the token before running: the task can take minutes, and a retry
+        // must not be able to start a second copy of the same work.
+        delete_transient('polytrans_bg_' . $token);
+
+        try {
+            self::process_task($args, $action);
+        } catch (\Throwable $e) {
+            LogsManager::log(
+                'BackgroundProcessor::process_task() failed: ' . $e->getMessage(),
+                'error',
+                [
                     'token' => $token,
                     'action' => $action,
-                    'process_file' => $process_file
-                ];
-                // Add post_id only if it exists (not for workflow tests)
-                if (isset($args['post_id'])) {
-                    $log_context['post_id'] = $args['post_id'];
-                }
-                if (isset($args['test_id'])) {
-                    $log_context['test_id'] = $args['test_id'];
-                }
-                self::log("Spawned background process with exec", "info", $log_context);
-            } else {
-                self::log("Failed to spawn background process with exec", "error", [
-                    'cmd' => $cmd,
-                    'return_var' => $return_var,
-                    'output' => $output,
-                    'token' => $token,
-                    'action' => $action
-                ]);
-            }
+                    'exception' => $e->getMessage(),
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'trace' => $e->getTraceAsString(),
+                ]
+            );
+            throw $e;
         }
 
-        // Try shell_exec if exec failed
-        if (!$success && function_exists('shell_exec')) {
-            @shell_exec($cmd);
-            $success = true; // Can't verify success with shell_exec
-            $log_context = [
-                'cmd' => $cmd,
-                'token' => $token,
-                'action' => $action,
-                'log_file' => $log_file,
-                'process_file' => $process_file
-            ];
-            if (isset($args['post_id'])) {
-                $log_context['post_id'] = $args['post_id'];
-            }
-            if (isset($args['test_id'])) {
-                $log_context['test_id'] = $args['test_id'];
-            }
-            self::log("Spawned background process with shell_exec", "info", $log_context);
-        }
-
-        // Try system if shell_exec failed
-        if (!$success && function_exists('system')) {
-            @system($cmd, $return_var);
-            $success = ($return_var === 0);
-            if ($success) {
-                $log_context = [
-                    'cmd' => $cmd,
-                    'token' => $token,
-                    'action' => $action,
-                    'process_file' => $process_file
-                ];
-                if (isset($args['post_id'])) {
-                    $log_context['post_id'] = $args['post_id'];
-                }
-                if (isset($args['test_id'])) {
-                    $log_context['test_id'] = $args['test_id'];
-                }
-                self::log("Spawned background process with system", "info", $log_context);
-            } else {
-                self::log("Failed to spawn background process with system", "error", [
-                    'cmd' => $cmd,
-                    'return_var' => $return_var,
-                    'token' => $token,
-                    'action' => $action
-                ]);
-            }
-        }
-
-        // Check transient for errors after 1 second to catch early errors
-        if ($success) {
-            // If FastCGI is available, finish request first (non-blocking for user)
-            if (function_exists('fastcgi_finish_request')) {
-                fastcgi_finish_request();
-            }
-            
-            // Wait 1 second for process to start and write initial errors to transient
-            sleep(1);
-            
-            // Check transient for errors (instead of log file - works with S3 uploads)
-            self::check_bg_errors_immediate($token, $action);
-        }
-
-        return $success;
+        exit;
     }
 
     /**
@@ -319,12 +277,7 @@ class BackgroundProcessor
         ], 3600); // expires in 1 hour
 
         // Build the URL to our processing endpoint
-        $url = add_query_arg([
-            'polytrans_bg' => 1,
-            'token' => $token,
-            'action' => $action,
-            'nonce' => wp_create_nonce('polytrans_bg_process')
-        ], home_url('/'));
+        $url = self::dispatch_url($token, $action);
 
         // Make a non-blocking request with multiple fallbacks
         $success = false;
@@ -972,124 +925,6 @@ class BackgroundProcessor
      * This is a static method that can be called during plugin activation
      * to debug table structure issues
      */
-    /**
-     * Check logs table and functionality on plugin activation
-     */
-    public static function check_on_activation()
-    {
-        global $wpdb;
-        $table_name = $wpdb->prefix . 'polytrans_logs';
-
-        // Load the logs manager
-        // Note: PolyTrans_Logs_Manager is autoloaded
-
-        // Check if the logs table exists
-        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-        $table_exists = $wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $table_name)) === $table_name;
-
-        if ($table_exists) {
-            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-            error_log("[polytrans] Logs table exists: $table_name");
-
-            // Check the table columns
-            // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Table name from trusted source ($wpdb->prefix)
-            $columns = $wpdb->get_results("SHOW COLUMNS FROM `{$table_name}`");
-            $column_names = [];
-
-            if ($columns) {
-                foreach ($columns as $col) {
-                    $column_names[] = $col->Field;
-                }
-                // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-                error_log("[polytrans] Logs table columns: " . implode(', ', $column_names));
-            } else {
-                // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-                error_log("[polytrans] Could not retrieve logs table columns");
-            }
-
-            // Add a test log entry
-            self::log("Plugin activated - test log entry from Background Processor", "info", [
-                'source' => 'activation_check'
-            ]);
-        } else {
-            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-            error_log("[polytrans] Logs table does not exist, using postmeta only");
-        }
-
-        // Test post meta logging
-        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- $wpdb->posts is a trusted WordPress core property
-        $test_post_id = $wpdb->get_var(
-            $wpdb->prepare("SELECT ID FROM `{$wpdb->posts}` WHERE post_type = %s ORDER BY ID DESC LIMIT 1", 'post')
-        );
-        if ($test_post_id) {
-            $meta_key = '_polytrans_activation_test';
-            update_post_meta($test_post_id, $meta_key, time());
-            $meta_value = get_post_meta($test_post_id, $meta_key, true);
-            if ($meta_value) {
-                // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-                error_log("[polytrans] Post meta test successful on post ID: $test_post_id");
-                // Clean up
-                delete_post_meta($test_post_id, $meta_key);
-            } else {
-                // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-                error_log("[polytrans] Post meta test failed on post ID: $test_post_id");
-            }
-        } else {
-            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-            error_log("[polytrans] No posts found to test post meta");
-        }
-    }
-
-    /**
-     * Check background process errors from transient immediately for early errors
-     * 
-     * Background process writes errors to transient 'polytrans_bg_errors_{token}'
-     * This method checks that transient after 1 second and logs to LogsManager
-     * 
-     * @param string $token Process token
-     * @param string $action Process action
-     * @return void
-     */
-    private static function check_bg_errors_immediate($token, $action)
-    {
-        $error_transient_key = 'polytrans_bg_errors_' . $token;
-        $errors = get_transient($error_transient_key);
-        
-        if (empty($errors)) {
-            return; // No errors yet
-        }
-
-        // Log errors to LogsManager
-        if (is_array($errors)) {
-            foreach ($errors as $error) {
-                self::log(
-                    "Background process error detected: " . ($error['message'] ?? 'Unknown error'),
-                    "error",
-                    [
-                        'token' => $token,
-                        'action' => $action,
-                        'error' => $error
-                    ]
-                );
-            }
-        } else {
-            // Fallback for string errors
-            self::log(
-                "Background process error detected: " . $errors,
-                "error",
-                [
-                    'token' => $token,
-                    'action' => $action
-                ]
-            );
-        }
-        
-        // Clean up transient after reading
-        delete_transient($error_transient_key);
-    }
-
     /**
      * Filter meta based on managed assistant's output schema
      *

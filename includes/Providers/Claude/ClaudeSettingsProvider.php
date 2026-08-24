@@ -6,6 +6,7 @@ use PolyTrans\Providers\SettingsProviderInterface;
 use PolyTrans\Providers\ReasoningEffortField;
 use PolyTrans\Core\Http\HttpClient;
 use PolyTrans\Core\Http\HttpResponse;
+use PolyTrans\Core\Diagnostics;
 
 /**
  * Claude Settings Provider
@@ -154,8 +155,7 @@ class ClaudeSettingsProvider implements SettingsProviderInterface
             $response = $client->get('/models');
             
             if ($response->is_error()) {
-                // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Intentional error logging for debugging
-                error_log('PolyTrans Claude API validation error: ' . $response->get_error_message());
+                Diagnostics::log('PolyTrans Claude API validation error: ' . $response->get_error_message());
                 return false;
             }
             
@@ -178,13 +178,11 @@ class ClaudeSettingsProvider implements SettingsProviderInterface
             
             // Log for debugging
             $response_body = wp_remote_retrieve_body($response);
-            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Intentional error logging for debugging
-            error_log('PolyTrans Claude API validation failed. Status: ' . $status_code . ', Response: ' . substr($response_body, 0, 200));
+            Diagnostics::log('PolyTrans Claude API validation failed. Status: ' . $status_code . ', Response: ' . substr($response_body, 0, 200));
             
             return false;
         } catch (\Exception $e) {
-            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Intentional error logging for debugging
-            error_log('PolyTrans Claude API validation exception: ' . $e->getMessage());
+            Diagnostics::log('PolyTrans Claude API validation exception: ' . $e->getMessage());
             return false;
         }
     }
@@ -223,8 +221,7 @@ class ClaudeSettingsProvider implements SettingsProviderInterface
                         $data = $response->get_json(true);
                         
                         // Log response for debugging
-                        // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Intentional error logging for debugging
-                        error_log('PolyTrans: Claude prompts API (' . $endpoint_url . ') response received');
+                        Diagnostics::log('Claude prompts API (' . $endpoint_url . ') response received');
                         
                         // Claude Prompts API might return prompts in 'data' array or directly
                         $prompts = $data['data'] ?? $data['prompts'] ?? (is_array($data) && !isset($data['error']) ? $data : []);
@@ -249,37 +246,31 @@ class ClaudeSettingsProvider implements SettingsProviderInterface
                             }
                             
                             if (!empty($assistants)) {
-                                // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Intentional error logging for debugging
-                                error_log('PolyTrans: Loaded ' . count($assistants) . ' Claude prompts from ' . $endpoint_url);
+                                Diagnostics::log('Loaded ' . count($assistants) . ' Claude prompts from ' . $endpoint_url);
                                 return $assistants;
                             }
                         }
                     } else if ($response->get_status_code() !== 404) {
                         // Log non-404 errors (404 means endpoint doesn't exist, which is expected for some endpoints)
-                        // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Intentional error logging for debugging
-                        error_log('PolyTrans: Claude prompts API (' . $endpoint_url . ') returned status ' . $response->get_status_code());
+                        Diagnostics::log('Claude prompts API (' . $endpoint_url . ') returned status ' . $response->get_status_code());
                     }
                 } else {
-                    // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Intentional error logging for debugging
-                    error_log('PolyTrans: Failed to fetch Claude prompts from ' . $endpoint_url . ': ' . $response->get_error_message());
+                    Diagnostics::log('Failed to fetch Claude prompts from ' . $endpoint_url . ': ' . $response->get_error_message());
                 }
             } catch (\Exception $e) {
-                // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Intentional error logging for debugging
-                error_log('PolyTrans: Exception fetching Claude prompts from ' . $endpoint_url . ': ' . $e->getMessage());
+                Diagnostics::log('Exception fetching Claude prompts from ' . $endpoint_url . ': ' . $e->getMessage());
             }
         }
 
         // If no prompts found, log that we tried all endpoints
-        // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Intentional error logging for debugging
-        error_log('PolyTrans: No Claude prompts found. Tried endpoints: ' . implode(', ', $possible_endpoints));
+        Diagnostics::log('No Claude prompts found. Tried endpoints: ' . implode(', ', $possible_endpoints));
         
         // Fallback: Try Claude Projects API (older approach, might be deprecated)
         try {
             $response = $client->get('https://api.anthropic.com/v1/projects');
             
             if ($response->is_error()) {
-                // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Intentional error logging for debugging
-                error_log('PolyTrans: Failed to fetch Claude projects: ' . $response->get_error_message());
+                Diagnostics::log('Failed to fetch Claude projects: ' . $response->get_error_message());
                 return $assistants; // Return whatever we got from prompts
             }
             
@@ -308,8 +299,7 @@ class ClaudeSettingsProvider implements SettingsProviderInterface
                 }
             }
         } catch (\Exception $e) {
-            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Intentional error logging for debugging
-            error_log('PolyTrans: Exception fetching Claude projects: ' . $e->getMessage());
+            Diagnostics::log('Exception fetching Claude projects: ' . $e->getMessage());
         }
 
         return $assistants;
@@ -339,22 +329,19 @@ class ClaudeSettingsProvider implements SettingsProviderInterface
             $response = $client->get('/models');
             
             if ($response->is_error()) {
-                // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Intentional error logging for debugging
-                error_log('PolyTrans: Failed to fetch Claude models: ' . $response->get_error_message());
+                Diagnostics::log('Failed to fetch Claude models: ' . $response->get_error_message());
                 return [];
             }
 
             if ($response->get_status_code() !== 200) {
-                // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Intentional error logging for debugging
-                error_log('PolyTrans: Claude models API returned status ' . $response->get_status_code());
+                Diagnostics::log('Claude models API returned status ' . $response->get_status_code());
                 return [];
             }
 
             $data = $response->get_json(true);
 
             if (!isset($data['data']) || !is_array($data['data'])) {
-                // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Intentional error logging for debugging
-                error_log('PolyTrans: Claude models API response missing data.');
+                Diagnostics::log('Claude models API response missing data.');
                 return [];
             }
             
@@ -414,8 +401,7 @@ class ClaudeSettingsProvider implements SettingsProviderInterface
                         }
                     } catch (\Exception $e) {
                         // If date parsing fails, include the model anyway
-                        // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Intentional error logging for debugging
-                        error_log('PolyTrans: Failed to parse Claude model created_at: ' . $e->getMessage());
+                        Diagnostics::log('Failed to parse Claude model created_at: ' . $e->getMessage());
                     }
                 }
                 
@@ -436,8 +422,7 @@ class ClaudeSettingsProvider implements SettingsProviderInterface
             }
             
             // Log for debugging
-            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Intentional error logging for debugging
-            error_log(sprintf(
+            Diagnostics::log(sprintf(
                 'PolyTrans: Claude models API - Processed: %d, Filtered out: %d, Included: %d',
                 $models_processed,
                 $models_filtered_out,
@@ -460,12 +445,10 @@ class ClaudeSettingsProvider implements SettingsProviderInterface
                 return $grouped;
             }
             
-            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Intentional error logging for debugging
-            error_log('PolyTrans: Claude models API returned no valid models after filtering.');
+            Diagnostics::log('Claude models API returned no valid models after filtering.');
             return [];
         } catch (\Exception $e) {
-            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Intentional error logging for debugging
-            error_log('PolyTrans: Exception fetching Claude models: ' . $e->getMessage());
+            Diagnostics::log('Exception fetching Claude models: ' . $e->getMessage());
             return [];
         }
     }

@@ -195,8 +195,13 @@
 <br><small>{{ __('Secret for authenticating to the receiver. Passed to the translator in the payload.', 'polytrans') }}</small><br><br>
 
 <h4>{{ __('How to Pass Receiver Secret', 'polytrans') }}</h4>
+{% if unauthenticated_refused|default(false) %}
+<div class="notice notice-warning inline"><p>{{ unauthenticated_notice|default('')|esc_html }}</p></div>
+{% endif %}
 <select name="translation_receiver_secret_method" id="translation-receiver-secret-method" style="width:100%;max-width:400px;">
-    <option value="none" {{ selected(receiver_method, 'none') }}>{{ __('None (do not send secret)', 'polytrans') }}</option>
+    {% if allow_unauthenticated|default(false) %}
+    <option value="none" {{ selected(receiver_method, 'none') }}>{{ __('None — accept unauthenticated requests (enabled in wp-config.php)', 'polytrans') }}</option>
+    {% endif %}
     <option value="get_param" {{ selected(receiver_method, 'get_param') }}>{{ __('GET parameter (?secret=...)', 'polytrans') }}</option>
     <option value="header_bearer" {{ selected(receiver_method, 'header_bearer') }}>{{ __('HTTP Header: Authorization: Bearer ...', 'polytrans') }}</option>
     <option value="header_custom" {{ selected(receiver_method, 'header_custom') }}>{{ __('HTTP Header: Custom Header Name', 'polytrans') }}</option>

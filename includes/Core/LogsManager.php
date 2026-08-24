@@ -70,8 +70,7 @@ class LogsManager
         delete_option('polytrans_logs_table_needed');
 
         // Log successful creation
-        // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-        error_log("[polytrans] Created logs table $table_name");
+        Diagnostics::log("Created logs table $table_name");
 
         return true;
     }
@@ -89,8 +88,7 @@ class LogsManager
 
         // If we have an empty array, something went wrong with the table
         if (empty($existing_columns)) {
-            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-            error_log("[polytrans] Error checking logs table structure: Could not retrieve columns");
+            Diagnostics::log("Error checking logs table structure: Could not retrieve columns");
             return;
         }
 
@@ -145,8 +143,7 @@ class LogsManager
                 $sql = self::build_add_column_sql($table_name, $column_name, $expected);
 				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Plugin table migration with safe internal schema definitions
                 $wpdb->query($sql);
-                // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-                error_log("[polytrans] Added missing column '$column_name' to logs table");
+                Diagnostics::log("Added missing column '$column_name' to logs table");
             } else {
                 // Column exists - check if type matches
                 $existing = $existing_columns[$column_name];
@@ -158,23 +155,20 @@ class LogsManager
                 if ($expected_type !== $existing_type) {
                     // Type mismatch detected - this indicates corrupted data
                     $data_corrupted = true;
-                    // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-                    error_log("[polytrans] Type mismatch detected for column '$column_name': expected '$expected_type', found '$existing_type'");
+                    Diagnostics::log("Type mismatch detected for column '$column_name': expected '$expected_type', found '$existing_type'");
                 }
 
                 // Check if NULL constraint matches
                 if ($expected['null'] !== $existing['null']) {
                     $data_corrupted = true;
-                    // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-                    error_log("[polytrans] NULL constraint mismatch for column '$column_name': expected '{$expected['null']}', found '{$existing['null']}'");
+                    Diagnostics::log("NULL constraint mismatch for column '$column_name': expected '{$expected['null']}', found '{$existing['null']}'");
                 }
             }
         }
 
         // If data corruption detected, clean and recreate table
         if ($data_corrupted) {
-            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-            error_log("[polytrans] Data corruption detected in logs table. Cleaning and recreating table structure.");
+            Diagnostics::log("Data corruption detected in logs table. Cleaning and recreating table structure.");
             self::clean_and_recreate_logs_table($table_name);
         } else {
             // Add indexes if they don't exist
@@ -202,16 +196,14 @@ class LogsManager
             );
 
             if ($existing_data) {
-                // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-                error_log("[polytrans] Attempting to salvage " . count($existing_data) . " recent log entries");
+                Diagnostics::log("Attempting to salvage " . count($existing_data) . " recent log entries");
                 $backup_data = $existing_data;
             }
 
             // Drop the corrupted table
             // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange -- Plugin table maintenance
             $wpdb->query("DROP TABLE IF EXISTS `{$wpdb->prefix}polytrans_logs`");
-            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-            error_log("[polytrans] Dropped corrupted logs table");
+            Diagnostics::log("Dropped corrupted logs table");
 
             // Get charset collate
             $charset_collate = $wpdb->get_charset_collate();
@@ -240,20 +232,17 @@ class LogsManager
             $result = $wpdb->query($sql);
 
             if ($result !== false) {
-                // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-                error_log("[polytrans] Successfully recreated logs table with correct structure");
+                Diagnostics::log("Successfully recreated logs table with correct structure");
 
                 // Try to restore salvageable data
                 if (!empty($backup_data)) {
                     self::restore_salvageable_data($table_name, $backup_data);
                 }
             } else {
-                // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-                error_log("[polytrans] Failed to recreate logs table: " . $wpdb->last_error);
+                Diagnostics::log("Failed to recreate logs table: " . $wpdb->last_error);
             }
         } catch (\Exception $e) {
-            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-            error_log("[polytrans] Error during table cleanup and recreation: " . $e->getMessage());
+            Diagnostics::log("Error during table cleanup and recreation: " . $e->getMessage());
         }
     }
 
@@ -305,13 +294,11 @@ class LogsManager
                 }
             } catch (\Exception $e) {
                 $failed_count++;
-                // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-                error_log("[polytrans] Failed to restore log entry: " . $e->getMessage());
+                Diagnostics::log("Failed to restore log entry: " . $e->getMessage());
             }
         }
 
-        // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-        error_log("[polytrans] Data restoration complete: $restored_count entries restored, $failed_count failed");
+        Diagnostics::log("Data restoration complete: $restored_count entries restored, $failed_count failed");
     }
 
     /**
@@ -345,8 +332,7 @@ class LogsManager
                     continue;
                 } else {
                     // Index exists but on different column - drop and recreate
-                    // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-                    error_log("[polytrans] Index '$index_name' exists but on wrong column (expected '$column_name', found '{$existing_indexes[$index_name]}'). Recreating.");
+                    Diagnostics::log("Index '$index_name' exists but on wrong column (expected '$column_name', found '{$existing_indexes[$index_name]}'). Recreating.");
 					// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Plugin table maintenance; identifiers cannot be prepared: table from $wpdb->prefix, index name from the hardcoded $indexes map above.
                     $wpdb->query("ALTER TABLE `{$wpdb->prefix}polytrans_logs` DROP INDEX `$index_name`");
                 }
@@ -356,8 +342,7 @@ class LogsManager
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Plugin table maintenance; identifiers cannot be prepared: table from $wpdb->prefix, index and column names from the hardcoded $indexes map above.
             $result = $wpdb->query("ALTER TABLE `{$wpdb->prefix}polytrans_logs` ADD INDEX `$index_name` (`$column_name`)");
             if ($result === false) {
-                // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-                error_log("[polytrans] Failed to add index '$index_name' on column '$column_name': " . $wpdb->last_error);
+                Diagnostics::log("Failed to add index '$index_name' on column '$column_name': " . $wpdb->last_error);
             }
         }
     }
@@ -623,8 +608,7 @@ class LogsManager
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Query built with $wpdb->prepare() for all user inputs
         $logs = $wpdb->get_results($sql);
         if ($logs === null) {
-            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-            error_log("[polytrans] Error fetching logs: " . $wpdb->last_error);
+            Diagnostics::log("Error fetching logs: " . $wpdb->last_error);
             return [];
         }
 
@@ -668,8 +652,7 @@ class LogsManager
 
         // If we can't find a date column, we can't delete by date
         if (!$date_column) {
-            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-            error_log("[polytrans] Cannot clear logs: No date column found in logs table");
+            Diagnostics::log("Cannot clear logs: No date column found in logs table");
             return 0;
         }
 
@@ -683,8 +666,7 @@ class LogsManager
         );
 
         if ($result === false) {
-            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-            error_log("[polytrans] Error clearing logs: " . $wpdb->last_error);
+            Diagnostics::log("Error clearing logs: " . $wpdb->last_error);
             return 0;
         }
 
@@ -779,9 +761,6 @@ class LogsManager
      */
     public static function admin_logs_page()
     {
-        // Include necessary WordPress files
-        require_once(ABSPATH . 'wp-admin/includes/class-wp-list-table.php');
-
         // Check if the logs table exists
         $table_exists = self::logs_table_exists();
 
@@ -927,8 +906,7 @@ class LogsManager
     {
         // Always log to WordPress error log
         $context_string = !empty($context) ? ' | Context: ' . wp_json_encode($context) : '';
-        // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-        error_log("[polytrans] [$level] $message $context_string");
+        Diagnostics::log("[$level] $message $context_string");
 
         // If database logging is disabled, we're done
         if (!self::is_db_logging_enabled()) {
@@ -958,8 +936,7 @@ class LogsManager
 
             // If no columns were retrieved, don't try to insert
             if (empty($existing_columns) || is_null($existing_columns)) {
-                // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-                error_log("[polytrans] Could not determine columns for $table_name, skipping database logging");
+                Diagnostics::log("Could not determine columns for $table_name, skipping database logging");
                 return false;
             }
 
@@ -1025,19 +1002,16 @@ class LogsManager
                 // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
                 $result = $wpdb->insert($table_name, $data);
                 if ($result === false) {
-                    // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-                    error_log("[polytrans] Database error when inserting log: " . $wpdb->last_error);
+                    Diagnostics::log("Database error when inserting log: " . $wpdb->last_error);
                     return false;
                 }
                 return true;
             } else {
-                // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-                error_log("[polytrans] Missing required columns for logging to database");
+                Diagnostics::log("Missing required columns for logging to database");
                 return false;
             }
         } catch (\Exception $e) {
-            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-            error_log("[polytrans] Error logging to database: " . $e->getMessage());
+            Diagnostics::log("Error logging to database: " . $e->getMessage());
             return false;
         }
     }

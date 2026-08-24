@@ -8,6 +8,7 @@
 namespace PolyTrans\Menu;
 
 use PolyTrans\Templating\TemplateRenderer;
+use function PolyTrans\Core\sanitize_prompt_template;
 
 if (!defined('ABSPATH')) {
     exit;
@@ -112,8 +113,12 @@ class TagTranslation
         // Determine current post language
         $post_lang = '';
         $source_language = $settings['source_language'] ?? 'pl';
-        if (function_exists('pll_get_post_language') && isset($_GET['post'])) {
-            $post_lang = pll_get_post_language(intval($_GET['post']), 'slug');
+        // Read-only: the post ID of the edit screen being rendered, used to pick the tag
+        // language. Nothing is written, so there is no form submission to attach a nonce to.
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only screen context, no state change.
+        $edited_post_id = isset($_GET['post']) ? absint(wp_unslash($_GET['post'])) : 0;
+        if (function_exists('pll_get_post_language') && $edited_post_id > 0) {
+            $post_lang = pll_get_post_language($edited_post_id, 'slug');
         }
         if (empty($post_lang) && function_exists('pll_current_language')) {
             $post_lang = pll_current_language('slug');
@@ -469,7 +474,8 @@ class TagTranslation
             wp_die('Unauthorized', 403);
         }
 
-        $csv_content = isset($_POST['csv']) ? wp_unslash($_POST['csv']) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- CSV content needs to preserve formatting
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitized on this line by PolyTrans\Core\sanitize_prompt_template(); Plugin Check runs PHPCS with its own bundled ruleset, which cannot be given customSanitizingFunctions, and WPCS only accepts a sanitizer reached as a plain function call.
+        $csv_content = isset($_POST['csv']) ? sanitize_prompt_template(wp_unslash($_POST['csv'])) : '';
         if (empty($csv_content)) {
             wp_send_json_error(['message' => __('No CSV data provided.', 'polytrans')]);
         }

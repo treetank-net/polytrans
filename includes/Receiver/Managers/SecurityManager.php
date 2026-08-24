@@ -2,6 +2,9 @@
 
 namespace PolyTrans\Receiver\Managers;
 
+use PolyTrans\Core\EndpointAuth;
+use PolyTrans\Core\Diagnostics;
+
 /**
  * Handles security validation for translation receiver endpoints.
  */
@@ -25,17 +28,23 @@ class SecurityManager
         $method = isset($settings['translation_receiver_secret_method']) ? $settings['translation_receiver_secret_method'] : 'header_bearer';
         $custom_header_name = isset($settings['translation_receiver_secret_custom_header']) ? $settings['translation_receiver_secret_custom_header'] : 'x-polytrans-secret';
 
-        // Only an explicit choice of "none" opens this endpoint. A missing secret is a
-        // half-finished configuration, not consent — this endpoint creates posts.
-        if ($method === 'none') {
-            return true;
+        // "none" alone is not consent. It opens this endpoint only together with
+        // POLYTRANS_ALLOW_UNAUTHENTICATED_ENDPOINTS in wp-config.php, because this
+        // endpoint creates posts and triggers workflows. See EndpointAuth.
+        if (EndpointAuth::is_unauthenticated_method($method)) {
+            if (EndpointAuth::allows_unauthenticated()) {
+                return true;
+            }
+
+            \PolyTrans_Logs_Manager::log(EndpointAuth::refusal_message(), 'warning');
+
+            return false;
         }
 
         if (!$secret) {
             \PolyTrans_Logs_Manager::log(
                 'Translation receiver request rejected: no receiver secret is configured. '
-                    . 'Set one under PolyTrans → Settings → Advanced, or set the authentication '
-                    . 'method to "none" to accept unauthenticated requests deliberately.',
+                    . 'Set one under PolyTrans → Settings → Advanced.',
                 'warning'
             );
             return false;
@@ -96,8 +105,7 @@ class SecurityManager
             }
         }
 
-        // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-        error_log("[polytrans] Translation receiver IP restriction failed for IP: $client_ip");
+        Diagnostics::log("Translation receiver IP restriction failed for IP: $client_ip");
         return false;
     }
 

@@ -146,6 +146,11 @@ it('dispatches async jobs into transient storage and starts loopback worker', fu
 
     expect($loopbacks[1]['url'])->toContain('polytrans_bg=1');
     expect($loopbacks[1]['url'])->toContain('action=async_job');
+    // The loopback carries no cookies, so a nonce created for the logged-in admin is
+    // verified as anonymous and can never match. The endpoint authenticates on an
+    // HMAC signature instead; a nonce on this URL is the bug, not the credential.
+    expect($loopbacks[1]['url'])->toContain('signature=');
+    expect($loopbacks[1]['url'])->not->toContain('nonce=');
     expect($loopbacks[1]['args']['blocking'])->toBeFalse();
     expect((float) $loopbacks[1]['args']['timeout'])->toBe(0.1);
 
@@ -155,6 +160,8 @@ it('dispatches async jobs into transient storage and starts loopback worker', fu
         ARRAY_FILTER_USE_BOTH
     );
     expect($backgroundJobs)->toHaveCount(1);
+    $bg_token = substr((string) array_key_first($backgroundJobs), strlen('polytrans_bg_'));
+    expect($loopbacks[1]['url'])->toContain('signature=' . wp_hash('polytrans_bg|' . $bg_token));
     $backgroundJob = array_values($backgroundJobs)[0]['value'];
     expect($backgroundJob['action'])->toBe('async_job');
     expect($backgroundJob['args']['job_id'])->toBe($jobId);

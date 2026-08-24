@@ -2,6 +2,8 @@
 
 namespace PolyTrans\Core;
 
+use function PolyTrans\Core\sanitize_prompt_template;
+
 /**
  * Translation Meta Box Class
  */

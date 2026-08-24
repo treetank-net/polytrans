@@ -12,6 +12,8 @@ use PolyTrans\PostProcessing\Providers\ArticlesDataProvider;
 use PolyTrans\PostProcessing\Steps\AiAssistantStep;
 use PolyTrans\PostProcessing\Steps\PredefinedAssistantStep;
 use PolyTrans\PostProcessing\Steps\ManagedAssistantStep;
+use function PolyTrans\Core\sanitize_input_deep;
+use function PolyTrans\Core\sanitize_prompt_template;
 
 /**
  * Workflow Manager
@@ -700,15 +702,26 @@ class WorkflowManager
         }
 
         // Get test data from request
-        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Complex nested array, sanitized per-field during workflow execution
-        $workflow_data = wp_unslash($_POST['workflow'] ?? []);
-        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Complex nested array, sanitized per-field during workflow execution
-        $test_context = wp_unslash($_POST['test_context'] ?? []);
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitized on this line by PolyTrans\Core\sanitize_input_deep(); Plugin Check runs PHPCS with its own bundled ruleset, which cannot be given customSanitizingFunctions, and WPCS only accepts a sanitizer reached as a plain function call.
+        $workflow_data = sanitize_input_deep(wp_unslash($_POST['workflow'] ?? []));
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitized on this line by PolyTrans\Core\sanitize_input_deep(); Plugin Check runs PHPCS with its own bundled ruleset, which cannot be given customSanitizingFunctions, and WPCS only accepts a sanitizer reached as a plain function call.
+        $test_context = sanitize_input_deep(wp_unslash($_POST['test_context'] ?? []));
 
         // Validate workflow data
         if (empty($workflow_data)) {
             wp_send_json_error('No workflow data provided');
             return;
+        }
+
+        // A test run reads the named posts into the prompt and returns the result to the
+        // caller, so the post IDs in the context need the same per-post check as a real run.
+        // Test mode changes what is written, not what may be read.
+        foreach (['translated_post_id', 'original_post_id'] as $context_key) {
+            $context_post_id = intval($test_context[$context_key] ?? 0);
+            if ($context_post_id > 0 && !current_user_can('edit_post', $context_post_id)) {
+                wp_send_json_error(['message' => 'Insufficient permissions for post ' . $context_post_id]);
+                return;
+            }
         }
 
         // Generate unique test ID
@@ -819,6 +832,16 @@ class WorkflowManager
         // If original_post_id not provided, use translated_post_id
         if (empty($original_post_id)) {
             $original_post_id = $translated_post_id;
+        }
+
+        // `edit_posts` above says this user may author content; it says nothing about these
+        // two posts. A workflow rewrites the post it runs on and reads the original into the
+        // prompt, so both need a capability check on the actual ID that arrived in the request.
+        foreach (array_unique([$translated_post_id, $original_post_id]) as $checked_post_id) {
+            if (!current_user_can('edit_post', $checked_post_id)) {
+                wp_send_json_error(['error' => 'Insufficient permissions for post ' . $checked_post_id]);
+                return;
+            }
         }
 
         // Get workflow

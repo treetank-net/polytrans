@@ -14,6 +14,7 @@
 namespace PolyTrans\Assistants;
 
 use PolyTrans\Providers\ProviderRegistry;
+use PolyTrans\Core\Diagnostics;
 
 if (! defined('ABSPATH')) {
 	exit;
@@ -75,8 +76,7 @@ class AssistantManager
 			}
 		} catch (\Exception $e) {
 			// Fallback to hardcoded list if registry fails
-			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log("[PolyTrans] Failed to get providers from registry: " . $e->getMessage());
+			Diagnostics::log("Failed to get providers from registry: " . $e->getMessage());
 		}
 		
 		// Fallback to hardcoded list if no providers found

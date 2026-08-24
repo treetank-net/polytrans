@@ -2,6 +2,8 @@
 
 namespace PolyTrans\PostProcessing;
 
+use PolyTrans\Core\LogsManager;
+use PolyTrans\Core\UserContext;
 use PolyTrans\PostProcessing\Providers\PostDataProvider;
 
 /**
@@ -38,6 +40,78 @@ class WorkflowOutputProcessor
     }
 
     /**
+     * Resolves which user should be credited with the changes this workflow makes.
+     *
+     * Attribution is a real feature: an editor configures a workflow, and the revisions it
+     * produces should carry a name rather than "nobody". What it must not become is a way
+     * to borrow somebody's permissions. A workflow is saved by anyone who can `edit_posts`
+     * and names an arbitrary existing user, so the attributed user is verified against the
+     * very post being changed — crediting a change to someone who could not have made it is
+     * exactly where an attribution field turns into privilege escalation.
+     *
+     * @return int|null User ID to credit, or null to run as whoever made the request.
+     */
+    private function resolve_attribution_user($workflow, $context, $test_mode)
+    {
+        if ($test_mode || !$workflow || empty($workflow['attribution_user'])) {
+            return null;
+        }
+
+        $attribution_user_id = intval($workflow['attribution_user']);
+        if ($attribution_user_id <= 0) {
+            return null;
+        }
+
+        $attribution_user = get_user_by('id', $attribution_user_id);
+        if (!$attribution_user) {
+            LogsManager::log("Attribution user {$attribution_user_id} not found; running as the requesting user", 'warning', [
+                'source' => 'workflow_output_processor',
+                'invalid_attribution_user' => $attribution_user_id,
+                'workflow_name' => $workflow['name'] ?? 'Unknown',
+            ]);
+
+            return null;
+        }
+
+        $post_id = intval($context['translated_post_id'] ?? $context['original_post_id'] ?? 0);
+        if ($post_id > 0 && !user_can($attribution_user, 'edit_post', $post_id)) {
+            LogsManager::log("Attribution user {$attribution_user_id} cannot edit post {$post_id}; running as the requesting user", 'warning', [
+                'source' => 'workflow_output_processor',
+                'attribution_user' => $attribution_user_id,
+                'post_id' => $post_id,
+                'workflow_name' => $workflow['name'] ?? 'Unknown',
+            ]);
+
+            return null;
+        }
+
+        LogsManager::log("Crediting workflow changes to user {$attribution_user_id} ({$attribution_user->display_name})", 'info', [
+            'source' => 'workflow_output_processor',
+            'attribution_user' => $attribution_user_id,
+            'post_id' => $post_id,
+            'workflow_name' => $workflow['name'] ?? 'Unknown',
+        ]);
+
+        return $attribution_user_id;
+    }
+
+    /**
+     * Runs a single write with the attributed user as the current user.
+     *
+     * The swap covers one write and nothing else — model calls, context refreshes and
+     * other plugins' hooks on our pipeline keep running as the user who actually made
+     * the request. Whether this user may be borrowed at all was decided in
+     * resolve_attribution_user(); the mechanics live in Core\UserContext.
+     *
+     * @param int|null $attribution_user_id User to credit, or null for no swap.
+     * @param callable $write               The write to perform.
+     */
+    private function with_attribution($attribution_user_id, callable $write)
+    {
+        return UserContext::run_as((int) $attribution_user_id, $write);
+    }
+
+    /**
      * Process step outputs according to configured actions
      * Returns change objects that describe what would happen
      */
@@ -61,34 +135,9 @@ class WorkflowOutputProcessor
         // Ensure context has current post data for accurate "before" values
         $updated_context = $this->ensure_context_has_post_data($updated_context);
 
-        // Handle user attribution if specified in workflow
-        $original_user_id = get_current_user_id();
-        $attribution_user_id = null;
-
-        if (!$test_mode && $workflow && isset($workflow['attribution_user']) && !empty($workflow['attribution_user'])) {
-            $attribution_user_id = intval($workflow['attribution_user']);
-            if ($attribution_user_id > 0) {
-                $attribution_user = get_user_by('id', $attribution_user_id);
-                if ($attribution_user) {
-                    wp_set_current_user($attribution_user_id);
-                    \PolyTrans_Logs_Manager::log("Setting current user to {$attribution_user_id} ({$attribution_user->display_name}) for workflow changes", 'info', [
-                        'source' => 'workflow_output_processor',
-                        'original_user' => $original_user_id,
-                        'attribution_user' => $attribution_user_id,
-                        'attribution_user_name' => $attribution_user->display_name,
-                        'workflow_name' => $workflow['name'] ?? 'Unknown'
-                    ]);
-                } else {
-                    \PolyTrans_Logs_Manager::log("Attribution user {$attribution_user_id} not found, using original user {$original_user_id}", 'warning', [
-                        'source' => 'workflow_output_processor',
-                        'original_user' => $original_user_id,
-                        'invalid_attribution_user' => $attribution_user_id,
-                        'workflow_name' => $workflow['name'] ?? 'Unknown'
-                    ]);
-                    $attribution_user_id = null; // Reset to prevent restoration attempt
-                }
-            }
-        }
+        // Who gets credited for these changes. Resolving is all that happens here — the
+        // swap itself is scoped to each individual write, in with_attribution().
+        $attribution_user_id = $this->resolve_attribution_user($workflow, $updated_context, $test_mode);
 
         foreach ($output_actions as $action) {
             try {
@@ -101,7 +150,10 @@ class WorkflowOutputProcessor
                         $updated_context = $this->apply_change_to_context($updated_context, $change_result['change']);
                     } else {
                         // Execute the change in production mode
-                        $execute_result = $this->execute_change($change_result['change'], $context);
+                        $execute_result = $this->with_attribution(
+                            $attribution_user_id,
+                            fn () => $this->execute_change($change_result['change'], $context)
+                        );
                         if (!$execute_result['success']) {
                             $errors[] = $execute_result['error'];
                         }
@@ -111,19 +163,9 @@ class WorkflowOutputProcessor
                 } else {
                     $errors[] = $change_result['error'];
                 }
-            } catch (\Exception $e) {
+            } catch (\Throwable $e) {
                 $errors[] = 'Action processing failed: ' . $e->getMessage();
             }
-        }
-
-        // Restore original user if we changed it
-        if (!$test_mode && $attribution_user_id && $attribution_user_id !== $original_user_id) {
-            wp_set_current_user($original_user_id);
-            \PolyTrans_Logs_Manager::log("Restored current user to {$original_user_id} after workflow changes", 'info', [
-                'source' => 'workflow_output_processor',
-                'original_user' => $original_user_id,
-                'attribution_user' => $attribution_user_id
-            ]);
         }
 
         // In production mode, refresh context from database to get actual current values
@@ -572,7 +614,7 @@ class WorkflowOutputProcessor
             ];
         }
 
-        \PolyTrans_Logs_Manager::log("Updated post status to '{$status}' for post ID {$post_id}", 'info', [
+        LogsManager::log("Updated post status to '{$status}' for post ID {$post_id}", 'info', [
             'source' => 'workflow_output_processor',
             'post_id' => $post_id,
             'old_status' => get_post_field('post_status', $post_id),
@@ -661,7 +703,7 @@ class WorkflowOutputProcessor
             ];
         }
 
-        \PolyTrans_Logs_Manager::log("Updated post date to '{$parsed_date}' for post ID {$post_id}", 'info', [
+        LogsManager::log("Updated post date to '{$parsed_date}' for post ID {$post_id}", 'info', [
             'source' => 'workflow_output_processor',
             'post_id' => $post_id,
             'new_date' => $parsed_date,

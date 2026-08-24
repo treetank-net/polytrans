@@ -1667,13 +1667,12 @@ final class WorkflowRefinementService
     {
         $evaluations = [];
         if (is_string($evaluationsPayload)) {
-            $decoded = json_decode(wp_unslash($evaluationsPayload), true);
+            $decoded = json_decode($evaluationsPayload, true);
             if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
                 $evaluations = $decoded;
             }
         } elseif (is_array($evaluationsPayload)) {
-            // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- normalized before prompt rendering.
-            $evaluations = wp_unslash($evaluationsPayload);
+            $evaluations = $evaluationsPayload;
         }
 
         $normalized = [];
@@ -1788,12 +1787,12 @@ final class WorkflowRefinementService
     {
         $history = [];
         if (is_string($historyPayload)) {
-            $decoded = json_decode(wp_unslash($historyPayload), true);
+            $decoded = json_decode($historyPayload, true);
             if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
                 $history = $decoded;
             }
         } elseif (is_array($historyPayload)) {
-            $history = wp_unslash($historyPayload);
+            $history = $historyPayload;
         }
 
         $normalized = [];

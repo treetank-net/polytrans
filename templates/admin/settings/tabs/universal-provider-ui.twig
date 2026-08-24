@@ -43,7 +43,7 @@
     {% endif %}
     
     {% if has_chat and not has_assistants_api %}
-        <div class="notice notice-info" style="margin-top:2em;">
+        <div class="notice notice-info inline" style="margin-top:2em;">
             <p>
                 <strong>{{ __('Note:', 'polytrans') }}</strong>
                 {{ __('%s does not have a dedicated Assistants API. To use %s for AI-powered translations, please create a "Managed Assistant" in the Assistants menu. Managed Assistants allow you to configure system prompts and user message templates for %s.', 'polytrans')|format(settings_provider.get_tab_label(), settings_provider.get_tab_label(), settings_provider.get_tab_label())|esc_html }}

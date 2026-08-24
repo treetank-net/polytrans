@@ -48,7 +48,14 @@ class SettingsMenu
 
     public function add_admin_menu()
     {
-        // Main menu - accessible to editors
+        // Main menu - accessible to editors.
+        //
+        // Position 76 sits in the free slot between Tools (75) and Settings (80).
+        // It must not be 80: that slot belongs to core's Settings menu, and
+        // add_menu_page() resolves the collision by appending a fraction derived
+        // from md5( slug . title ) — PolyTrans landed on 80.36901, below Settings,
+        // in a spot nobody chose. ACF (80) and others crowd the same slot, so the
+        // resulting order changed with whatever else the site had installed.
         add_menu_page(
             __('PolyTrans', 'polytrans'),
             __('PolyTrans', 'polytrans'),
@@ -56,7 +63,7 @@ class SettingsMenu
             'polytrans',
             [$this, 'render_overview'],
             'dashicons-translation',
-            80
+            76
         );
 
         // Rename first submenu item from "PolyTrans" to "Overview"

@@ -27,6 +27,7 @@ use Twig\Loader\ArrayLoader;
 use Twig\TwigFilter;
 use Twig\TwigFunction;
 use Twig\Error\Error as TwigError;
+use PolyTrans\Core\Diagnostics;
 
 /**
  * Twig Template Engine
@@ -167,8 +168,7 @@ final class TwigEngine {
 		} catch ( TwigError $e ) {
 			// Twig failed, log error and fall back to legacy regex.
 			if ( self::$debug ) {
-				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log(
+				Diagnostics::log(
 					sprintf(
 						'[PolyTrans] Twig rendering failed: %s. Falling back to regex. Template: %s',
 						$e->getMessage(),

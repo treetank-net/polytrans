@@ -391,8 +391,7 @@ class PolyTrans
                 ];
 
                 // Optional: Log to WordPress error log
-                // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-                error_log(sprintf(
+                \PolyTrans\Core\Diagnostics::log(sprintf(
                     '[polytrans] Marked stuck translation as failed: Post ID %d, Language %s, Previous Status %s',
                     $post_id,
                     $language,

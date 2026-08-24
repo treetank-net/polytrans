@@ -58,7 +58,7 @@ class TranslationExtension
         $provider = $this->providers[$provider_name] ?? null;
 
         if (!$provider) {
-            error_log("[polytrans] Provider '$provider_name' not found. Available providers: " . implode(', ', array_keys($this->providers))); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+            Diagnostics::log("Provider '$provider_name' not found. Available providers: " . implode(', ', array_keys($this->providers)));
         }
 
         return $provider;
@@ -213,7 +213,7 @@ class TranslationExtension
                 $this->update_translation_failure($original_post_id, $target_lang, $result['error']);
             }
 
-            error_log("[polytrans] Translation failed: " . $result['error']); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+            Diagnostics::log("Translation failed: " . $result['error']);
             return new WP_REST_Response(['error' => $result['error']], 500);
         }
 
@@ -371,7 +371,7 @@ class TranslationExtension
      */
     private function post_to_target($endpoint, $payload)
     {
-        error_log("[polytrans] postToTarget: endpoint=$endpoint, payload=" . wp_json_encode($payload)); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+        Diagnostics::log("postToTarget: endpoint=$endpoint, payload=" . wp_json_encode($payload));
 
         // Extract data from payload for potential status updates
         $original_post_id = $payload['original_post_id'] ?? null;
@@ -431,7 +431,7 @@ class TranslationExtension
         $result = wp_remote_post($endpoint, $args);
 
         if (is_wp_error($result)) {
-            error_log("[polytrans] postToTarget error: " . $result->get_error_message()); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+            Diagnostics::log("postToTarget error: " . $result->get_error_message());
 
             // Update the original post's status if we have post ID and language info
             if ($original_post_id && $target_language) {
@@ -489,7 +489,7 @@ class TranslationExtension
                         LogsManager::log("Translation delivered to receiver (post $created_post_id) - skipping local status update", "info");
                     }
                 } catch (\Exception $e) {
-                    error_log("[polytrans] Error processing translation response: " . $e->getMessage()); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+                    Diagnostics::log("Error processing translation response: " . $e->getMessage());
                 }
             }
             // If failed response, update the failure status
@@ -650,11 +650,17 @@ class TranslationExtension
         $secret_method = $settings['translation_receiver_secret_method'] ?? 'header_bearer';
         $custom_header_name = $settings['translation_receiver_secret_custom_header'] ?? 'x-polytrans-secret';
 
-        // Only an explicit choice of "none" opens this endpoint. A missing secret is a
-        // half-finished configuration, not consent: this endpoint starts billable
-        // provider calls, so it stays closed until someone decides otherwise.
-        if ($secret_method === 'none') {
-            return true;
+        // "none" alone is not consent. It opens this endpoint only together with
+        // POLYTRANS_ALLOW_UNAUTHENTICATED_ENDPOINTS in wp-config.php, because this
+        // endpoint creates posts and starts billable provider calls. See EndpointAuth.
+        if (EndpointAuth::is_unauthenticated_method($secret_method)) {
+            if (EndpointAuth::allows_unauthenticated()) {
+                return true;
+            }
+
+            LogsManager::log(EndpointAuth::refusal_message(), 'warning');
+
+            return false;
         }
 
         if ($expected_secret === '') {

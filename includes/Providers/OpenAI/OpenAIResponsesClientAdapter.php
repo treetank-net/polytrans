@@ -4,6 +4,7 @@ namespace PolyTrans\Providers\OpenAI;
 
 use PolyTrans\Core\ModelCapabilities;
 use PolyTrans\Providers\ChatClientInterface;
+use PolyTrans\Core\Diagnostics;
 
 /**
  * OpenAI Responses Client Adapter
@@ -100,8 +101,7 @@ class OpenAIResponsesClientAdapter implements ChatClientInterface
                     && (strpos(strtolower($error_message), 'timeout') !== false
                         || strpos(strtolower($error_message), 'timed out') !== false)
                 ) {
-                    // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Intentional error logging for debugging
-                    error_log(sprintf(
+                    Diagnostics::log(sprintf(
                         '[PolyTrans OpenAI Responses] Request timeout on attempt %d/%d, retrying...',
                         $attempt,
                         $max_attempts

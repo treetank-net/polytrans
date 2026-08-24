@@ -20,6 +20,9 @@ use PolyTrans\Templating\TemplateRenderer;
 use PolyTrans\Providers\SettingsProviderInterface;
 use PolyTrans\Testing\PostTestContextBuilder;
 use PolyTrans\Testing\RecentPostsProvider;
+use PolyTrans\Core\Diagnostics;
+use function PolyTrans\Core\sanitize_input_deep;
+use function PolyTrans\Core\sanitize_prompt_template;
 
 if (!defined('ABSPATH')) {
     exit;
@@ -826,8 +829,7 @@ class AssistantsMenu
                 return $settings_provider->get_grouped_models($selected_model);
             }
         } catch (\Exception $e) {
-            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-            error_log("[PolyTrans] Failed to get models for provider $provider_id: " . $e->getMessage());
+            Diagnostics::log("Failed to get models for provider $provider_id: " . $e->getMessage());
         }
 
         // Provider-specific fallback based on provider_id
@@ -1178,13 +1180,16 @@ class AssistantsMenu
         $source_language = isset($_POST['source_language']) ? sanitize_text_field(wp_unslash($_POST['source_language'])) : 'en';
         $target_language = isset($_POST['target_language']) ? sanitize_text_field(wp_unslash($_POST['target_language'])) : 'pl';
         $override_system_prompt = array_key_exists('override_system_prompt', $_POST) // phpcs:ignore WordPress.Security.NonceVerification.Missing -- protected by check_ajax_referer above
-            ? wp_unslash($_POST['override_system_prompt']) // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- trusted admin test payload
+            // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitized on this line by PolyTrans\Core\sanitize_prompt_template(); Plugin Check runs PHPCS with its own bundled ruleset, which cannot be given customSanitizingFunctions, and WPCS only accepts a sanitizer reached as a plain function call.
+            ? sanitize_prompt_template(wp_unslash($_POST['override_system_prompt']))
             : null;
         $override_user_message_template = array_key_exists('override_user_message_template', $_POST) // phpcs:ignore WordPress.Security.NonceVerification.Missing -- protected by check_ajax_referer above
-            ? wp_unslash($_POST['override_user_message_template']) // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- trusted admin test payload
+            // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitized on this line by PolyTrans\Core\sanitize_prompt_template(); Plugin Check runs PHPCS with its own bundled ruleset, which cannot be given customSanitizingFunctions, and WPCS only accepts a sanitizer reached as a plain function call.
+            ? sanitize_prompt_template(wp_unslash($_POST['override_user_message_template']))
             : null;
         $override_expected_output_schema = array_key_exists('override_expected_output_schema', $_POST) // phpcs:ignore WordPress.Security.NonceVerification.Missing -- protected by check_ajax_referer above
-            ? wp_unslash($_POST['override_expected_output_schema']) // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- trusted admin test payload
+            // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitized on this line by PolyTrans\Core\sanitize_input_deep(); Plugin Check runs PHPCS with its own bundled ruleset, which cannot be given customSanitizingFunctions, and WPCS only accepts a sanitizer reached as a plain function call.
+            ? sanitize_input_deep(wp_unslash($_POST['override_expected_output_schema']))
             : null;
 
         $result = (new AssistantRefinementService())->runPost(
@@ -1215,10 +1220,10 @@ class AssistantsMenu
         $run_id = isset($_POST['run_id']) ? sanitize_text_field(wp_unslash($_POST['run_id'])) : '';
         $criteria = isset($_POST['criteria']) ? sanitize_textarea_field(wp_unslash($_POST['criteria'])) : '';
         $prompt_objective = isset($_POST['prompt_objective']) ? sanitize_textarea_field(wp_unslash($_POST['prompt_objective'])) : '';
-        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Admin prompt/config text may contain XML/HTML markers; it is passed to refinement/description services as JSON, and returned data is serialized by wp_send_json_* instead of rendered as HTML.
-        $evaluator_system_prompt = isset($_POST['evaluator_system_prompt']) ? wp_unslash($_POST['evaluator_system_prompt']) : '';
-        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Admin prompt/config text may contain XML/HTML markers; it is passed to refinement/description services as JSON, and returned data is serialized by wp_send_json_* instead of rendered as HTML.
-        $evaluator_prompt_template = isset($_POST['evaluator_prompt_template']) ? wp_unslash($_POST['evaluator_prompt_template']) : '';
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitized on this line by PolyTrans\Core\sanitize_prompt_template(); Plugin Check runs PHPCS with its own bundled ruleset, which cannot be given customSanitizingFunctions, and WPCS only accepts a sanitizer reached as a plain function call.
+        $evaluator_system_prompt = isset($_POST['evaluator_system_prompt']) ? sanitize_prompt_template(wp_unslash($_POST['evaluator_system_prompt'])) : '';
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitized on this line by PolyTrans\Core\sanitize_prompt_template(); Plugin Check runs PHPCS with its own bundled ruleset, which cannot be given customSanitizingFunctions, and WPCS only accepts a sanitizer reached as a plain function call.
+        $evaluator_prompt_template = isset($_POST['evaluator_prompt_template']) ? sanitize_prompt_template(wp_unslash($_POST['evaluator_prompt_template'])) : '';
 
         $result = (new AssistantRefinementService())->evaluateRun(
             $assistant_id,
@@ -1249,18 +1254,21 @@ class AssistantsMenu
         $target_language = isset($_POST['target_language']) ? sanitize_text_field(wp_unslash($_POST['target_language'])) : 'pl';
         $criteria = isset($_POST['criteria']) ? sanitize_textarea_field(wp_unslash($_POST['criteria'])) : '';
         $prompt_objective = isset($_POST['prompt_objective']) ? sanitize_textarea_field(wp_unslash($_POST['prompt_objective'])) : '';
-        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Admin prompt/config text may contain XML/HTML markers; it is passed to refinement/description services as JSON, and returned data is serialized by wp_send_json_* instead of rendered as HTML.
-        $evaluator_system_prompt = isset($_POST['evaluator_system_prompt']) ? wp_unslash($_POST['evaluator_system_prompt']) : '';
-        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Admin prompt/config text may contain XML/HTML markers; it is passed to refinement/description services as JSON, and returned data is serialized by wp_send_json_* instead of rendered as HTML.
-        $evaluator_prompt_template = isset($_POST['evaluator_prompt_template']) ? wp_unslash($_POST['evaluator_prompt_template']) : '';
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitized on this line by PolyTrans\Core\sanitize_prompt_template(); Plugin Check runs PHPCS with its own bundled ruleset, which cannot be given customSanitizingFunctions, and WPCS only accepts a sanitizer reached as a plain function call.
+        $evaluator_system_prompt = isset($_POST['evaluator_system_prompt']) ? sanitize_prompt_template(wp_unslash($_POST['evaluator_system_prompt'])) : '';
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitized on this line by PolyTrans\Core\sanitize_prompt_template(); Plugin Check runs PHPCS with its own bundled ruleset, which cannot be given customSanitizingFunctions, and WPCS only accepts a sanitizer reached as a plain function call.
+        $evaluator_prompt_template = isset($_POST['evaluator_prompt_template']) ? sanitize_prompt_template(wp_unslash($_POST['evaluator_prompt_template'])) : '';
         $override_system_prompt = array_key_exists('override_system_prompt', $_POST) // phpcs:ignore WordPress.Security.NonceVerification.Missing -- protected by check_ajax_referer above
-            ? wp_unslash($_POST['override_system_prompt']) // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- trusted admin test payload
+            // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitized on this line by PolyTrans\Core\sanitize_prompt_template(); Plugin Check runs PHPCS with its own bundled ruleset, which cannot be given customSanitizingFunctions, and WPCS only accepts a sanitizer reached as a plain function call.
+            ? sanitize_prompt_template(wp_unslash($_POST['override_system_prompt']))
             : null;
         $override_user_message_template = array_key_exists('override_user_message_template', $_POST) // phpcs:ignore WordPress.Security.NonceVerification.Missing -- protected by check_ajax_referer above
-            ? wp_unslash($_POST['override_user_message_template']) // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- trusted admin test payload
+            // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitized on this line by PolyTrans\Core\sanitize_prompt_template(); Plugin Check runs PHPCS with its own bundled ruleset, which cannot be given customSanitizingFunctions, and WPCS only accepts a sanitizer reached as a plain function call.
+            ? sanitize_prompt_template(wp_unslash($_POST['override_user_message_template']))
             : null;
         $override_expected_output_schema = array_key_exists('override_expected_output_schema', $_POST) // phpcs:ignore WordPress.Security.NonceVerification.Missing -- protected by check_ajax_referer above
-            ? wp_unslash($_POST['override_expected_output_schema']) // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- trusted admin test payload
+            // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitized on this line by PolyTrans\Core\sanitize_input_deep(); Plugin Check runs PHPCS with its own bundled ruleset, which cannot be given customSanitizingFunctions, and WPCS only accepts a sanitizer reached as a plain function call.
+            ? sanitize_input_deep(wp_unslash($_POST['override_expected_output_schema']))
             : null;
 
         $result = (new AssistantRefinementService())->refinePost(
@@ -1294,22 +1302,27 @@ class AssistantsMenu
         $assistant_id = isset($_POST['assistant_id']) ? intval($_POST['assistant_id']) : 0;
         $criteria = isset($_POST['criteria']) ? sanitize_textarea_field(wp_unslash($_POST['criteria'])) : '';
         $prompt_objective = isset($_POST['prompt_objective']) ? sanitize_textarea_field(wp_unslash($_POST['prompt_objective'])) : '';
-        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Admin prompt/config text may contain XML/HTML markers; it is passed to refinement/description services as JSON, and returned data is serialized by wp_send_json_* instead of rendered as HTML.
-        $adjuster_system_prompt = isset($_POST['adjuster_system_prompt']) ? wp_unslash($_POST['adjuster_system_prompt']) : '';
-        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Admin prompt/config text may contain XML/HTML markers; it is passed to refinement/description services as JSON, and returned data is serialized by wp_send_json_* instead of rendered as HTML.
-        $adjuster_prompt_template = isset($_POST['adjuster_prompt_template']) ? wp_unslash($_POST['adjuster_prompt_template']) : '';
-        // phpcs:ignore WordPress.Security.NonceVerification.Missing, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized, WordPress.Security.ValidatedSanitizedInput.MissingUnslash -- JSON stays raw so AssistantRefinementService::decodeEvaluations() unslashes, json_decodes, and validates it before prompt rendering.
-        $evaluations_payload = $_POST['evaluations'] ?? '[]';
-        // phpcs:ignore WordPress.Security.NonceVerification.Missing, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized, WordPress.Security.ValidatedSanitizedInput.MissingUnslash -- JSON stays raw so AssistantRefinementService::decodeRefinementHistory() unslashes, json_decodes, and validates it before prompt rendering.
-        $refinement_history_payload = $_POST['refinement_history'] ?? '[]';
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitized on this line by PolyTrans\Core\sanitize_prompt_template(); Plugin Check runs PHPCS with its own bundled ruleset, which cannot be given customSanitizingFunctions, and WPCS only accepts a sanitizer reached as a plain function call.
+        $adjuster_system_prompt = isset($_POST['adjuster_system_prompt']) ? sanitize_prompt_template(wp_unslash($_POST['adjuster_system_prompt'])) : '';
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitized on this line by PolyTrans\Core\sanitize_prompt_template(); Plugin Check runs PHPCS with its own bundled ruleset, which cannot be given customSanitizingFunctions, and WPCS only accepts a sanitizer reached as a plain function call.
+        $adjuster_prompt_template = isset($_POST['adjuster_prompt_template']) ? sanitize_prompt_template(wp_unslash($_POST['adjuster_prompt_template'])) : '';
+        // phpcs:ignore WordPress.Security.NonceVerification.Missing -- JSON stays raw so AssistantRefinementService::decodeEvaluations() unslashes, json_decodes, and validates it before prompt rendering.
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitized on this line by PolyTrans\Core\sanitize_input_deep(); Plugin Check runs PHPCS with its own bundled ruleset, which cannot be given customSanitizingFunctions, and WPCS only accepts a sanitizer reached as a plain function call.
+        $evaluations_payload = sanitize_input_deep(wp_unslash($_POST['evaluations'] ?? '[]'));
+        // phpcs:ignore WordPress.Security.NonceVerification.Missing -- JSON stays raw so AssistantRefinementService::decodeRefinementHistory() unslashes, json_decodes, and validates it before prompt rendering.
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitized on this line by PolyTrans\Core\sanitize_input_deep(); Plugin Check runs PHPCS with its own bundled ruleset, which cannot be given customSanitizingFunctions, and WPCS only accepts a sanitizer reached as a plain function call.
+        $refinement_history_payload = sanitize_input_deep(wp_unslash($_POST['refinement_history'] ?? '[]'));
         $current_system_prompt = array_key_exists('current_system_prompt', $_POST) // phpcs:ignore WordPress.Security.NonceVerification.Missing -- protected by check_ajax_referer above
-            ? wp_unslash($_POST['current_system_prompt']) // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- trusted admin test payload
+            // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitized on this line by PolyTrans\Core\sanitize_prompt_template(); Plugin Check runs PHPCS with its own bundled ruleset, which cannot be given customSanitizingFunctions, and WPCS only accepts a sanitizer reached as a plain function call.
+            ? sanitize_prompt_template(wp_unslash($_POST['current_system_prompt']))
             : null;
         $current_user_message_template = array_key_exists('current_user_message_template', $_POST) // phpcs:ignore WordPress.Security.NonceVerification.Missing -- protected by check_ajax_referer above
-            ? wp_unslash($_POST['current_user_message_template']) // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- trusted admin test payload
+            // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitized on this line by PolyTrans\Core\sanitize_prompt_template(); Plugin Check runs PHPCS with its own bundled ruleset, which cannot be given customSanitizingFunctions, and WPCS only accepts a sanitizer reached as a plain function call.
+            ? sanitize_prompt_template(wp_unslash($_POST['current_user_message_template']))
             : null;
         $current_expected_output_schema = array_key_exists('current_expected_output_schema', $_POST) // phpcs:ignore WordPress.Security.NonceVerification.Missing -- protected by check_ajax_referer above
-            ? wp_unslash($_POST['current_expected_output_schema']) // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- trusted admin test payload
+            // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitized on this line by PolyTrans\Core\sanitize_input_deep(); Plugin Check runs PHPCS with its own bundled ruleset, which cannot be given customSanitizingFunctions, and WPCS only accepts a sanitizer reached as a plain function call.
+            ? sanitize_input_deep(wp_unslash($_POST['current_expected_output_schema']))
             : null;
 
         $result = (new AssistantRefinementService())->adjustPrompt(
@@ -1341,13 +1354,16 @@ class AssistantsMenu
 
         $assistant_id = isset($_POST['assistant_id']) ? intval($_POST['assistant_id']) : 0;
         $system_prompt = array_key_exists('system_prompt', $_POST) // phpcs:ignore WordPress.Security.NonceVerification.Missing -- protected by check_ajax_referer above
-            ? (string) wp_unslash($_POST['system_prompt']) // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- trusted admin payload
+            // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitized on this line by PolyTrans\Core\sanitize_prompt_template(); Plugin Check runs PHPCS with its own bundled ruleset, which cannot be given customSanitizingFunctions, and WPCS only accepts a sanitizer reached as a plain function call.
+            ? sanitize_prompt_template(wp_unslash($_POST['system_prompt']))
             : '';
         $user_message_template = array_key_exists('user_message_template', $_POST) // phpcs:ignore WordPress.Security.NonceVerification.Missing -- protected by check_ajax_referer above
-            ? (string) wp_unslash($_POST['user_message_template']) // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- trusted admin payload
+            // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitized on this line by PolyTrans\Core\sanitize_prompt_template(); Plugin Check runs PHPCS with its own bundled ruleset, which cannot be given customSanitizingFunctions, and WPCS only accepts a sanitizer reached as a plain function call.
+            ? sanitize_prompt_template(wp_unslash($_POST['user_message_template']))
             : '';
         $expected_output_schema = array_key_exists('expected_output_schema', $_POST) // phpcs:ignore WordPress.Security.NonceVerification.Missing -- protected by check_ajax_referer above
-            ? (string) wp_unslash($_POST['expected_output_schema']) // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- trusted admin payload
+            // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitized on this line by PolyTrans\Core\sanitize_input_deep(); Plugin Check runs PHPCS with its own bundled ruleset, which cannot be given customSanitizingFunctions, and WPCS only accepts a sanitizer reached as a plain function call.
+            ? sanitize_input_deep(wp_unslash($_POST['expected_output_schema']))
             : '{}';
 
         $result = (new AssistantRefinementService())->applyPromptPack(
@@ -1390,20 +1406,20 @@ class AssistantsMenu
             'name' => isset($_POST['name']) ? sanitize_text_field(wp_unslash($_POST['name'])) : (string) ($stored_assistant['name'] ?? ''),
             'description' => isset($_POST['description']) ? wp_kses_post(wp_unslash($_POST['description'])) : (string) ($stored_assistant['description'] ?? ''),
             'provider' => $provider,
-            // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Admin prompt-pack text may contain XML/HTML markers; it is passed to refinement/description services as JSON, and returned data is serialized by wp_send_json_* instead of rendered as HTML.
-            'system_prompt' => isset($_POST['system_prompt']) ? (string) wp_unslash($_POST['system_prompt']) : (string) ($stored_assistant['system_prompt'] ?? ''),
-            // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Admin prompt-pack text may contain XML/HTML markers; it is passed to refinement/description services as JSON, and returned data is serialized by wp_send_json_* instead of rendered as HTML.
-            'user_message_template' => isset($_POST['user_message_template']) ? (string) wp_unslash($_POST['user_message_template']) : (string) ($stored_assistant['user_message_template'] ?? ''),
+            // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitized on this line by PolyTrans\Core\sanitize_prompt_template(); Plugin Check runs PHPCS with its own bundled ruleset, which cannot be given customSanitizingFunctions, and WPCS only accepts a sanitizer reached as a plain function call.
+            'system_prompt' => isset($_POST['system_prompt']) ? sanitize_prompt_template(wp_unslash($_POST['system_prompt'])) : (string) ($stored_assistant['system_prompt'] ?? ''),
+            // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitized on this line by PolyTrans\Core\sanitize_prompt_template(); Plugin Check runs PHPCS with its own bundled ruleset, which cannot be given customSanitizingFunctions, and WPCS only accepts a sanitizer reached as a plain function call.
+            'user_message_template' => isset($_POST['user_message_template']) ? sanitize_prompt_template(wp_unslash($_POST['user_message_template'])) : (string) ($stored_assistant['user_message_template'] ?? ''),
             'expected_format' => isset($_POST['response_format']) ? sanitize_text_field(wp_unslash($_POST['response_format'])) : (string) ($stored_assistant['expected_format'] ?? 'text'),
-            // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Admin prompt-pack JSON/schema text may contain XML/HTML markers; it is passed to refinement/description services as JSON, and returned data is serialized by wp_send_json_* instead of rendered as HTML.
-            'expected_output_schema' => isset($_POST['expected_output_schema']) ? (string) wp_unslash($_POST['expected_output_schema']) : ($stored_assistant['expected_output_schema'] ?? null),
+            // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitized on this line by PolyTrans\Core\sanitize_input_deep(); Plugin Check runs PHPCS with its own bundled ruleset, which cannot be given customSanitizingFunctions, and WPCS only accepts a sanitizer reached as a plain function call.
+            'expected_output_schema' => isset($_POST['expected_output_schema']) ? sanitize_input_deep(wp_unslash($_POST['expected_output_schema'])) : ($stored_assistant['expected_output_schema'] ?? null),
             'api_parameters' => $api_parameters,
         ]);
 
-        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Admin prompt/config text may contain XML/HTML markers; it is passed to refinement/description services as JSON, and returned data is serialized by wp_send_json_* instead of rendered as HTML.
-        $system_prompt_template = isset($_POST['description_system_prompt']) ? (string) wp_unslash($_POST['description_system_prompt']) : '';
-        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Admin prompt/config text may contain XML/HTML markers; it is passed to refinement/description services as JSON, and returned data is serialized by wp_send_json_* instead of rendered as HTML.
-        $prompt_template = isset($_POST['description_prompt_template']) ? (string) wp_unslash($_POST['description_prompt_template']) : '';
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitized on this line by PolyTrans\Core\sanitize_prompt_template(); Plugin Check runs PHPCS with its own bundled ruleset, which cannot be given customSanitizingFunctions, and WPCS only accepts a sanitizer reached as a plain function call.
+        $system_prompt_template = isset($_POST['description_system_prompt']) ? sanitize_prompt_template(wp_unslash($_POST['description_system_prompt'])) : '';
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitized on this line by PolyTrans\Core\sanitize_prompt_template(); Plugin Check runs PHPCS with its own bundled ruleset, which cannot be given customSanitizingFunctions, and WPCS only accepts a sanitizer reached as a plain function call.
+        $prompt_template = isset($_POST['description_prompt_template']) ? sanitize_prompt_template(wp_unslash($_POST['description_prompt_template'])) : '';
 
         $result = (new DescriptionGeneratorService())->generateAssistantDescription(
             $assistant,

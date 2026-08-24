@@ -46,7 +46,7 @@
         "test-phpunit": "phpunit",
         "docker:setup": "./dev.sh setup",
         "docker:phpcs": "./dev.sh phpcs",
-        "docker:phpcbf": "./dev.sh phpcbf", 
+        "docker:phpcbf": "./dev.sh phpcbf",
         "docker:phpmd": "./dev.sh phpmd",
         "docker:test": "./dev.sh test",
         "docker:coverage": "./dev.sh coverage",

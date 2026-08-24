@@ -656,13 +656,12 @@ final class AssistantRefinementService
     private function decodeEvaluations($evaluationsPayload): array
     {
         if (is_string($evaluationsPayload)) {
-            $decoded = json_decode(wp_unslash($evaluationsPayload), true);
+            $decoded = json_decode($evaluationsPayload, true);
             return (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) ? $decoded : [];
         }
 
         if (is_array($evaluationsPayload)) {
-            // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- normalized by caller.
-            return wp_unslash($evaluationsPayload);
+            return $evaluationsPayload;
         }
 
         return [];
@@ -676,12 +675,12 @@ final class AssistantRefinementService
     {
         $history = [];
         if (is_string($historyPayload)) {
-            $decoded = json_decode(wp_unslash($historyPayload), true);
+            $decoded = json_decode($historyPayload, true);
             if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
                 $history = $decoded;
             }
         } elseif (is_array($historyPayload)) {
-            $history = wp_unslash($historyPayload);
+            $history = $historyPayload;
         }
 
         $normalized = [];

@@ -290,6 +290,57 @@ Reporting: `Core\UsageReport` (SQL aggregations), `Menu\UsageMenu` (dashboard) a
 screen). A group column cannot be a prepared value, so `UsageReport::by()` takes
 only names from its allow-list — the dashboard passes request input into it.
 
+### Cross-cutting single-entry-point classes
+
+Four things in this plugin exist in exactly one place, each enforced by a test in
+`tests/Architecture/`. They were consolidated during the WordPress.org review rounds,
+because the scattered versions were what the reviewer kept finding.
+
+| Concern | The one place | Guard |
+|---|---|---|
+| Writing to the PHP error log | `Core\Diagnostics::log()` — silent unless `WP_DEBUG` (and `WP_DEBUG_LOG`) | `NamingConventionsTest` |
+| Acting as a different user | `Core\UserContext::run_as()` — one call, restored in `finally` | `NamingConventionsTest` |
+| Sanitising prompts and workflow payloads | `Core\InputSanitizer` + the callable form in `includes/Core/sanitizers.php` | `phpcs.xml`, `InputSanitizerTest` |
+| Deciding whether unauthenticated endpoints are open | `Core\EndpointAuth` | `EndpointAuthTest` |
+
+`error_log()` outside `Diagnostics` fails a test; the sole exception is `Bootstrap.php`,
+which reports a missing Composer autoloader and therefore cannot use an autoloaded class.
+
+`sanitize_prompt_template()` and `sanitize_input_deep()` are **functions**, not just the
+static methods behind them, and that is not stylistic: WPCS refuses to treat a call
+reached through `::` as sanitisation, so a `customSanitizingFunctions` entry naming a
+method never matches. Import them with `use function`. They are loaded by
+`Bootstrap::init()` — **never** add the file to Composer's `autoload.files`: it guards
+itself on `ABSPATH`, so a `files` entry kills every process that loads
+`vendor/autoload.php` outside WordPress, the test suite included, with no output at all.
+
+Anything sanitised this way still needs its `phpcs:ignore` line, and the reason must name
+the sanitiser. Plugin Check's ruleset is fixed and cannot be given custom sanitisers, so
+removing the annotation converts 0 findings into 56 warnings in the reviewer's report.
+
+### Background dispatch
+
+`Core\BackgroundProcessor::spawn()` always uses a loopback HTTP request. It used to shell
+out to the PHP binary with a bootstrap script that included `wp-load.php` — forbidden by
+the guidelines, and broken in every release anyway, because that script was excluded from
+the distribution ZIP, so any host with `exec()` enabled got a failed dispatch and no
+fallback. Do not reintroduce an exec path.
+
+Long-running admin work goes through `Core\AsyncJobRunner` instead (see below).
+
+### Template escaping
+
+Both Twig environments run with `autoescape => false`; escaping is explicit, via the
+WordPress escaping filters registered on the environment (`|esc_html`, `|esc_attr`,
+`|esc_url`, `|esc_textarea`). `tests/Architecture/TemplateEscapingTest.php` is the gate: it
+requires every `{{ }}` to carry an escaping filter, be a literal, or call a function that
+escapes itself. Turning `autoescape` on is a migration, not a flag flip — ~360 places
+already escape and would double-escape.
+
+Do not use `{{ selected(...) }}` / `{{ checked(...) }}` in new templates: the WordPress
+functions echo *and* return, so in a Twig expression the value can land twice. A ternary
+over string literals is what the gate recognises as safe.
+
 ### Gotchas
 
 - **OpenAI settings are saved through an explicit key list**, not a merge

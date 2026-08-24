@@ -6,6 +6,7 @@ use PolyTrans\Providers\SettingsProviderInterface;
 use PolyTrans\Providers\ProviderRegistry;
 use PolyTrans\Providers\ReasoningEffortField;
 use PolyTrans\Assistants\AssistantManager;
+use PolyTrans\Core\Diagnostics;
 
 /**
  * OpenAI Settings Provider
@@ -966,8 +967,7 @@ class OpenAISettingsProvider implements SettingsProviderInterface
                 }
             } catch (\Exception $e) {
                 // Log error but don't fail the entire request
-                // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-                error_log('PolyTrans: Failed to load OpenAI assistants: ' . $e->getMessage());
+                Diagnostics::log('Failed to load OpenAI assistants: ' . $e->getMessage());
             }
         }
 

@@ -4,6 +4,8 @@ namespace PolyTrans\Core;
 
 use PolyTrans\PromptRefinement\PromptRefinementSettings;
 use PolyTrans\Templating\TemplateRenderer;
+use function PolyTrans\Core\sanitize_input_deep;
+use function PolyTrans\Core\sanitize_prompt_template;
 
 /**
  * Translation Settings Admin Page
@@ -84,8 +86,7 @@ class TranslationSettings
         }
         
         if (!$nonce_check) {
-            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-            error_log("PolyTrans: Nonce check failed. Nonce: " . sanitize_text_field(wp_unslash($_POST['nonce'] ?? 'not set')) . ", Action: " . sanitize_text_field(wp_unslash($_POST['action'] ?? 'not set')));
+            Diagnostics::log("Nonce check failed. Nonce: " . sanitize_text_field(wp_unslash($_POST['nonce'] ?? 'not set')) . ", Action: " . sanitize_text_field(wp_unslash($_POST['action'] ?? 'not set')));
             wp_send_json_error(__('Security check failed.', 'polytrans'));
             return;
         }
@@ -140,8 +141,7 @@ class TranslationSettings
                     $error_message = __('Invalid API key.', 'polytrans');
                 }
             } catch (\Exception $e) {
-                // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-                error_log("PolyTrans: Failed to validate API key for {$provider_id}: " . $e->getMessage());
+                Diagnostics::log("Failed to validate API key for {$provider_id}: " . $e->getMessage());
                 $error_message = __('Validation failed due to an error: ', 'polytrans') . $e->getMessage();
                 wp_send_json_error($error_message);
                 return;
@@ -205,7 +205,14 @@ class TranslationSettings
         $settings['translation_endpoint'] = esc_url_raw(wp_unslash($_POST['translation_endpoint'] ?? ''));
         $settings['translation_receiver_endpoint'] = esc_url_raw(wp_unslash($_POST['translation_receiver_endpoint'] ?? ''));
         $settings['translation_receiver_secret'] = sanitize_text_field(wp_unslash($_POST['translation_receiver_secret'] ?? ''));
-        $settings['translation_receiver_secret_method'] = sanitize_text_field(wp_unslash($_POST['translation_receiver_secret_method'] ?? 'header_bearer'));
+        $receiver_secret_method = sanitize_text_field(wp_unslash($_POST['translation_receiver_secret_method'] ?? 'header_bearer'));
+        // The UI only offers "none" when wp-config.php allows it, so a "none" arriving
+        // without the constant is either a stale form or a hand-crafted request. Either
+        // way it must not silently open the endpoints.
+        if (EndpointAuth::is_unauthenticated_method($receiver_secret_method) && !EndpointAuth::allows_unauthenticated()) {
+            $receiver_secret_method = 'header_bearer';
+        }
+        $settings['translation_receiver_secret_method'] = $receiver_secret_method;
         $settings['translation_receiver_secret_custom_header'] = sanitize_text_field(wp_unslash($_POST['translation_receiver_secret_custom_header'] ?? 'x-polytrans-secret'));
         $settings['edit_link_base_url'] = esc_url_raw(wp_unslash($_POST['edit_link_base_url'] ?? ''));
         $settings['api_timeout'] = absint(wp_unslash($_POST['api_timeout'] ?? 180));
@@ -240,7 +247,8 @@ class TranslationSettings
         ];
         foreach ($prompt_template_keys as $prompt_template_key) {
             $settings[$prompt_template_key] = array_key_exists($prompt_template_key, $_POST)
-                ? (string) wp_unslash($_POST[$prompt_template_key]) // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Admin-authored prompt templates must preserve Twig/JSON syntax.
+                // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitized on this line by PolyTrans\Core\sanitize_prompt_template(); Plugin Check runs PHPCS with its own bundled ruleset, which cannot be given customSanitizingFunctions, and WPCS only accepts a sanitizer reached as a plain function call.
+                ? sanitize_prompt_template(wp_unslash($_POST[$prompt_template_key]))
                 : '';
         }
 
@@ -258,8 +266,8 @@ class TranslationSettings
             }
             
             $settings_provider = new $settings_provider_class();
-            // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Provider's validate_settings() handles sanitization
-            $provider_settings = $settings_provider->validate_settings(wp_unslash($_POST));
+            // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitized on this line by PolyTrans\Core\sanitize_input_deep(); Plugin Check runs PHPCS with its own bundled ruleset, which cannot be given customSanitizingFunctions, and WPCS only accepts a sanitizer reached as a plain function call.
+            $provider_settings = $settings_provider->validate_settings(sanitize_input_deep(wp_unslash($_POST)));
             
             // For OpenAI: always save path rules and assistants (used by TranslationPathExecutor)
             // Also save API key and model if provided (needed for assistants and managed assistants)
@@ -490,6 +498,9 @@ class TranslationSettings
             'translation_endpoint' => $translation_endpoint,
             'translation_receiver_endpoint' => $translation_receiver_endpoint,
             'settings' => $settings,
+            'allow_unauthenticated' => EndpointAuth::allows_unauthenticated(),
+            'unauthenticated_refused' => EndpointAuth::is_refused($settings),
+            'unauthenticated_notice' => EndpointAuth::refusal_message(),
         ], false);
         // phpcs:enable WordPress.Security.EscapeOutput.OutputNotEscaped
     }

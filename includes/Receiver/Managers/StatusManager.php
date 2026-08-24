@@ -2,6 +2,8 @@
 
 namespace PolyTrans\Receiver\Managers;
 
+use PolyTrans\Core\Diagnostics;
+
 /**
  * Handles translation status tracking and updates.
  */
@@ -31,8 +33,7 @@ class StatusManager
         // Check if post exists locally
         $post = get_post($post_id);
         if (!$post) {
-            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-            error_log("[polytrans] Cannot update original post $post_id: post does not exist locally (separate database?)");
+            Diagnostics::log("Cannot update original post $post_id: post does not exist locally (separate database?)");
             return false;
         }
 
@@ -43,8 +44,7 @@ class StatusManager
         // Allow update if status is pending/processing or if no status yet (first translation)
         $updatable_statuses = ['', 'started', 'translating', 'processing', 'post_processing'];
         if (!in_array($current_status, $updatable_statuses, true)) {
-            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-            error_log("[polytrans] Cannot update original post $post_id for $target_language: status is '$current_status'");
+            Diagnostics::log("Cannot update original post $post_id for $target_language: status is '$current_status'");
             return false;
         }
 
@@ -64,8 +64,7 @@ class StatusManager
     {
         // Verify we can update this post
         if (!$this->can_update_original_post($original_post_id, $target_language)) {
-            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-            error_log("[polytrans] Skipping intermediate status update for original post $original_post_id - not available locally");
+            Diagnostics::log("Skipping intermediate status update for original post $original_post_id - not available locally");
             return;
         }
 
@@ -93,8 +92,7 @@ class StatusManager
 
         update_post_meta($original_post_id, $log_key, $log);
 
-        // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-        error_log("[polytrans] Set intermediate status '$status' for post $original_post_id -> $new_post_id (language: $target_language)");
+        Diagnostics::log("Set intermediate status '$status' for post $original_post_id -> $new_post_id (language: $target_language)");
     }
 
     /**
@@ -108,8 +106,7 @@ class StatusManager
     {
         // Verify we can update this post
         if (!$this->can_update_original_post($original_post_id, $target_language)) {
-            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-            error_log("[polytrans] Skipping status update for original post $original_post_id - not available locally");
+            Diagnostics::log("Skipping status update for original post $original_post_id - not available locally");
             return;
         }
 
@@ -123,8 +120,7 @@ class StatusManager
         if (!in_array($target_language, $scheduled_langs, true)) {
             $scheduled_langs[] = $target_language;
             update_post_meta($original_post_id, $langs_key, $scheduled_langs);
-            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-            error_log("[polytrans] Added $target_language to scheduled languages for post $original_post_id");
+            Diagnostics::log("Added $target_language to scheduled languages for post $original_post_id");
         }
 
         // Update status to completed (matches Background Processor expectation)
@@ -151,8 +147,7 @@ class StatusManager
         update_post_meta($original_post_id, '_polytrans_translation_target_' . $target_language, $new_post_id);
         update_post_meta($original_post_id, '_polytrans_translation_post_id_' . $target_language, $new_post_id);
 
-        // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-        error_log("[polytrans] Updated translation status for post $original_post_id -> $new_post_id (language: $target_language)");
+        Diagnostics::log("Updated translation status for post $original_post_id -> $new_post_id (language: $target_language)");
     }
 
     /**
@@ -166,8 +161,7 @@ class StatusManager
     {
         // Verify we can update this post
         if (!$this->can_update_original_post($original_post_id, $target_language)) {
-            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-            error_log("[polytrans] Skipping failure status for original post $original_post_id - not available locally: $error_message");
+            Diagnostics::log("Skipping failure status for original post $original_post_id - not available locally: $error_message");
             return;
         }
 
@@ -191,8 +185,7 @@ class StatusManager
 
         update_post_meta($original_post_id, $log_key, $log);
 
-        // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-        error_log("[polytrans] Marked translation as failed for post $original_post_id (language: $target_language): $error_message");
+        Diagnostics::log("Marked translation as failed for post $original_post_id (language: $target_language): $error_message");
     }
 
     /**
@@ -242,8 +235,7 @@ class StatusManager
         delete_post_meta($post_id, $post_id_key);
         delete_post_meta($post_id, $review_key);
 
-        // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-        error_log("[polytrans] Cleared translation status for post $post_id (language: $language)");
+        Diagnostics::log("Cleared translation status for post $post_id (language: $language)");
     }
 
     /**
@@ -347,8 +339,7 @@ class StatusManager
 
                 $results['fixed']++;
 
-                // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-                error_log(sprintf(
+                Diagnostics::log(sprintf(
                     '[polytrans] Fixed stuck translation: Post %1$d, language %2$s was in "%3$s" status for %4$s hours',
                     $post_id,
                     $language,

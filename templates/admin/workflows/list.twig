@@ -39,7 +39,7 @@
     </div>
 
     {% if workflows|length == 0 %}
-        <div class="notice notice-info">
+        <div class="notice notice-info inline">
             <p>
                 {{ __('No workflows found.', 'polytrans')|esc_html }}
                 <a href="{{ admin_url('admin.php?page=polytrans-workflows&action=new')|esc_url }}">
@@ -104,7 +104,7 @@
                                 class="button button-small workflow-toggle-status"
                                 data-workflow-id="{{ workflow.id|esc_attr }}"
                                 data-enabled="{{ workflow.enabled|default(false) ? '1' : '0' }}"
-                                title="{{ workflow.enabled|default(false) ? __('Disable workflow', 'polytrans') : __('Enable workflow', 'polytrans') }}">
+                                title="{{ (workflow.enabled|default(false) ? __('Disable workflow', 'polytrans') : __('Enable workflow', 'polytrans'))|esc_html }}">
                                 {% if workflow.enabled|default(false) %}
                                     <span class="dashicons dashicons-yes-alt" style="color: #00a32a;"></span>
                                 {% else %}

@@ -4,7 +4,7 @@
  * Plugin Name: PolyTrans
  * Plugin URI: https://github.com/treetank-net/polytrans
  * Description: Advanced multilingual translation management system with AI-powered translation, scheduling, and review workflow
- * Version: 1.19.2
+ * Version: 1.20.0
  * Author: treetank
  * Author URI: https://treetank.net
  * Text Domain: polytrans
@@ -21,7 +21,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('POLYTRANS_VERSION', '1.19.2');
+define('POLYTRANS_VERSION', '1.20.0');
 define('POLYTRANS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('POLYTRANS_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('POLYTRANS_PLUGIN_FILE', __FILE__);
@@ -37,99 +37,8 @@ require_once POLYTRANS_PLUGIN_DIR . 'includes/class-polytrans.php';
 // (PolyTrans\Core\BackgroundProcessor)
 add_action('polytrans_bg_process_async_job', [\PolyTrans\Core\AsyncJobRunner::class, 'executeBackgroundJob']);
 
-/**
- * Handle background process requests
- */
-function polytrans_handle_background_request()
-{
-    if (isset($_GET['polytrans_bg']) && isset($_GET['token']) && isset($_GET['nonce'])) {
-        $token = sanitize_key(wp_unslash($_GET['token'] ?? ''));
-        $data = get_transient('polytrans_bg_' . $token);
-
-        $nonce_valid = wp_verify_nonce(sanitize_text_field(wp_unslash($_GET['nonce'])), 'polytrans_bg_process');
-        if (!$nonce_valid) {
-            if (class_exists('\PolyTrans\Core\LogsManager')) {
-                \PolyTrans\Core\LogsManager::log("Background process request: Invalid nonce. Token: " . ($token ?: 'missing'), "error", ['token' => $token]);
-            }
-            return;
-        }
-        
-        if ($nonce_valid) {
-            // Set headers to prevent caching and handle long-running process
-            header('Content-Type: text/html; charset=' . get_bloginfo('charset'));
-            header('X-Robots-Tag: noindex, nofollow');
-            header('Connection: close');
-
-            // Disable browser buffering
-            if (function_exists('fastcgi_finish_request')) {
-                if (function_exists('ignore_user_abort')) {
-                    ignore_user_abort(true);
-                }
-                if (function_exists('set_time_limit')) {
-                    // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, Squiz.PHP.DiscouragedFunctions.Discouraged -- Best-effort for background processing; disabled on some hosts.
-                    @set_time_limit(0);
-                }
-                // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- Buffer may be absent depending on server config.
-                @ob_end_flush();
-                flush();
-                fastcgi_finish_request();
-            } else {
-                // Fallback for non-FastCGI servers
-                if (function_exists('ignore_user_abort')) {
-                    ignore_user_abort(true);
-                }
-                if (function_exists('set_time_limit')) {
-                    // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, Squiz.PHP.DiscouragedFunctions.Discouraged -- Best-effort for background processing; disabled on some hosts.
-                    @set_time_limit(0);
-                }
-                // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- Buffer may be absent depending on server config.
-                @ob_end_flush();
-                flush();
-            }
-
-            if ($data) {
-                $args = $data['args'] ?? [];
-                $action = $data['action'] ?? 'process-translation';
-
-                // Use namespaced class first, then legacy fallback
-                if (class_exists('\PolyTrans\Core\BackgroundProcessor')) {
-                    try {
-                        \PolyTrans\Core\BackgroundProcessor::process_task($args, $action);
-                    } catch (\Throwable $e) {
-                        if (class_exists('\PolyTrans\Core\LogsManager')) {
-                            \PolyTrans\Core\LogsManager::log(
-                                "BackgroundProcessor::process_task() failed: " . $e->getMessage(),
-                                "error",
-                                [
-                                    'token' => $token,
-                                    'action' => $action,
-                                    'exception' => $e->getMessage(),
-                                    'file' => $e->getFile(),
-                                    'line' => $e->getLine(),
-                                    'trace' => $e->getTraceAsString()
-                                ]
-                            );
-                        }
-                        throw $e;
-                    }
-                } else {
-                    if (class_exists('\PolyTrans\Core\LogsManager')) {
-                        \PolyTrans\Core\LogsManager::log("BackgroundProcessor class not found", "error", ['token' => $token]);
-                    }
-                }
-
-                delete_transient('polytrans_bg_' . $token);
-            } else {
-                if (class_exists('\PolyTrans\Core\LogsManager')) {
-                    \PolyTrans\Core\LogsManager::log("Background process request: No data found for token " . $token, "error", ['token' => $token]);
-                }
-            }
-
-            exit;
-        }
-    }
-}
-add_action('init', 'polytrans_handle_background_request', 5);
+// The loopback dispatch endpoint lives in the class that owns the route.
+add_action('init', [\PolyTrans\Core\BackgroundProcessor::class, 'handle_request'], 5);
 
 /**
  * Register default providers (Google, OpenAI, Claude)
@@ -262,8 +171,7 @@ function polytrans_activate()
             ['version' => POLYTRANS_VERSION, 'source' => 'activation']
         );
     } else {
-        // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-        error_log("[polytrans] Plugin activated, database logging disabled in settings");
+        \PolyTrans\Core\Diagnostics::log("Plugin activated, database logging disabled in settings");
     }
 
     // Initialize workflows table
@@ -284,11 +192,6 @@ function polytrans_activate()
     // Run migration from ai_assistant to managed_assistant (one-time)
     if (\PolyTrans\Assistants\AssistantMigration::is_migration_needed()) {
         \PolyTrans\Assistants\AssistantMigration::migrate_workflows_to_managed_assistants();
-    }
-
-    // Check the logs table structure for debugging
-    if (class_exists(\PolyTrans\Core\BackgroundProcessor::class)) {
-        \PolyTrans\Core\BackgroundProcessor::check_on_activation();
     }
 
     // Schedule cron job to check for stuck translations (daily)
@@ -329,8 +232,7 @@ function polytrans_create_tables()
 
         \PolyTrans\Core\LogsManager::create_logs_table();
     } else {
-        // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-        error_log("[polytrans] Database logging is disabled, skipping logs table creation");
+        \PolyTrans\Core\Diagnostics::log("Database logging is disabled, skipping logs table creation");
     }
 
     // Any additional tables can be created here
@@ -356,8 +258,7 @@ function polytrans_run_cleanup()
     $fixed = $handler->fix_stuck_translations(24);
 
     if ($fixed > 0) {
-        // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-        error_log("[polytrans] Fixed $fixed stuck translations");
+        \PolyTrans\Core\Diagnostics::log("Fixed $fixed stuck translations");
     }
 }
 add_action('polytrans_cleanup', 'polytrans_run_cleanup');
@@ -371,8 +272,7 @@ function polytrans_check_stuck_translations()
     $results = $status_manager->check_stuck_translations(24);
 
     if ($results['fixed'] > 0) {
-        // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-        error_log("[polytrans] Fixed {$results['fixed']} stuck translations out of {$results['checked']} checked");
+        \PolyTrans\Core\Diagnostics::log("Fixed {$results['fixed']} stuck translations out of {$results['checked']} checked");
     }
 }
 add_action('polytrans_check_stuck_translations', 'polytrans_check_stuck_translations');

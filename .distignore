@@ -72,6 +72,14 @@
 
 # Code excluded from distribution
 /includes/Menu/TagTranslation_temp.php
-/includes/process-task.php
 /includes/Debug
 /includes/Providers/Google
+
+# Materiały do rundy review wp.org
+/docs/wordpress-org
+
+# Compiled translations. translate.wordpress.org generates and delivers these for
+# every locale, and load_plugin_textdomain() was removed in March, so a bundled
+# .po/.mo does nothing but add weight. The .pot stays in the repo for translators.
+/languages/*.po
+/languages/*.mo

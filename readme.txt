@@ -2,9 +2,9 @@
 Contributors: jmarianski
 Tags: translation, multilingual, ai, openai, polylang
 Requires at least: 6.0
-Tested up to: 7.0
+Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 1.19.2
+Stable tag: 1.20.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -32,6 +32,10 @@ The plugin does not translate anything by itself and does not include any transl
 
 * Polylang (strongly recommended — without it the plugin falls back to a limited language list and cannot link a translation to its original).
 * An API key for OpenAI, Anthropic or Google, depending on which provider you choose.
+
+**Trademarks and affiliation**
+
+The name "PolyTrans" uses "poly" in its ordinary sense of the Greek prefix for "many", as in polyglot, describing multilingual content. This plugin is an independent project. It is not affiliated with, endorsed by or sponsored by the Polylang project or WP SYNTEX, nor by OpenAI, Anthropic or Google. Those names are used only to describe which software the plugin reads from and which providers it can be configured to call. All trademarks belong to their respective owners.
 
 == External services ==
 
@@ -110,6 +114,10 @@ Yes, with both the block editor and the classic editor.
 = What is multi-server mode? =
 
 An optional setup where translation work is distributed across several WordPress installations you control — one schedules the work, one performs it, one receives the result. It is off by default and single-server mode suits most sites.
+
+= Can the REST endpoints accept unauthenticated requests? =
+
+Only if the site owner deliberately enables it in `wp-config.php` with `define('POLYTRANS_ALLOW_UNAUTHENTICATED_ENDPOINTS', true);`. This exists for multi-server setups on an internal network, where the translator and the receiver are only reachable from fixed addresses. Without that constant both endpoints require the shared secret configured under PolyTrans → Settings → Advanced, and a request without a valid secret is rejected. Use the IP allow-list on the same screen as a second condition.
 
 = Which data is sent to the AI provider? =
 

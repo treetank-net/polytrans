@@ -9,6 +9,7 @@
 namespace PolyTrans\PostProcessing\Steps;
 
 use PolyTrans\PostProcessing\WorkflowStepInterface;
+use PolyTrans\Core\Diagnostics;
 
 if (!defined('ABSPATH')) {
     exit;
@@ -344,8 +345,7 @@ class AiAssistantStep implements WorkflowStepInterface
         
         // Log warning that we're using a random provider
         $random_provider = $available_providers[array_rand($available_providers)];
-        // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Intentional error logging for debugging
-        error_log(sprintf(
+        Diagnostics::log(sprintf(
             '[PolyTrans] AI Assistant step: No provider selected, using random enabled provider: %s',
             $random_provider
         ));

@@ -5,6 +5,45 @@ All notable changes to the PolyTrans plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.20.0] - 2026-08-24
+
+WordPress 7.1 support, and the second WordPress.org review round.
+
+Two things broke on 7.1 specifically: button icons in the scheduler metabox, and — unrelated
+to 7.1 but found alongside it — background dispatch, which turned out to have been rejecting
+every request it received on every host. Everything else answers a finding from the review
+report, or a place where the same pattern existed somewhere the reviewer had not quoted.
+
+### Security
+- **Manual workflow execution and workflow tests now check `edit_post` on the post they are given**, not just the `edit_posts` capability. Passing an arbitrary post ID — including one supplied through a test context — no longer works for a user who may only edit their own posts.
+- **Post autocomplete respects per-post permissions and no longer shares its cache between users.** The query includes private posts, and the transient key did not include the user, so a suggestion list built for an editor could be served to someone who could not read those posts.
+- **Workflow attribution no longer runs the whole pipeline as the attributed user.** Crediting a change to a chosen author and executing with that author's capabilities were the same call; they are now separate. The attributed user must exist and have `edit_post` on the target, the identity swap covers a single write and is undone in `finally`, and saving a workflow with an `attribution_user` requires `edit_others_posts`.
+- **The unauthenticated endpoint mode requires `POLYTRANS_ALLOW_UNAUTHENTICATED_ENDPOINTS` in `wp-config.php`.** It is no longer offered in the settings UI, and a stored `none` without the constant leaves the endpoints closed, with a log entry and an admin notice.
+- Prompt and workflow input is sanitized rather than annotated as trusted: `Core\InputSanitizer` rejects invalid UTF-8, null bytes and unbounded length while preserving the newlines, `{{ variables }}`, JSON and schema markers a prompt needs. `json_decode()` is no longer treated as sanitization — the value is sanitized before decoding.
+
+### Fixed
+- **The loopback dispatch endpoint rejected every request it received.** It verified a nonce, and `wp_create_nonce()` binds the value to the current user ID and session token — a loopback request carries no cookies, so the nonce was created for the logged-in admin and verified as an anonymous visitor. Every dispatch ended in "Invalid nonce" and no translation ran in the background. The endpoint now authenticates on a `wp_hash()` signature over the one-time dispatch token, compared with `hash_equals()`, and the token is consumed before the task runs so a retry cannot start a second copy of the same work. The route also moved out of `polytrans.php` into `Core\BackgroundProcessor::handle_request()`, the class that owns it.
+- **An empty red error bar sat under the heading on the Execute Workflow page.** The template rendered a `#post-selection-error` notice unconditionally, empty and with nothing hiding it — and WordPress relocates every `.notice` without `.inline`/`.below-h2` to just after the page heading (`common.js`), so it showed up as a bare red bar on every visit. Nothing filled or displayed it either: every error on that page goes through the page's own `showNotice()`, which builds its own element. The dead markup and its orphaned `.hide()` call are gone.
+- **Notices that describe a list or a table stayed with it.** Four notices lacked the `inline` class, so WordPress moved them away from the section they belonged to, up under the page heading.
+- **Icons in the scheduler metabox buttons sat below their label on WordPress 7.1.** 7.1 added `.wp-core-ui .button .dashicons { line-height: 1.9; vertical-align: top; }`, where the two declarations only work as a pair: the 20px glyph gets a 38px line box and `top` aligns that box with the button's own 38px line. Our inline `vertical-align: middle` overrode the `top` half while keeping the 38px line box, dropping the icon well below the text. The buttons now centre their contents with flexbox, which is correct on 6.x and 7.1 alike, and the icons carry `aria-hidden`.
+- **The admin menu landed in a position nobody chose.** It registered at 80, which is core's Settings slot, so `add_menu_page()` resolved the collision by appending a fraction derived from `md5( slug . title )` — PolyTrans sat at 80.36901, below Settings, and its neighbours changed with whatever else the site had installed (ACF also registers at 80). It now uses the free slot 76, between Tools and Settings.
+- **Background dispatch worked on no host with `exec()` enabled.** `BackgroundProcessor::spawn()` preferred a shell-spawned PHP process whose bootstrap script is excluded from the distribution ZIP, so the dispatch failed and never fell back to the loopback request. It now always uses the loopback HTTP request.
+- Removed an activation-time diagnostic that wrote six lines to the server's PHP error log and created then deleted post meta on an arbitrary published post of the site.
+- A revision created for a translated post no longer leaves the borrowed author as the current user if the save throws.
+- `Scheduler\TranslationHandler` builds the receiver URL with `rest_url()` instead of hardcoding `/wp-json/`, so sites with a custom REST prefix work.
+
+### Changed
+- The PHP error log has exactly one entry point, `Core\Diagnostics`, and it stays silent unless `WP_DEBUG` is on. 109 unconditional `error_log()` calls across 28 files went through it.
+- Identity swaps have exactly one entry point, `Core\UserContext::run_as()`.
+- `twig/twig` updated from 3.22.1 to 3.28.0.
+- Compiled translations (`*.po`, `*.mo`) are no longer shipped; translations come from translate.wordpress.org.
+- Dropped a `require_once` of `wp-admin/includes/class-wp-list-table.php` — the class was never used.
+- `Tested up to: 7.1`.
+
+### Added
+- Architecture tests pinning the new invariants: every `wp_ajax_*` handler verifies a nonce and a capability, every Twig output is escaped, `error_log()` and `wp_set_current_user()` each live in exactly one file.
+- `./dev.sh smoke [wp-version]` runs the plugin on a real WordPress with Plugin Check, in distribution shape.
+
 ## [1.19.2] - 2026-08-11
 
 ### Changed

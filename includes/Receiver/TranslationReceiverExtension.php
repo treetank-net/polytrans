@@ -3,6 +3,7 @@
 namespace PolyTrans\Receiver;
 
 use PolyTrans\Core\LogsManager;
+use PolyTrans\Core\Diagnostics;
 
 /**
  * Extension that handles receiving translated posts from external translation services.
@@ -74,11 +75,11 @@ class TranslationReceiverExtension
         if (!$result['success']) {
             \PolyTrans\Core\TranslationRunManager::fail($run_id);
             $status_code = (isset($result['code']) && $result['code'] === 'missing_data') ? 400 : 500;
-            error_log("[polytrans] Translation processing failed: " . $result['error']); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+            Diagnostics::log("Translation processing failed: " . $result['error']);
             return new \WP_REST_Response(['error' => $result['error']], $status_code);
         }
 
-        error_log("[polytrans] Translation processing succeeded, created post ID: " . $result['created_post_id']); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+        Diagnostics::log("Translation processing succeeded, created post ID: " . $result['created_post_id']);
         \PolyTrans\Core\TranslationRunManager::attach_post($run_id, $result['created_post_id']);
 
         // Check if we should trigger workflows for received translations

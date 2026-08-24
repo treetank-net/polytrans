@@ -124,8 +124,8 @@ class TranslationScheduler
                 echo ' <a href="' . esc_url($original_url) . '" target="_blank">' . esc_html__('here', 'polytrans') . '</a>';
             }
             echo '</p>';
-            echo '<button type="button" class="button" id="polytrans-detach-translation" data-post-id="' . esc_attr($post->ID) . '" style="margin-top:0.5em;width:100%;color:#d63638;border-color:#d63638;">';
-            echo '<span class="dashicons dashicons-editor-unlink" style="vertical-align:middle;"></span> ';
+            echo '<button type="button" class="button polytrans-icon-button" id="polytrans-detach-translation" data-post-id="' . esc_attr($post->ID) . '" style="margin-top:0.5em;width:100%;color:#d63638;border-color:#d63638;">';
+            echo '<span class="dashicons dashicons-editor-unlink" aria-hidden="true"></span>';
             echo esc_html__('Detach from source', 'polytrans');
             echo '</button>';
             echo '<p><small style="color:#666;">' . esc_html__('This will remove the translation link, allowing this post to be used as a source for new translations.', 'polytrans') . '</small></p>';
@@ -222,8 +222,8 @@ class TranslationScheduler
                     </div>
                 </div>
 
-                <button type="button" class="button button-secondary" id="polytrans-add-more-btn" style="width:100%;margin-top:0.5em;display:none;">
-                    <span class="dashicons dashicons-plus-alt" style="vertical-align:middle;"></span>
+                <button type="button" class="button button-secondary polytrans-icon-button hidden" id="polytrans-add-more-btn" style="width:100%;margin-top:0.5em;">
+                    <span class="dashicons dashicons-plus-alt" aria-hidden="true"></span>
                     <?php esc_html_e('Add More Languages', 'polytrans'); ?>
                 </button>
             </div>

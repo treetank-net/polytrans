@@ -118,7 +118,10 @@
             {{ include('admin/settings/tabs/advanced-settings.twig', {
                 'translation_endpoint': translation_endpoint,
                 'translation_receiver_endpoint': translation_receiver_endpoint,
-                'settings': settings
+                'settings': settings,
+                'allow_unauthenticated': allow_unauthenticated|default(false),
+                'unauthenticated_refused': unauthenticated_refused|default(false),
+                'unauthenticated_notice': unauthenticated_notice|default('')
             }) }}
         </div>
 

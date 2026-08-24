@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace PolyTrans\PromptRefinement;
 
 use PolyTrans\Core\LogsManager;
+use PolyTrans\Core\Diagnostics;
 
 if (!defined('ABSPATH')) {
     exit;
@@ -247,7 +248,6 @@ final class RefinementRunStorage
             return;
         }
 
-        // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Fallback when logging table is unavailable.
-        error_log($message . ': ' . wp_json_encode($context));
+        Diagnostics::log($message . ': ' . wp_json_encode($context));
     }
 }

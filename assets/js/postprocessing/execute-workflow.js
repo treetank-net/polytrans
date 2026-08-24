@@ -358,7 +358,6 @@
 
             $('#selected-posts-info').html(html);
             $('#selected-post-display').slideDown();
-            $('#post-selection-error').hide();
 
             // Show execution step
             this.displayExecutionReview(data);

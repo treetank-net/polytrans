@@ -328,7 +328,7 @@ class TranslationHandler
 
         if (empty($translation_receiver_endpoint)) {
             // Use default receiver endpoint if none is configured
-            $translation_receiver_endpoint = site_url('/wp-json/polytrans/v1/translation/receive-post');
+            $translation_receiver_endpoint = rest_url('polytrans/v1/translation/receive-post');
             LogsManager::log("Using default receiver endpoint: $translation_receiver_endpoint", "info");
         }
 
