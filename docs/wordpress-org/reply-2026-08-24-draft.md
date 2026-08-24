@@ -38,8 +38,8 @@ Integracja z Polylangiem jest faktem technicznym opisanym w readme, a nie źród
 
 > Hi,
 >
-> The reported technical issues have been addressed in the version just uploaded. Three points
-> need context.
+> The reported technical issues have been addressed in version 1.20.0, which has just been
+> uploaded. Five points need context.
 >
 > **Name and slug.** We would like to keep "PolyTrans" / `polytrans`.
 >
@@ -75,6 +75,13 @@ Integracja z Polylangiem jest faktem technicznym opisanym w readme, a nie źród
 > settings UI at all — it takes a constant in `wp-config.php`, and exists for multi-server
 > installations where the translator and the receiver sit on an internal network behind an IP
 > allow-list.
+>
+> **Direct provider integrations.** Plugin Check reports 0 errors and 53 warnings on this ZIP.
+> Thirty-three of those warnings are `AIProvider.DirectIntegration`, one per provider base URL
+> and one for the price list the cost accounting reads. They are intentional: the site owner
+> supplies their own API key and the plugin talks to the provider they chose, with every endpoint
+> declared under "== External services ==" in the readme. The remainder are direct database
+> queries against the plugin's own four tables, which have no Core API equivalent.
 >
 > **Core AI Client.** The plugin declares `Requires at least: 6.0` and depends on per-call
 > parameters the core client does not expose: reasoning-effort levels, provider-side
