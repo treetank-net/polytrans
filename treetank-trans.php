@@ -4,7 +4,7 @@
  * Plugin Name: TreeTank Translation Workflows
  * Plugin URI: https://github.com/treetank-net/polytrans
  * Description: Advanced multilingual translation management system with AI-powered translation, scheduling, and review workflow
- * Version: 2.0.0
+ * Version: 1.21.0
  * Author: treetank
  * Author URI: https://treetank.net
  * Text Domain: treetank-trans
@@ -21,7 +21,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('POLYTRANS_VERSION', '2.0.0');
+define('POLYTRANS_VERSION', '1.21.0');
 define('POLYTRANS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('POLYTRANS_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('POLYTRANS_PLUGIN_FILE', __FILE__);

@@ -5,7 +5,7 @@ All notable changes to this plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.0.0] - 2026-08-26
+## [1.21.0] - 2026-08-26
 
 Renamed. The plugin is now **TreeTank Translation Workflows**, published under the
 permalink `treetank-trans`.
@@ -14,11 +14,11 @@ WordPress.org rejected both the old display name and the old permalink over the
 registered POLYTRANS mark and an existing plugin with a near-identical name. This
 release carries out the rename they asked for and nothing else.
 
-A major version because the upgrade is not seamless for an existing install: the
-plugin directory changes name, so WordPress finds `active_plugins` pointing at a
-path that no longer exists and the plugin shows up deactivated. One click on
-"Activate" restores it. **No data is touched** — tables, options and post meta keep
-their `polytrans` prefix precisely so that this stays true.
+One thing to expect when updating an existing install: the plugin directory changes
+name, so WordPress finds `active_plugins` pointing at a path that no longer exists
+and the plugin shows up deactivated. One click on "Activate" restores it. **No data
+is touched** — tables, options and post meta keep their `polytrans` prefix precisely
+so that this stays true.
 
 ### Changed
 - **Display name, permalink, plugin directory and main file** — `TreeTank Translation
