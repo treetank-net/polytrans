@@ -48,7 +48,7 @@ test('admin menus delegate prompt refinement execution', function () {
  */
 test('identity swaps go through Core\\UserContext', function () {
     $root = dirname(__DIR__, 2);
-    $files = [$root . '/polytrans.php'];
+    $files = [$root . '/treetank-trans.php'];
     $iterator = new RecursiveIteratorIterator(
         new RecursiveDirectoryIterator($root . '/includes', FilesystemIterator::SKIP_DOTS)
     );
@@ -85,7 +85,7 @@ test('identity swaps go through Core\\UserContext', function () {
  */
 test('only Core\\Diagnostics writes to the PHP error log', function () {
     $root = dirname(__DIR__, 2);
-    $files = [$root . '/polytrans.php'];
+    $files = [$root . '/treetank-trans.php'];
     $iterator = new RecursiveIteratorIterator(
         new RecursiveDirectoryIterator($root . '/includes', FilesystemIterator::SKIP_DOTS)
     );

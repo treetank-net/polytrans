@@ -143,7 +143,7 @@ class TagTranslation
             'nonce' => wp_create_nonce('polytrans_suggest_tags'),
             'lang' => $post_lang,
             'i18n' => [
-                'approved' => esc_html__('PolyTrans', 'treetank-trans'),
+                'approved' => esc_html__('TreeTank', 'treetank-trans'),
                 'other' => esc_html__('Other', 'treetank-trans'),
             ],
         ]);

@@ -102,7 +102,7 @@ class OpenAIResponsesClientAdapter implements ChatClientInterface
                         || strpos(strtolower($error_message), 'timed out') !== false)
                 ) {
                     Diagnostics::log(sprintf(
-                        '[PolyTrans OpenAI Responses] Request timeout on attempt %d/%d, retrying...',
+                        '[TreeTank OpenAI Responses] Request timeout on attempt %d/%d, retrying...',
                         $attempt,
                         $max_attempts
                     ));

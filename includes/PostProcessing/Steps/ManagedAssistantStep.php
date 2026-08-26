@@ -416,7 +416,7 @@ class ManagedAssistantStep implements WorkflowStepInterface
             ],
             'info' => [
                 'type' => 'info',
-                'content' => __('This step uses assistants configured in PolyTrans > AI Assistants. The assistant\'s prompt template will be rendered with Twig using the workflow context variables.', 'treetank-trans')
+                'content' => __('This step uses assistants configured in TreeTank > AI Assistants. The assistant\'s prompt template will be rendered with Twig using the workflow context variables.', 'treetank-trans')
             ]
         ];
     }

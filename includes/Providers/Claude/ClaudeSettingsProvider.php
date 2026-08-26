@@ -155,7 +155,7 @@ class ClaudeSettingsProvider implements SettingsProviderInterface
             $response = $client->get('/models');
             
             if ($response->is_error()) {
-                Diagnostics::log('PolyTrans Claude API validation error: ' . $response->get_error_message());
+                Diagnostics::log('TreeTank Claude API validation error: ' . $response->get_error_message());
                 return false;
             }
             
@@ -178,11 +178,11 @@ class ClaudeSettingsProvider implements SettingsProviderInterface
             
             // Log for debugging
             $response_body = wp_remote_retrieve_body($response);
-            Diagnostics::log('PolyTrans Claude API validation failed. Status: ' . $status_code . ', Response: ' . substr($response_body, 0, 200));
+            Diagnostics::log('TreeTank Claude API validation failed. Status: ' . $status_code . ', Response: ' . substr($response_body, 0, 200));
             
             return false;
         } catch (\Exception $e) {
-            Diagnostics::log('PolyTrans Claude API validation exception: ' . $e->getMessage());
+            Diagnostics::log('TreeTank Claude API validation exception: ' . $e->getMessage());
             return false;
         }
     }
@@ -423,7 +423,7 @@ class ClaudeSettingsProvider implements SettingsProviderInterface
             
             // Log for debugging
             Diagnostics::log(sprintf(
-                'PolyTrans: Claude models API - Processed: %d, Filtered out: %d, Included: %d',
+                'TreeTank: Claude models API - Processed: %d, Filtered out: %d, Included: %d',
                 $models_processed,
                 $models_filtered_out,
                 count($grouped, COUNT_RECURSIVE) - count($grouped)

@@ -170,7 +170,7 @@ class HttpClient
                     (strpos(strtolower($error_message), 'timeout') !== false ||
                      strpos(strtolower($error_message), 'timed out') !== false)) {
                     Diagnostics::log(sprintf(
-                        '[PolyTrans HttpClient] Request timeout on attempt %d/%d, retrying... URL: %s',
+                        '[TreeTank HttpClient] Request timeout on attempt %d/%d, retrying... URL: %s',
                         $attempt,
                         $max_attempts,
                         $full_url

@@ -1015,7 +1015,7 @@ class PostprocessingMenu
         $assistants = AssistantManager::get_all_assistants();
 
         if (empty($assistants)) {
-            wp_send_json_error('No managed assistants found. Create one in PolyTrans > AI Assistants.');
+            wp_send_json_error('No managed assistants found. Create one in TreeTank > AI Assistants.');
             return;
         }
 

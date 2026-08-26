@@ -78,7 +78,7 @@ class EndpointAuth
         return sprintf(
             /* translators: %s: name of the PHP constant that enables unauthenticated endpoints. */
             __(
-                'PolyTrans: the receiver authentication method is set to "none", so the translation endpoints are closed. Set a secret under PolyTrans → Settings → Advanced, or define %s as true in wp-config.php if this site really should accept unauthenticated requests.',
+                'TreeTank: the receiver authentication method is set to "none", so the translation endpoints are closed. Set a secret under TreeTank → Settings → Advanced, or define %s as true in wp-config.php if this site really should accept unauthenticated requests.',
                 'treetank-trans'
             ),
             self::CONSTANT

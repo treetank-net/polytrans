@@ -666,7 +666,7 @@ class TranslationExtension
         if ($expected_secret === '') {
             LogsManager::log(
                 'Translation request rejected: no receiver secret is configured. '
-                    . 'Set one under PolyTrans → Settings → Advanced, or set the authentication '
+                    . 'Set one under TreeTank → Settings → Advanced, or set the authentication '
                     . 'method to "none" to accept unauthenticated requests deliberately.',
                 'warning'
             );

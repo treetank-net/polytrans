@@ -25,7 +25,7 @@ class WorkflowDebug
      */
     public static function debug_workflow_triggering($original_post_id, $translated_post_id, $target_language)
     {
-        echo "<h2>PolyTrans Workflow Debug Report</h2>\n";
+        echo "<h2>TreeTank Workflow Debug Report</h2>\n";
 
         echo "<p><strong>Original Post ID:</strong> " . esc_html($original_post_id) . "</p>\n";
 

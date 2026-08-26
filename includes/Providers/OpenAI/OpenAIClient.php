@@ -391,7 +391,7 @@ class OpenAIClient
                 
                 // If this was a timeout and we have attempts left, retry
                 if ($attempt < $max_attempts && strpos($error_message, 'timeout') !== false) {
-                    Diagnostics::log("PolyTrans OpenAI: Request timeout on attempt {$attempt}, retrying...");
+                    Diagnostics::log("TreeTank OpenAI: Request timeout on attempt {$attempt}, retrying...");
                     continue;
                 }
 

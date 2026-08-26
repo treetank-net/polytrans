@@ -145,7 +145,7 @@ class TemplateRenderer
             return $return;
         } catch (\Throwable $e) {
             Diagnostics::log(sprintf(
-                '[PolyTrans] Template rendering failed: %s. Template: %s',
+                '[TreeTank] Template rendering failed: %s. Template: %s',
                 $e->getMessage(),
                 $template
             ));

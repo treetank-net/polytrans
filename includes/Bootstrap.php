@@ -69,7 +69,7 @@ class Bootstrap
             // Log error if autoloader is missing
             if (function_exists('error_log')) {
 
-                error_log('PolyTrans: Composer autoloader not found. Run "composer install".');
+                error_log('TreeTank: Composer autoloader not found. Run "composer install".');
             }
         }
     }

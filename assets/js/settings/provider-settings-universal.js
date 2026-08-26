@@ -254,7 +254,7 @@
             // If select already has models, don't load again
             if (hasOptgroups || modelCount > 0) {
                 if (typeof console !== 'undefined' && console.debug) {
-                    console.debug('[PolyTrans] Skipping loadModels for ' + providerId + ' - already has models (hasOptgroups: ' + hasOptgroups + ', modelCount: ' + modelCount + ')');
+                    console.debug('[TreeTank] Skipping loadModels for ' + providerId + ' - already has models (hasOptgroups: ' + hasOptgroups + ', modelCount: ' + modelCount + ')');
                 }
                 if (this.providers[providerId]) {
                     this.providers[providerId].modelsLoaded = true;

@@ -346,7 +346,7 @@ class AiAssistantStep implements WorkflowStepInterface
         // Log warning that we're using a random provider
         $random_provider = $available_providers[array_rand($available_providers)];
         Diagnostics::log(sprintf(
-            '[PolyTrans] AI Assistant step: No provider selected, using random enabled provider: %s',
+            '[TreeTank] AI Assistant step: No provider selected, using random enabled provider: %s',
             $random_provider
         ));
         

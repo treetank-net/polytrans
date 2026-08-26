@@ -170,7 +170,7 @@ final class TwigEngine {
 			if ( self::$debug ) {
 				Diagnostics::log(
 					sprintf(
-						'[PolyTrans] Twig rendering failed: %s. Falling back to regex. Template: %s',
+						'[TreeTank] Twig rendering failed: %s. Falling back to regex. Template: %s',
 						$e->getMessage(),
 						$template
 					)

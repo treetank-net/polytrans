@@ -57,8 +57,8 @@ class SettingsMenu
         // in a spot nobody chose. ACF (80) and others crowd the same slot, so the
         // resulting order changed with whatever else the site had installed.
         add_menu_page(
-            __('PolyTrans', 'treetank-trans'),
-            __('PolyTrans', 'treetank-trans'),
+            __('TreeTank Translation Workflows', 'treetank-trans'),
+            __('TreeTank', 'treetank-trans'),
             'edit_posts',
             'polytrans',
             [$this, 'render_overview'],

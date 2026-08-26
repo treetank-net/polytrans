@@ -56,7 +56,7 @@ class WorkflowMetabox
         foreach ($post_types as $post_type) {
             add_meta_box(
                 'polytrans-workflows-metabox',
-                __('PolyTrans Workflows', 'treetank-trans'),
+                __('Translation Workflows', 'treetank-trans'),
                 [$this, 'render_meta_box'],
                 $post_type,
                 'side',

@@ -166,7 +166,7 @@ function polytrans_activate()
     if (\PolyTrans\Core\LogsManager::is_db_logging_enabled()) {
         \PolyTrans\Core\LogsManager::create_logs_table();
         \PolyTrans\Core\LogsManager::log(
-            "PolyTrans plugin activated",
+            "TreeTank plugin activated",
             "info",
             ['version' => POLYTRANS_VERSION, 'source' => 'activation']
         );

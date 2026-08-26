@@ -128,7 +128,7 @@ jQuery(function ($) {
                 $clearBtn.show();
                 hasAny = true;
             } else {
-                console.log('[PolyTrans] Hiding status for:', lang, 'info status:', info ? info.status : 'no info');
+                console.log('[TreeTank] Hiding status for:', lang, 'info status:', info ? info.status : 'no info');
                 $li.hide();
                 $editBtn.hide();
                 $retryBtn.hide();
@@ -153,13 +153,13 @@ jQuery(function ($) {
             _ajax_nonce: PolyTransScheduler.nonce
         }, function (resp) {
             if (resp && resp.success && resp.data && resp.data.status) {
-                console.log('[PolyTrans] Rendering status:', resp.data.status);
+                console.log('[TreeTank] Rendering status:', resp.data.status);
                 renderStatusUI(resp.data.status);
             } else {
-                console.warn('[PolyTrans] Invalid status response:', resp);
+                console.warn('[TreeTank] Invalid status response:', resp);
             }
         }).fail(function (xhr, status, error) {
-            console.error('[PolyTrans] Status fetch failed:', error, xhr.responseText);
+            console.error('[TreeTank] Status fetch failed:', error, xhr.responseText);
         });
     }
 
@@ -231,7 +231,7 @@ jQuery(function ($) {
 
         // Debug logging
         if (isDirty) {
-            console.error('[PolyTrans] Translation disabled - ' + dirtyReason);
+            console.error('[TreeTank] Translation disabled - ' + dirtyReason);
         }
 
         // Disable/enable translation controls based on dirty state
@@ -475,7 +475,7 @@ jQuery(function ($) {
             _ajax_nonce: PolyTransScheduler.nonce
         }, function (resp) {
             if (resp && resp.success) {
-                console.log('[PolyTrans] Retry translation started for ' + lang);
+                console.log('[TreeTank] Retry translation started for ' + lang);
                 // Re-fetch status to show new translation state
                 fetchStatusAndRender();
                 startPolling();

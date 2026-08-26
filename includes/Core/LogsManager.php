@@ -771,7 +771,7 @@ class LogsManager
         $warning_message = '';
         if (!$db_logging_enabled || !$table_exists) {
             if (!$db_logging_enabled) {
-                $warning_message = esc_html__('Database logging is currently disabled. Logs are only being written to the WordPress error log and post meta. Enable database logging in PolyTrans settings to view logs here.', 'treetank-trans');
+                $warning_message = esc_html__('Database logging is currently disabled. Logs are only being written to the WordPress error log and post meta. Enable database logging in TreeTank settings to view logs here.', 'treetank-trans');
             } else {
                 $warning_message = esc_html__('Logs database table does not exist. Logs are only being written to the WordPress error log and post meta.', 'treetank-trans');
                 $warning_message .= ' <a href="' . esc_url(admin_url('admin.php?page=polytrans-settings')) . '">' . esc_html__('Go to Settings', 'treetank-trans') . '</a>';

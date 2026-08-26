@@ -971,13 +971,13 @@
                 <select id="step-${index}-managed-assistant-id" name="steps[${index}][assistant_id]" required data-step-index="${index}">
                     <option value="">Loading assistants...</option>
                 </select>
-                <small>✨ Choose a centrally managed AI assistant configured in PolyTrans > AI Assistants. The assistant's prompt template will be rendered with Twig using workflow context variables.</small>
+                <small>✨ Choose a centrally managed AI assistant configured in TreeTank > AI Assistants. The assistant's prompt template will be rendered with Twig using workflow context variables.</small>
             </div>
             <div class="workflow-step-field">
                 <div class="notice notice-info inline">
                     <p><strong>ℹ️ About Managed Assistants:</strong></p>
                     <ul style="margin-left: 20px;">
-                        <li>Configured via <strong>PolyTrans > AI Assistants</strong> menu</li>
+                        <li>Configured via <strong>TreeTank > AI Assistants</strong> menu</li>
                         <li>Supports <strong>OpenAI, Claude, and Gemini</strong> providers</li>
                         <li>Uses <strong>Twig template engine</strong> for variable interpolation</li>
                         <li>Prompt template is defined in the assistant configuration</li>

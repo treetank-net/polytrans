@@ -12,7 +12,7 @@ declare(strict_types=1);
 
 test('literal AJAX actions have one registration and canonical owners', function () {
     $root = dirname(__DIR__, 2);
-    $files = [$root . '/polytrans.php'];
+    $files = [$root . '/treetank-trans.php'];
     $iterator = new RecursiveIteratorIterator(
         new RecursiveDirectoryIterator($root . '/includes', FilesystemIterator::SKIP_DOTS)
     );

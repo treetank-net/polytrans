@@ -1197,7 +1197,7 @@ class ModelCapabilities
             'max' => 2.0,
             'default' => 1.0,
             'requires_effort_none' => true,
-            'note' => __('This model only accepts a temperature while reasoning is turned off; PolyTrans then sends reasoning_effort "none" alongside it.', 'treetank-trans'),
+            'note' => __('This model only accepts a temperature while reasoning is turned off; the plugin then sends reasoning_effort "none" alongside it.', 'treetank-trans'),
         ];
 
         $rules = [
@@ -1232,7 +1232,7 @@ class ModelCapabilities
                             'high' => 'high',
                             'xhigh' => 'xhigh',
                         ],
-                        'note' => __('Chat Completions accepts none, low, medium, high, xhigh. The "max" level exists only on the /responses endpoint, which PolyTrans switches to automatically when you select it.', 'treetank-trans'),
+                        'note' => __('Chat Completions accepts none, low, medium, high, xhigh. The "max" level exists only on the /responses endpoint, which the plugin switches to automatically when you select it.', 'treetank-trans'),
                     ],
                     'surfaces' => [
                         self::SURFACE_RESPONSES => [
@@ -1551,7 +1551,7 @@ class ModelCapabilities
                             'medium' => 8192,
                             'high' => 16384,
                         ],
-                        'note' => __('This model has no effort parameter - effort maps to thinking.budget_tokens (minimum 1024). Temperature may only be 1 while thinking, so PolyTrans omits it.', 'treetank-trans'),
+                        'note' => __('This model has no effort parameter - effort maps to thinking.budget_tokens (minimum 1024). Temperature may only be 1 while thinking, so the plugin omits it.', 'treetank-trans'),
                     ],
                 ],
                 [

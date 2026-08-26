@@ -199,7 +199,7 @@ class PolyTrans
         // Translation scheduler meta box
         add_meta_box(
             'polytrans_translation_scheduler',
-            __('PolyTrans Scheduler', 'treetank-trans'),
+            __('Translation Scheduler', 'treetank-trans'),
             [$this, 'translation_scheduler_meta_box_callback'],
             ['post', 'page'],
             'side',

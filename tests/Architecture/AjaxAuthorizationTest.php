@@ -58,7 +58,7 @@ function polytrans_test_method_bodies(array $sources, string $method): array
 
 test('every AJAX handler verifies a nonce and a capability', function () {
     $root = dirname(__DIR__, 2);
-    $files = [$root . '/polytrans.php'];
+    $files = [$root . '/treetank-trans.php'];
     $iterator = new RecursiveIteratorIterator(
         new RecursiveDirectoryIterator($root . '/includes', FilesystemIterator::SKIP_DOTS)
     );

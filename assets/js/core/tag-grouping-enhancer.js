@@ -2,7 +2,7 @@
  * PolyTrans Tag Grouping Enhancer
  *
  * Enhances the WordPress tag autocomplete dropdown in the post editor
- * to group suggestions into PolyTrans-approved tags and other tags.
+ * to group suggestions into TreeTank-approved tags and other tags.
  *
  * Replaces the autocomplete source with a custom AJAX endpoint that
  * returns pre-grouped results (approved first, then others).
@@ -24,7 +24,7 @@
     }
 
     var i18n = config.i18n || {};
-    var labelApproved = i18n.approved || 'PolyTrans';
+    var labelApproved = i18n.approved || 'TreeTank';
     var labelOther = i18n.other || 'Other';
 
     function isApproved(tagName) {
