@@ -1,13 +1,13 @@
 <?php
 
 /**
- * Plugin Name: PolyTrans
+ * Plugin Name: TreeTank Translation Workflows
  * Plugin URI: https://github.com/treetank-net/polytrans
  * Description: Advanced multilingual translation management system with AI-powered translation, scheduling, and review workflow
  * Version: 1.20.0
  * Author: treetank
  * Author URI: https://treetank.net
- * Text Domain: polytrans
+ * Text Domain: treetank-trans
  * Domain Path: /languages
  * Requires at least: 6.0
  * Requires PHP: 8.1

@@ -1,4 +1,4 @@
-=== PolyTrans ===
+=== TreeTank Translation Workflows ===
 Contributors: jmarianski
 Tags: translation, multilingual, ai, openai, polylang
 Requires at least: 6.0
@@ -12,7 +12,7 @@ Translate posts with your own OpenAI, Claude or Gemini account. Scheduling, AI p
 
 == Description ==
 
-PolyTrans manages multilingual content by sending your posts to an AI provider you already have an account with. You supply the API key, the provider bills you for the tokens the translation consumed, and the translations live in your own database as ordinary WordPress posts.
+TreeTank Translation Workflows manages multilingual content by sending your posts to an AI provider you already have an account with. You supply the API key, the provider bills you for the tokens the translation consumed, and the translations live in your own database as ordinary WordPress posts.
 
 The plugin does not translate anything by itself and does not include any translation service. Nothing leaves your site until you have configured a provider and asked for a translation.
 
@@ -35,7 +35,7 @@ The plugin does not translate anything by itself and does not include any transl
 
 **Trademarks and affiliation**
 
-The name "PolyTrans" uses "poly" in its ordinary sense of the Greek prefix for "many", as in polyglot, describing multilingual content. This plugin is an independent project. It is not affiliated with, endorsed by or sponsored by the Polylang project or WP SYNTEX, nor by OpenAI, Anthropic or Google. Those names are used only to describe which software the plugin reads from and which providers it can be configured to call. All trademarks belong to their respective owners.
+This plugin is an independent project. It is not affiliated with, endorsed by or sponsored by the Polylang project or WP SYNTEX, nor by OpenAI, Anthropic or Google. Those names are used only to describe which software the plugin reads from and which providers it can be configured to call. All trademarks belong to their respective owners.
 
 == External services ==
 
@@ -83,10 +83,10 @@ If you enable multi-server mode, post content is sent to the WordPress REST endp
 
 == Installation ==
 
-1. Upload the `polytrans` folder to `/wp-content/plugins/`, or install the ZIP through Plugins → Add New → Upload Plugin.
+1. Upload the `treetank-trans` folder to `/wp-content/plugins/`, or install the ZIP through Plugins → Add New → Upload Plugin.
 2. Activate the plugin through the Plugins menu.
 3. Install and activate [Polylang](https://wordpress.org/plugins/polylang/) and define your languages.
-4. Go to **PolyTrans → Settings**, choose a provider and enter your own API key.
+4. Go to **TreeTank → Settings**, choose a provider and enter your own API key.
 5. Open any post and use the **Translation Scheduler** panel to request a translation.
 
 == Frequently Asked Questions ==
@@ -117,7 +117,7 @@ An optional setup where translation work is distributed across several WordPress
 
 = Can the REST endpoints accept unauthenticated requests? =
 
-Only if the site owner deliberately enables it in `wp-config.php` with `define('POLYTRANS_ALLOW_UNAUTHENTICATED_ENDPOINTS', true);`. This exists for multi-server setups on an internal network, where the translator and the receiver are only reachable from fixed addresses. Without that constant both endpoints require the shared secret configured under PolyTrans → Settings → Advanced, and a request without a valid secret is rejected. Use the IP allow-list on the same screen as a second condition.
+Only if the site owner deliberately enables it in `wp-config.php` with `define('POLYTRANS_ALLOW_UNAUTHENTICATED_ENDPOINTS', true);`. This exists for multi-server setups on an internal network, where the translator and the receiver are only reachable from fixed addresses. Without that constant both endpoints require the shared secret configured under TreeTank → Settings → Advanced, and a request without a valid secret is rejected. Use the IP allow-list on the same screen as a second condition.
 
 = Which data is sent to the AI provider? =
 

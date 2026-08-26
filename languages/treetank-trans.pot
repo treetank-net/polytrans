@@ -1,13 +1,13 @@
-# PolyTrans Plugin Translation Template
-# Copyright (C) 2025 PolyTrans Team
-# This file is distributed under the same license as the PolyTrans plugin.
+# TreeTank Translation Workflows Translation Template
+# Copyright (C) 2025 TreeTank
+# This file is distributed under the same license as the plugin.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: PolyTrans 1.1.0\n"
-"Report-Msgid-Bugs-To: https://github.com/polytrans/polytrans-wp-plugin/issues\n"
+"Project-Id-Version: TreeTank Translation Workflows 1.20.0\n"
+"Report-Msgid-Bugs-To: https://github.com/treetank-net/polytrans/issues\n"
 "POT-Creation-Date: 2025-07-15 00:00+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
@@ -17,7 +17,7 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "X-Generator: Manual extraction\n"
-"X-Domain: polytrans\n"
+"X-Domain: treetank-trans\n"
 
 #: includes/class-translation-meta-box.php:25
 msgid "Prepared by Human"

@@ -1,4 +1,4 @@
-# PolyTrans
+# TreeTank Translation Workflows
 
 WordPress translation management that runs on your own AI provider account. You supply the
 API key, your provider bills you for the tokens a translation consumed, and the translations
@@ -61,7 +61,7 @@ When multi-server mode is enabled by the administrator, post content (title, bod
 
 1. Upload the `polytrans` folder to `/wp-content/plugins/`
 2. Activate the plugin through the 'Plugins' menu in WordPress
-3. Go to **PolyTrans > Settings** to configure your translation provider
+3. Go to **TreeTank > Settings** to configure your translation provider
 4. Install and activate [Polylang](https://wordpress.org/plugins/polylang/) (recommended) for full multilingual support
 
 ### Requirements
@@ -91,7 +91,7 @@ Yes. You can configure different providers for different tasks — for example, 
 
 ### What is the multi-server architecture?
 
-PolyTrans can distribute translation work across multiple WordPress installations. One server schedules translations (sender), another performs the translation (translator), and a third receives the result (receiver). This is useful for high-volume sites. Single-server mode is the default and works for most use cases.
+The plugin can distribute translation work across multiple WordPress installations. One server schedules translations (sender), another performs the translation (translator), and a third receives the result (receiver). This is useful for high-volume sites. Single-server mode is the default and works for most use cases.
 
 ### Does this plugin work with the block editor (Gutenberg)?
 
