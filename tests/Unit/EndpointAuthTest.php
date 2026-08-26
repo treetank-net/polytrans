@@ -10,14 +10,23 @@ use PolyTrans\Core\EndpointAuth;
  * This is the invariant a reviewer flagged: with the method set to "none" the two
  * REST endpoints used to accept unauthenticated requests that create posts and
  * start billable provider calls. The mode stays available for internal networks,
- * but only via POLYTRANS_ALLOW_UNAUTHENTICATED_ENDPOINTS in wp-config.php.
+ * but only via TREETANK_TRANS_ALLOW_UNAUTHENTICATED_ENDPOINTS in wp-config.php.
+ *
+ * The pre-rename name is still honoured, because it lives in the site owner's
+ * wp-config.php and an upgrade cannot rewrite it.
  *
  * The constant is deliberately not defined in the test bootstrap: these tests pin
  * down the default, which is the state every ordinary site runs in.
  */
 it('does not allow unauthenticated endpoints without the constant', function () {
     expect(defined(EndpointAuth::CONSTANT))->toBeFalse();
+    expect(defined(EndpointAuth::LEGACY_CONSTANT))->toBeFalse();
     expect(EndpointAuth::allows_unauthenticated())->toBeFalse();
+});
+
+it('still honours the pre-rename constant name', function () {
+    expect(EndpointAuth::LEGACY_CONSTANT)->toBe('POLYTRANS_ALLOW_UNAUTHENTICATED_ENDPOINTS');
+    expect(EndpointAuth::CONSTANT)->not->toBe(EndpointAuth::LEGACY_CONSTANT);
 });
 
 it('recognises the unauthenticated method', function () {
@@ -39,5 +48,5 @@ it('does not report a configuration that authenticates', function () {
 });
 
 it('names the constant in the refusal message, so the log says how to enable it', function () {
-    expect(EndpointAuth::refusal_message())->toContain('POLYTRANS_ALLOW_UNAUTHENTICATED_ENDPOINTS');
+    expect(EndpointAuth::refusal_message())->toContain('TREETANK_TRANS_ALLOW_UNAUTHENTICATED_ENDPOINTS');
 });

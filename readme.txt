@@ -117,7 +117,7 @@ An optional setup where translation work is distributed across several WordPress
 
 = Can the REST endpoints accept unauthenticated requests? =
 
-Only if the site owner deliberately enables it in `wp-config.php` with `define('POLYTRANS_ALLOW_UNAUTHENTICATED_ENDPOINTS', true);`. This exists for multi-server setups on an internal network, where the translator and the receiver are only reachable from fixed addresses. Without that constant both endpoints require the shared secret configured under TreeTank → Settings → Advanced, and a request without a valid secret is rejected. Use the IP allow-list on the same screen as a second condition.
+Only if the site owner deliberately enables it in `wp-config.php` with `define('TREETANK_TRANS_ALLOW_UNAUTHENTICATED_ENDPOINTS', true);`. This exists for multi-server setups on an internal network, where the translator and the receiver are only reachable from fixed addresses. Without that constant both endpoints require the shared secret configured under TreeTank → Settings → Advanced, and a request without a valid secret is rejected. Use the IP allow-list on the same screen as a second condition.
 
 = Which data is sent to the AI provider? =
 

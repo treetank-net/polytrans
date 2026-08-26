@@ -19,16 +19,25 @@ if (!defined('ABSPATH')) {
  * against — so it stays. It just is not a UI decision any more; it takes
  * filesystem access:
  *
- *     define('POLYTRANS_ALLOW_UNAUTHENTICATED_ENDPOINTS', true);
+ *     define('TREETANK_TRANS_ALLOW_UNAUTHENTICATED_ENDPOINTS', true);
  *
  * in `wp-config.php`. Without the constant a stored "none" is treated as an
  * unfinished configuration and the endpoint stays closed — never as consent.
- * Pair it with the IP allow-list under PolyTrans → Settings → Advanced.
+ * Pair it with the IP allow-list under TreeTank → Settings → Advanced.
+ *
+ * The plugin was renamed after that constant shipped, and it lives in the site
+ * owner's `wp-config.php`, where nothing we do can update it. So the old name
+ * keeps working, indefinitely and without a deprecation notice: an upgrade that
+ * silently re-closes an internal network's endpoints would be an outage nobody
+ * asked for. Only the new name is documented and named in the refusal message.
  */
 class EndpointAuth
 {
     /** Name of the constant that opens the endpoints. */
-    public const CONSTANT = 'POLYTRANS_ALLOW_UNAUTHENTICATED_ENDPOINTS';
+    public const CONSTANT = 'TREETANK_TRANS_ALLOW_UNAUTHENTICATED_ENDPOINTS';
+
+    /** Pre-rename name of the same constant. Honoured, not documented. */
+    public const LEGACY_CONSTANT = 'POLYTRANS_ALLOW_UNAUTHENTICATED_ENDPOINTS';
 
     /** Value of `translation_receiver_secret_method` that means "no authentication". */
     public const METHOD_NONE = 'none';
@@ -41,7 +50,13 @@ class EndpointAuth
      */
     public static function allows_unauthenticated(): bool
     {
-        return defined(self::CONSTANT) && constant(self::CONSTANT) === true;
+        foreach ([self::CONSTANT, self::LEGACY_CONSTANT] as $name) {
+            if (defined($name) && constant($name) === true) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

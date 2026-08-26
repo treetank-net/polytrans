@@ -651,7 +651,7 @@ class TranslationExtension
         $custom_header_name = $settings['translation_receiver_secret_custom_header'] ?? 'x-polytrans-secret';
 
         // "none" alone is not consent. It opens this endpoint only together with
-        // POLYTRANS_ALLOW_UNAUTHENTICATED_ENDPOINTS in wp-config.php, because this
+        // TREETANK_TRANS_ALLOW_UNAUTHENTICATED_ENDPOINTS in wp-config.php, because this
         // endpoint creates posts and starts billable provider calls. See EndpointAuth.
         if (EndpointAuth::is_unauthenticated_method($secret_method)) {
             if (EndpointAuth::allows_unauthenticated()) {
