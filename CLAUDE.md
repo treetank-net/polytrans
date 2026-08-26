@@ -6,6 +6,40 @@ This file contains instructions for Claude AI when working on the PolyTrans plug
 
 PolyTrans is a WordPress plugin for AI-powered multilingual translation management. It supports multiple AI providers (OpenAI, Claude, Gemini) and features translation scheduling, workflow automation, and review processes. Google Translate support is available behind the `POLYTRANS_ENABLE_GOOGLE` feature flag (default: false).
 
+## Naming after the WordPress.org rename
+
+The plugin is published as **TreeTank Translation Workflows**, slug and text domain
+`treetank-trans`. WordPress.org rejected the old name and slug over the registered
+POLYTRANS mark and an existing plugin with a near-identical name.
+
+What carries the new name: the display name, the slug, the directory, the main file
+`treetank-trans.php`, the text domain (1306 call sites — `phpcs.xml` pins it, so the
+two can only change together), the files in `languages/`, every string a user reads,
+log message prefixes, and the CI paths and archive names.
+
+What deliberately keeps `polytrans`, because renaming it would discard existing
+installations' data or break integrations:
+
+| Thing | Why |
+|---|---|
+| Tables, options, post meta `_polytrans_*` | Renaming = data loss |
+| `PolyTrans\` namespace, `PolyTrans_*` legacy class names | Internal, PSR-4 |
+| `POLYTRANS_*` constants, `POLYTRANS_VERSION` | Internal; CI reads the version by this name |
+| `wp_ajax_polytrans_*` actions | External integrations |
+| REST namespace `polytrans/v1` | Public API |
+| Admin menu slugs (`admin.php?page=polytrans`) | Bookmarked URLs |
+| HTTP User-Agent strings, `X-Polytrans-BG` | Protocol; may be on a site's WAF allow-list |
+| `polytrans-dev` compose service, `polytrans-*` script/style handles | Local labels |
+| GitHub mirror URLs in `.gitlab-ci.yml` | Repository not renamed yet |
+
+**Never run a bare `sed s/polytrans/treetank-trans/g`.** It would rewrite table names,
+option keys and meta keys. The text domain pattern needs its context: `'polytrans')`.
+`AjaxRegistrationTest` passing unchanged is the evidence that a sed stayed in scope.
+
+`TREETANK_TRANS_ALLOW_UNAUTHENTICATED_ENDPOINTS` is the documented constant;
+`POLYTRANS_ALLOW_UNAUTHENTICATED_ENDPOINTS` still works, with no removal date, because
+it lives in a `wp-config.php` the plugin must never write to.
+
 ## Key Directories
 
 ```
@@ -48,7 +82,7 @@ polytrans/
 
    Use `git log vPREVIOUS..HEAD --oneline` to see commits since last tag.
 
-2. **Update version in THREE places** — two in `polytrans.php`:
+2. **Update version in THREE places** — two in `treetank-trans.php`:
    ```php
    * Version: X.Y.Z
    ```
@@ -183,14 +217,14 @@ cannot remove. `CiWorkspacePermissionsTest` guards this invariant.
 ### Checking Version
 
 ```bash
-grep -E "Version:|POLYTRANS_VERSION" polytrans.php
+grep -E "Version:|POLYTRANS_VERSION" treetank-trans.php
 ```
 
 ## Architecture Notes
 
 - **PSR-4, always**: `composer.json` maps `PolyTrans\` → `includes/`, loaded via
   `includes/Bootstrap.php`. New code goes in a namespaced class under `includes/`.
-  Do **not** add procedural functions to `polytrans.php` — it holds only the plugin
+  Do **not** add procedural functions to `treetank-trans.php` — it holds only the plugin
   header, constants and the WordPress lifecycle hooks.
 - **Twig Templates**: All admin UI uses Twig templates in `templates/`
 - **Provider System**: Pluggable AI providers via `PolyTrans_Provider_Registry`
@@ -200,7 +234,7 @@ grep -E "Version:|POLYTRANS_VERSION" polytrans.php
 ### Database tables
 
 Each table is owned by its class, which exposes `initialize()` / `create_table()`
-using `dbDelta`, and is registered in `polytrans_activate()` in `polytrans.php`:
+using `dbDelta`, and is registered in `polytrans_activate()` in `treetank-trans.php`:
 
 | Table | Owner |
 |---|---|
@@ -212,7 +246,7 @@ using `dbDelta`, and is registered in `polytrans_activate()` in `polytrans.php`:
 Prefer a lazy `initialize()` before the first write as well, so updating the plugin
 without reactivating it does not silently drop data.
 
-**Trap**: `polytrans_create_tables()` in `polytrans.php` is dead code — nothing
+**Trap**: `polytrans_create_tables()` in `treetank-trans.php` is dead code — nothing
 calls it. Adding table creation there has no effect.
 
 ### Long-running admin actions
@@ -445,7 +479,7 @@ language**, so acting on it deletes the wrong keys.
 
 ## Important Files
 
-- `polytrans.php` - Main plugin file, version definition
+- `treetank-trans.php` - Main plugin file, version definition
 - `CHANGELOG.md` - Version history (update before each release!)
 - `docs/RELEASE.md` - Full release process documentation
 - `.gitlab-ci.yml` - CI/CD pipeline configuration

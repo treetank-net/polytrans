@@ -5,6 +5,46 @@ All notable changes to this plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2026-08-26
+
+Renamed. The plugin is now **TreeTank Translation Workflows**, published under the
+permalink `treetank-trans`.
+
+WordPress.org rejected both the old display name and the old permalink over the
+registered POLYTRANS mark and an existing plugin with a near-identical name. This
+release carries out the rename they asked for and nothing else.
+
+A major version because the upgrade is not seamless for an existing install: the
+plugin directory changes name, so WordPress finds `active_plugins` pointing at a
+path that no longer exists and the plugin shows up deactivated. One click on
+"Activate" restores it. **No data is touched** — tables, options and post meta keep
+their `polytrans` prefix precisely so that this stays true.
+
+### Changed
+- **Display name, permalink, plugin directory and main file** — `TreeTank Translation
+  Workflows`, `treetank-trans`, `treetank-trans/`, `treetank-trans.php`.
+- **Text domain is now `treetank-trans`** across all 1306 call sites, because
+  WordPress.org packages translations by slug. The files in `languages/` follow it.
+- **Every string a user reads** names TreeTank, or names nothing where the product
+  name carried no information: the editor metaboxes are "Translation Scheduler" and
+  "Translation Workflows", and the admin menu is "TreeTank".
+- **`TREETANK_TRANS_ALLOW_UNAUTHENTICATED_ENDPOINTS`** is the documented name of the
+  `wp-config.php` constant that opens the REST endpoints on an internal network.
+  `POLYTRANS_ALLOW_UNAUTHENTICATED_ENDPOINTS` keeps working, with no deprecation
+  notice and no removal date: it lives in a file this plugin must never write to, and
+  an upgrade that silently re-closed those endpoints would be an outage.
+
+### Unchanged, deliberately
+- Database tables, the `polytrans_settings` option and every `_polytrans_*` post meta
+  key. Renaming any of them would discard existing installations' data.
+- The `PolyTrans\` namespace and the `PolyTrans_*` legacy class names.
+- `POLYTRANS_*` constants, including `POLYTRANS_VERSION`.
+- The `wp_ajax_polytrans_*` actions and the `polytrans/v1` REST namespace, which
+  external integrations call.
+- Admin menu slugs, so a bookmarked settings URL still resolves.
+- HTTP User-Agent strings and the `X-Polytrans-BG` header — protocol, not
+  presentation, and a site may have them on a WAF allow-list.
+
 ## [1.20.0] - 2026-08-24
 
 WordPress 7.1 support, and the second WordPress.org review round.

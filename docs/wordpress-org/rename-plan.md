@@ -1,14 +1,14 @@
-# Plan przemianowania wtyczki
+# Plan przemianowania wtyczki — WYKONANY
 
-Sparametryzowany dwiema wartościami, których jeszcze nie znamy — czekamy na
-potwierdzenie recenzenta (mail z 2026-08-25):
+Slug potwierdzony i zarezerwowany 2026-08-26. Wykonanie: patrz
+`reply-2026-08-26-sent.md` (tabela commitów i bramek).
 
-- `<SLUG>` — slug katalogu WordPress.org, np. `trans-trans-baby`
-- `<NAME>` — nazwa wyświetlana, np. `Trans Trans Baby`
+- slug i text domain: **`treetank-trans`**
+- nazwa wyświetlana: **`TreeTank Translation Workflows`**
+- etykieta menu: **`TreeTank`**
 
-**Nie zaczynamy, dopóki slug nie jest potwierdzony.** Mail zobowiązuje wprost:
-„we are holding the rename until you confirm, so that the text domain — which has to
-match the slug — is only changed once."
+Dokument zostaje jako zapis tego, co zostało zmienione, a co świadomie nie —
+ta druga lista jest istotna, bo każdy przyszły `sed` musi ją respektować.
 
 ---
 
@@ -33,22 +33,22 @@ Zapowiedziane recenzentowi i uzasadnione danymi klientów:
 ### A. Text domain — 1306 miejsc
 
 Drugi argument funkcji i18n. Zmiana mechaniczna, ale **nie** globalnym
-`sed 's/polytrans/<SLUG>/g'` — to zniszczyłoby tabele, opcje i meta. Wzorzec musi
+`sed 's/polytrans/treetank-trans/g'` — to zniszczyłoby tabele, opcje i meta. Wzorzec musi
 trafiać wyłącznie w argument text domain:
 
 ```bash
 grep -rlE "'polytrans'\)" --include=*.php --include=*.twig includes/ templates/ polytrans.php \
-  | xargs sed -i "s/'polytrans')/'<SLUG>')/g"
+  | xargs sed -i "s/'polytrans')/'treetank-trans')/g"
 ```
 
 Weryfikacja po zmianie: `grep -rc "'polytrans')" ` musi dać 0, a
-`grep -rc "'<SLUG>')" ` — 1306.
+`grep -rc "'treetank-trans')" ` — 1306.
 
 ### B. `phpcs.xml:57` — **krytyczne**
 
 ```xml
 <property name="text_domain" type="array">
-    <element value="polytrans"/>   <!-- → <SLUG> -->
+    <element value="polytrans"/>   <!-- → treetank-trans -->
 ```
 
 Bez tego wpisu PHPCS zgłasza 1306 × `WordPress.WP.I18n.TextDomainMismatch` i job
@@ -58,14 +58,14 @@ Bez tego wpisu PHPCS zgłasza 1306 × `WordPress.WP.I18n.TextDomainMismatch` i j
 
 | Plik | Pole |
 |---|---|
-| `polytrans.php` | `Plugin Name: PolyTrans` → `<NAME>` |
-| `polytrans.php` | `Text Domain: polytrans` → `<SLUG>` |
-| `readme.txt` | `=== PolyTrans ===` → `=== <NAME> ===` |
+| `polytrans.php` | `Plugin Name: PolyTrans` → `TreeTank Translation Workflows` |
+| `polytrans.php` | `Text Domain: polytrans` → `treetank-trans` |
+| `readme.txt` | `=== PolyTrans ===` → `=== TreeTank Translation Workflows ===` |
 | `readme.txt` | pozostałe 5 wzmianek w opisie |
 
 ### D. Nazwa głównego pliku
 
-`polytrans.php` → `<SLUG>.php`, przez `git mv` (zachowuje historię).
+`polytrans.php` → `treetank-trans.php`, przez `git mv` (zachowuje historię).
 
 Ścieżek nie trzeba nigdzie poprawiać: `POLYTRANS_PLUGIN_DIR/URL/FILE` liczą się
 z `plugin_dir_path(__FILE__)`, a w kodzie **nie ma ani jednego** hardcode
@@ -107,8 +107,8 @@ AI Assistants") — po zmianie nazwy menu tekst musi zgadzać się z punktem D.
 
 Nazwy plików muszą odpowiadać text domain, bo tak WordPress ich szuka:
 
-- `polytrans.pot` → `<SLUG>.pot`
-- `polytrans-pl_PL.po` → `<SLUG>-pl_PL.po`
+- `polytrans.pot` → `treetank-trans.pot`
+- `polytrans-pl_PL.po` → `treetank-trans-pl_PL.po`
 - w obu: nagłówek `Project-Id-Version` oraz odwołania do domeny
 
 ### H. CI — `.gitlab-ci.yml`, 52 wystąpienia
@@ -117,12 +117,12 @@ Nazwa katalogu w paczce **musi** równać się slugowi, inaczej WordPress.org od
 
 | Linia | Co |
 |---|---|
-| 58 | `php -l /src/polytrans.php` → `<SLUG>.php` |
+| 58 | `php -l /src/polytrans.php` → `treetank-trans.php` |
 | 115, 144, 145 | `/tmp/polytrans-pcp-${CI_JOB_ID}` (kosmetyka, nazwa katalogu roboczego) |
-| 119 | `wp-content/plugins/polytrans/` → `<SLUG>/` |
-| 130 | `wp plugin check polytrans` → `<SLUG>` |
-| 186, 195–209, 219 | `release/polytrans/` → `release/<SLUG>/` |
-| 217, 218 | `polytrans.php` → `<SLUG>.php` (odczyt wersji) |
+| 119 | `wp-content/plugins/polytrans/` → `treetank-trans/` |
+| 130 | `wp plugin check polytrans` → `treetank-trans` |
+| 186, 195–209, 219 | `release/polytrans/` → `release/treetank-trans/` |
+| 217, 218 | `polytrans.php` → `treetank-trans.php` (odczyt wersji) |
 | 231–255 | nazwy ZIP-ów, sumy SHA, ścieżka pakietu generycznego |
 | 284, 285, 302 | remote GitHub — **zostaje**, dopóki nie przemianujemy repo |
 | 343, 348 | tekst opisu release'a |

@@ -13,15 +13,15 @@ NC='\033[0m' # No Color
 
 # Function to print colored output
 print_status() {
-    echo -e "${GREEN}[PolyTrans]${NC} $1"
+    echo -e "${GREEN}[TreeTank]${NC} $1"
 }
 
 print_warning() {
-    echo -e "${YELLOW}[PolyTrans]${NC} $1"
+    echo -e "${YELLOW}[TreeTank]${NC} $1"
 }
 
 print_error() {
-    echo -e "${RED}[PolyTrans]${NC} $1"
+    echo -e "${RED}[TreeTank]${NC} $1"
 }
 
 # Help function
