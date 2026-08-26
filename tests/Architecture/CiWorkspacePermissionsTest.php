@@ -47,7 +47,7 @@ test('Docker CI jobs do not write through the GitLab checkout mount', function (
 
     $plugin_check = substr($ci, strpos($ci, 'plugin-check:'));
     $plugin_check = substr($plugin_check, 0, strpos($plugin_check, "# ==============================================================================\n# Build Stage"));
-    expect($plugin_check)->toContain('PCP_ROOT="/tmp/polytrans-pcp-${CI_JOB_ID}"');
+    expect($plugin_check)->toContain('PCP_ROOT="/tmp/treetank-trans-pcp-${CI_JOB_ID}"');
     expect($plugin_check)->not->toContain('${CI_PROJECT_DIR}/pcp');
     expect($plugin_check)->toContain('--user root --entrypoint sh');
 });

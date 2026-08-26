@@ -4,7 +4,7 @@
 
     <!-- What to scan -->
     <file>includes/</file>
-    <file>polytrans.php</file>
+    <file>treetank-trans.php</file>
     
     <!-- What to exclude -->
     <exclude-pattern>*/vendor/*</exclude-pattern>
