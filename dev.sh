@@ -125,13 +125,13 @@ clean() {
 # container cannot leave files the next checkout can't remove.
 run_smoke() {
     local wp_version="${1:-}"
-    local work_dir="${TMPDIR:-/tmp}/polytrans-smoke-$$"
+    local work_dir="${TMPDIR:-/tmp}/treetank-trans-smoke-$$"
     local net="pt-smoke-$$"
     local db="pt-smoke-db-$$"
 
     print_status "Staging distribution tree in ${work_dir}"
-    mkdir -p "$work_dir/wp-content/plugins/polytrans"
-    rsync -a --exclude-from=.distignore --exclude='/.git' ./ "$work_dir/wp-content/plugins/polytrans/"
+    mkdir -p "$work_dir/wp-content/plugins/treetank-trans"
+    rsync -a --exclude-from=.distignore --exclude='/.git' ./ "$work_dir/wp-content/plugins/treetank-trans/"
 
     docker network create "$net" >/dev/null
     print_status "Starting database"
@@ -155,9 +155,9 @@ run_smoke() {
         \$WP config create --allow-root --dbname=wp --dbuser=root --dbpass=pcp --dbhost=$db --skip-check --force >/dev/null
         \$WP core install --allow-root --url=http://example.test --title=smoke --admin_user=a --admin_password=a --admin_email=a@example.test --skip-email >/dev/null
         echo \"WordPress: \$(\$WP core version --allow-root)\"
-        \$WP plugin activate polytrans --allow-root
+        \$WP plugin activate treetank-trans --allow-root
         \$WP plugin install plugin-check --allow-root --activate >/dev/null 2>&1
-        \$WP plugin check polytrans --allow-root --exclude-directories=vendor,node_modules --format=csv > pcp.csv 2>/dev/null
+        \$WP plugin check treetank-trans --allow-root --exclude-directories=vendor,node_modules --format=csv > pcp.csv 2>/dev/null
         echo \"Plugin Check errors:   \$(grep -c ',ERROR,' pcp.csv || true)\"
         echo \"Plugin Check warnings: \$(grep -c ',WARNING,' pcp.csv || true)\"
         grep ',ERROR,' pcp.csv || true

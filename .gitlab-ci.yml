@@ -55,7 +55,7 @@ php-syntax-check:
       docker run --rm
       -v "${CI_PROJECT_DIR}:/src:ro"
       php:8.3-cli
-      sh -c "find /src/includes -name '*.php' -print0 | xargs -0 -n1 php -l && php -l /src/polytrans.php"
+      sh -c "find /src/includes -name '*.php' -print0 | xargs -0 -n1 php -l && php -l /src/treetank-trans.php"
   rules:
     - if: $CI_COMMIT_BRANCH == "main" && $CI_COMMIT_MESSAGE !~ /\[skip ci\]/
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
@@ -112,11 +112,11 @@ plugin-check:
     # production dependencies before copying the distribution-shaped tree.
     # Keep the complete staging tree outside the checkout: WP-CLI runs as root
     # and would otherwise leave root-owned WordPress files under CI_PROJECT_DIR.
-    - export PCP_ROOT="/tmp/polytrans-pcp-${CI_JOB_ID}"
+    - export PCP_ROOT="/tmp/treetank-trans-pcp-${CI_JOB_ID}"
     - mkdir -p "$PCP_ROOT/source" "$PCP_ROOT/wp-content/plugins"
     - rsync -a --exclude='/vendor/' . "$PCP_ROOT/source/"
     - composer install --working-dir="$PCP_ROOT/source" --no-dev --optimize-autoloader --no-interaction
-    - rsync -a --exclude-from="$PCP_ROOT/source/.distignore" "$PCP_ROOT/source/" "$PCP_ROOT/wp-content/plugins/polytrans/"
+    - rsync -a --exclude-from="$PCP_ROOT/source/.distignore" "$PCP_ROOT/source/" "$PCP_ROOT/wp-content/plugins/treetank-trans/"
     - >
       docker run --rm --network "$NET"
       -v "$PCP_ROOT:/var/www/html"
@@ -127,7 +127,7 @@ plugin-check:
       && php -d memory_limit=2G /usr/local/bin/wp config create --allow-root --dbname=wp --dbuser=root --dbpass=pcp --dbhost=$DB --skip-check --force
       && php -d memory_limit=2G /usr/local/bin/wp core install --allow-root --url=http://example.test --title=pcp --admin_user=a --admin_password=a --admin_email=a@example.test --skip-email
       && php -d memory_limit=2G /usr/local/bin/wp plugin install plugin-check ${PLUGIN_CHECK_VERSION:+--version=$PLUGIN_CHECK_VERSION} --allow-root --activate
-      && php -d memory_limit=2G /usr/local/bin/wp plugin check polytrans --allow-root --exclude-directories=vendor,node_modules --format=csv"
+      && php -d memory_limit=2G /usr/local/bin/wp plugin check treetank-trans --allow-root --exclude-directories=vendor,node_modules --format=csv"
       | tee pcp-report.csv
     - |
       ERRORS=$(grep -c ',ERROR,' pcp-report.csv || true)
@@ -141,8 +141,8 @@ plugin-check:
   after_script:
     - docker rm -f "pcp-mysql-${CI_JOB_ID}" || true
     - docker network rm "pcp-${CI_JOB_ID}" || true
-    - docker run --rm --user root --entrypoint sh -v "/tmp/polytrans-pcp-${CI_JOB_ID}:/cleanup" wordpress:cli-php8.2 -c "rm -rf /cleanup/* /cleanup/.[!.]* /cleanup/..?*" || true
-    - rmdir "/tmp/polytrans-pcp-${CI_JOB_ID}" || true
+    - docker run --rm --user root --entrypoint sh -v "/tmp/treetank-trans-pcp-${CI_JOB_ID}:/cleanup" wordpress:cli-php8.2 -c "rm -rf /cleanup/* /cleanup/.[!.]* /cleanup/..?*" || true
+    - rmdir "/tmp/treetank-trans-pcp-${CI_JOB_ID}" || true
   artifacts:
     when: always
     paths:
@@ -183,7 +183,7 @@ build:
     # Create release directory. The exclusion list lives in .distignore — one file,
     # so that this job and the package-lint job cannot disagree about it.
     - mkdir -p release
-    - rsync -av --exclude-from=.distignore . release/polytrans/
+    - rsync -av --exclude-from=.distignore . release/treetank-trans/
 
     # Refuse to ship development leftovers. Guideline check, not a style preference:
     # Plugin Check reports hidden files as an ERROR, and a dangling symlink breaks
@@ -192,21 +192,21 @@ build:
       FAILED=0
       # vendor/ is pruned: a dependency shipping its own .gitignore is not our doing,
       # and Plugin Check does not flag it either.
-      HIDDEN=$(find release/polytrans -path release/polytrans/vendor -prune -o -name '.*' -not -name '.' -print)
+      HIDDEN=$(find release/treetank-trans -path release/treetank-trans/vendor -prune -o -name '.*' -not -name '.' -print)
       if [ -n "$HIDDEN" ]; then
         echo "❌ Hidden files in package:"; echo "$HIDDEN"; FAILED=1
       fi
-      if find release/polytrans -xtype l -print | grep -q .; then
-        echo "❌ Broken symlinks in package:"; find release/polytrans -xtype l; FAILED=1
+      if find release/treetank-trans -xtype l -print | grep -q .; then
+        echo "❌ Broken symlinks in package:"; find release/treetank-trans -xtype l; FAILED=1
       fi
-      if find release/polytrans -type l -print | grep -q .; then
-        echo "❌ Symlinks in package:"; find release/polytrans -type l; FAILED=1
+      if find release/treetank-trans -type l -print | grep -q .; then
+        echo "❌ Symlinks in package:"; find release/treetank-trans -type l; FAILED=1
       fi
-      if [ ! -f release/polytrans/readme.txt ]; then
+      if [ ! -f release/treetank-trans/readme.txt ]; then
         echo "❌ readme.txt missing from package"; FAILED=1
       fi
       for f in CLAUDE.md AGENTS.md CONTEXT.md Makefile phpcs.xml docker-compose.test.yml; do
-        if [ -e "release/polytrans/$f" ]; then echo "❌ Development file in package: $f"; FAILED=1; fi
+        if [ -e "release/treetank-trans/$f" ]; then echo "❌ Development file in package: $f"; FAILED=1; fi
       done
       if [ "$FAILED" -ne 0 ]; then echo "Package contents rejected — fix .distignore"; exit 1; fi
       echo "✅ Package contents clean"
@@ -214,9 +214,9 @@ build:
     # Version consistency: plugin header, constant, readme stable tag and changelog
     # must all name the tag being built.
     - |
-      HDR=$(grep -m1 -oP '^\s*\*\s*Version:\s*\K[0-9][0-9A-Za-z.\-]*' polytrans.php)
-      CONST=$(grep -m1 -oP "POLYTRANS_VERSION',\s*'\K[0-9][0-9A-Za-z.\-]*" polytrans.php)
-      TAG=$(grep -m1 -oP '^Stable tag:\s*\K[0-9][0-9A-Za-z.\-]*' release/polytrans/readme.txt)
+      HDR=$(grep -m1 -oP '^\s*\*\s*Version:\s*\K[0-9][0-9A-Za-z.\-]*' treetank-trans.php)
+      CONST=$(grep -m1 -oP "POLYTRANS_VERSION',\s*'\K[0-9][0-9A-Za-z.\-]*" treetank-trans.php)
+      TAG=$(grep -m1 -oP '^Stable tag:\s*\K[0-9][0-9A-Za-z.\-]*' release/treetank-trans/readme.txt)
       echo "tag=$VERSION header=$HDR const=$CONST stable_tag=$TAG"
       if [ "$HDR" != "$VERSION" ] || [ "$CONST" != "$VERSION" ] || [ "$TAG" != "$VERSION" ]; then
         echo "❌ Version mismatch between git tag, plugin header, POLYTRANS_VERSION and readme.txt Stable tag"; exit 1
@@ -228,14 +228,14 @@ build:
 
     # Create ZIP archives
     - cd release
-    - zip -r polytrans-${VERSION}.zip polytrans/
-    - zip -r polytrans.zip polytrans/
+    - zip -r treetank-trans-${VERSION}.zip treetank-trans/
+    - zip -r treetank-trans.zip treetank-trans/
     - cd ..
 
     # Generate checksums
     - cd release
-    - sha256sum polytrans-${VERSION}.zip > polytrans-${VERSION}.zip.sha256
-    - sha256sum polytrans.zip > polytrans.zip.sha256
+    - sha256sum treetank-trans-${VERSION}.zip > treetank-trans-${VERSION}.zip.sha256
+    - sha256sum treetank-trans.zip > treetank-trans.zip.sha256
     - cd ..
 
     - echo "✅ Build complete! Archives created:"
@@ -243,16 +243,16 @@ build:
 
     # Upload to Package Registry (stable URLs, no job ID)
     - |
-      for FILE in polytrans.zip polytrans.zip.sha256 polytrans-${VERSION}.zip polytrans-${VERSION}.zip.sha256; do
+      for FILE in treetank-trans.zip treetank-trans.zip.sha256 treetank-trans-${VERSION}.zip treetank-trans-${VERSION}.zip.sha256; do
         curl --fail --header "JOB-TOKEN: ${CI_JOB_TOKEN}" \
              --upload-file "release/${FILE}" \
-             "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/polytrans/${VERSION}/${FILE}"
+             "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/treetank-trans/${VERSION}/${FILE}"
       done
     - |
-      for FILE in polytrans.zip polytrans.zip.sha256; do
+      for FILE in treetank-trans.zip treetank-trans.zip.sha256; do
         curl --fail --header "JOB-TOKEN: ${CI_JOB_TOKEN}" \
              --upload-file "release/${FILE}" \
-             "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/polytrans/latest/${FILE}"
+             "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/treetank-trans/latest/${FILE}"
       done
     - echo "✅ Uploaded to Package Registry"
   artifacts:
@@ -340,14 +340,14 @@ release-github:
       ### 📦 Installation
 
       **For WordPress Installation (Recommended):**
-      1. Download `polytrans.zip` ⬅️ Use this one!
+      1. Download `treetank-trans.zip` ⬅️ Use this one!
       2. Upload to WordPress via Plugins > Add New > Upload Plugin
       3. Activate the plugin
 
       **For Archival/Version Tracking:**
-      - Download `polytrans-${VERSION}.zip` if you need version-specific archive
+      - Download `treetank-trans-${VERSION}.zip` if you need version-specific archive
 
-      **Note:** Both ZIPs contain identical files. The `polytrans.zip` ensures WordPress installs the plugin in the correct `polytrans/` directory.
+      **Note:** Both ZIPs contain identical files. The `treetank-trans.zip` ensures WordPress installs the plugin in the correct `treetank-trans/` directory.
 
       ### ✅ What's Included
 
@@ -360,10 +360,10 @@ release-github:
       Verify the download integrity:
       ```bash
       # For WordPress installation:
-      sha256sum -c polytrans.zip.sha256
+      sha256sum -c treetank-trans.zip.sha256
 
       # For versioned archive:
-      sha256sum -c polytrans-${VERSION}.zip.sha256
+      sha256sum -c treetank-trans-${VERSION}.zip.sha256
       ```
 
       ---
@@ -412,7 +412,7 @@ release-github:
     # Upload release assets
     - ls -la release/
     - |
-      for FILE in polytrans.zip polytrans-${VERSION}.zip polytrans.zip.sha256 polytrans-${VERSION}.zip.sha256; do
+      for FILE in treetank-trans.zip treetank-trans-${VERSION}.zip treetank-trans.zip.sha256 treetank-trans-${VERSION}.zip.sha256; do
         if [ ! -f "release/${FILE}" ]; then
           echo "⚠️ Skipping ${FILE} (not found)"
           continue
@@ -473,14 +473,14 @@ release:
       ### 📦 Installation
 
       **For WordPress Installation (Recommended):**
-      1. Download `polytrans.zip` ⬅️ Use this one!
+      1. Download `treetank-trans.zip` ⬅️ Use this one!
       2. Upload to WordPress via Plugins > Add New > Upload Plugin
       3. Activate the plugin
 
       **For Archival/Version Tracking:**
-      - Download `polytrans-${VERSION}.zip` if you need version-specific archive
+      - Download `treetank-trans-${VERSION}.zip` if you need version-specific archive
 
-      **Note:** Both ZIPs contain identical files. The `polytrans.zip` ensures WordPress installs the plugin in the correct `polytrans/` directory.
+      **Note:** Both ZIPs contain identical files. The `treetank-trans.zip` ensures WordPress installs the plugin in the correct `treetank-trans/` directory.
 
       ### ✅ What's Included
 
@@ -493,10 +493,10 @@ release:
       Verify the download integrity:
       ```bash
       # For WordPress installation:
-      sha256sum -c polytrans.zip.sha256
+      sha256sum -c treetank-trans.zip.sha256
 
       # For versioned archive:
-      sha256sum -c polytrans-${VERSION}.zip.sha256
+      sha256sum -c treetank-trans-${VERSION}.zip.sha256
       ```
 
       ---
@@ -525,7 +525,7 @@ release:
     # Create GitLab Release via API (using Package Registry URLs - no job ID!)
     - |
       DESCRIPTION=$(cat /tmp/release_description.md)
-      PKG_BASE="${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/polytrans"
+      PKG_BASE="${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/treetank-trans"
       curl --fail --request POST \
         --header "JOB-TOKEN: ${CI_JOB_TOKEN}" \
         --header "Content-Type: application/json" \
@@ -536,23 +536,23 @@ release:
           \"assets\": {
             \"links\": [
               {
-                \"name\": \"polytrans.zip (WordPress Installation)\",
-                \"url\": \"${PKG_BASE}/latest/polytrans.zip\",
+                \"name\": \"treetank-trans.zip (WordPress Installation)\",
+                \"url\": \"${PKG_BASE}/latest/treetank-trans.zip\",
                 \"link_type\": \"package\"
               },
               {
-                \"name\": \"polytrans.zip.sha256\",
-                \"url\": \"${PKG_BASE}/latest/polytrans.zip.sha256\",
+                \"name\": \"treetank-trans.zip.sha256\",
+                \"url\": \"${PKG_BASE}/latest/treetank-trans.zip.sha256\",
                 \"link_type\": \"other\"
               },
               {
-                \"name\": \"polytrans-${VERSION}.zip (Versioned Archive)\",
-                \"url\": \"${PKG_BASE}/${VERSION}/polytrans-${VERSION}.zip\",
+                \"name\": \"treetank-trans-${VERSION}.zip (Versioned Archive)\",
+                \"url\": \"${PKG_BASE}/${VERSION}/treetank-trans-${VERSION}.zip\",
                 \"link_type\": \"package\"
               },
               {
-                \"name\": \"polytrans-${VERSION}.zip.sha256\",
-                \"url\": \"${PKG_BASE}/${VERSION}/polytrans-${VERSION}.zip.sha256\",
+                \"name\": \"treetank-trans-${VERSION}.zip.sha256\",
+                \"url\": \"${PKG_BASE}/${VERSION}/treetank-trans-${VERSION}.zip.sha256\",
                 \"link_type\": \"other\"
               }
             ]
