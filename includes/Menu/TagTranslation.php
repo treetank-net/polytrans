@@ -48,8 +48,8 @@ class TagTranslation
     {
         add_submenu_page(
             'polytrans',
-            __('Tag Translations', 'polytrans'),
-            __('Tag Translations', 'polytrans'),
+            __('Tag Translations', 'treetank-trans'),
+            __('Tag Translations', 'treetank-trans'),
             'edit_posts',
             'polytrans-tag-translation',
             [$this, 'admin_page'],
@@ -72,18 +72,18 @@ class TagTranslation
                 'ajaxurl' => admin_url('admin-ajax.php'),
                 'nonce' => wp_create_nonce('polytrans_tag_translation'),
                 'i18n' => [
-                    'translation_saved' => esc_html__('Translation saved!', 'polytrans'),
-                    'please_select_file' => esc_html__('Please select a CSV file.', 'polytrans'),
-                    'importing' => esc_html__('Importing...', 'polytrans'),
-                    'import_complete' => esc_html__('Import complete!', 'polytrans'),
-                    'import_error' => esc_html__('Import failed. Please check the CSV format.', 'polytrans'),
-                    'confirm_delete' => esc_html__('Are you sure you want to delete this translation?', 'polytrans'),
-                    'deleting' => esc_html__('Deleting...', 'polytrans'),
-                    'delete_error' => esc_html__('Failed to delete translation.', 'polytrans'),
-                    'search_placeholder' => esc_html__('Search tags...', 'polytrans'),
-                    'no_results' => esc_html__('No tags found.', 'polytrans'),
-                    'loading' => esc_html__('Loading...', 'polytrans'),
-                    'error_occurred' => esc_html__('An error occurred. Please try again.', 'polytrans'),
+                    'translation_saved' => esc_html__('Translation saved!', 'treetank-trans'),
+                    'please_select_file' => esc_html__('Please select a CSV file.', 'treetank-trans'),
+                    'importing' => esc_html__('Importing...', 'treetank-trans'),
+                    'import_complete' => esc_html__('Import complete!', 'treetank-trans'),
+                    'import_error' => esc_html__('Import failed. Please check the CSV format.', 'treetank-trans'),
+                    'confirm_delete' => esc_html__('Are you sure you want to delete this translation?', 'treetank-trans'),
+                    'deleting' => esc_html__('Deleting...', 'treetank-trans'),
+                    'delete_error' => esc_html__('Failed to delete translation.', 'treetank-trans'),
+                    'search_placeholder' => esc_html__('Search tags...', 'treetank-trans'),
+                    'no_results' => esc_html__('No tags found.', 'treetank-trans'),
+                    'loading' => esc_html__('Loading...', 'treetank-trans'),
+                    'error_occurred' => esc_html__('An error occurred. Please try again.', 'treetank-trans'),
                 ]
             ]);
         }
@@ -143,8 +143,8 @@ class TagTranslation
             'nonce' => wp_create_nonce('polytrans_suggest_tags'),
             'lang' => $post_lang,
             'i18n' => [
-                'approved' => esc_html__('PolyTrans', 'polytrans'),
-                'other' => esc_html__('Other', 'polytrans'),
+                'approved' => esc_html__('PolyTrans', 'treetank-trans'),
+                'other' => esc_html__('Other', 'treetank-trans'),
             ],
         ]);
     }
@@ -301,7 +301,7 @@ class TagTranslation
         $translation_name = sanitize_text_field(wp_unslash($_POST['value'] ?? ''));
 
         if (!$tag_id || !$lang) {
-            wp_send_json_error(['message' => __('Invalid parameters.', 'polytrans')]);
+            wp_send_json_error(['message' => __('Invalid parameters.', 'treetank-trans')]);
         }
 
         // Handle translation logic based on whether Polylang is available
@@ -347,7 +347,7 @@ class TagTranslation
         }
 
         self::invalidate_approved_tags_cache();
-        wp_send_json_success(['message' => __('Translation saved successfully.', 'polytrans')]);
+        wp_send_json_success(['message' => __('Translation saved successfully.', 'treetank-trans')]);
     }
 
     /**
@@ -477,7 +477,7 @@ class TagTranslation
         // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitized on this line by PolyTrans\Core\sanitize_prompt_template(); Plugin Check runs PHPCS with its own bundled ruleset, which cannot be given customSanitizingFunctions, and WPCS only accepts a sanitizer reached as a plain function call.
         $csv_content = isset($_POST['csv']) ? sanitize_prompt_template(wp_unslash($_POST['csv'])) : '';
         if (empty($csv_content)) {
-            wp_send_json_error(['message' => __('No CSV data provided.', 'polytrans')]);
+            wp_send_json_error(['message' => __('No CSV data provided.', 'treetank-trans')]);
         }
 
         // Get source language from settings
@@ -496,7 +496,7 @@ class TagTranslation
         $csv_data = $temp_lines;
 
         if (empty($csv_data) || count($csv_data) < 2) {
-            wp_send_json_error(['message' => __('Invalid CSV format or no data rows.', 'polytrans')]);
+            wp_send_json_error(['message' => __('Invalid CSV format or no data rows.', 'treetank-trans')]);
         }
 
         $header = $csv_data[0];
@@ -560,7 +560,7 @@ class TagTranslation
         }
 
         /* translators: %d: number of imported translations */
-        wp_send_json_success(['message' => sprintf(__('%d tag translations imported successfully.', 'polytrans'), $imported_count)]);
+        wp_send_json_success(['message' => sprintf(__('%d tag translations imported successfully.', 'treetank-trans'), $imported_count)]);
     }
 
     /**

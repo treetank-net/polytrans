@@ -3,7 +3,7 @@
 {# Note: Assets are enqueued in LogsMenu::add_scripts() via admin_enqueue_scripts hook #}
 
 <div class="wrap">
-    <h1>{{ __('PolyTrans Logs', 'polytrans') }}</h1>
+    <h1>{{ __('PolyTrans Logs', 'treetank-trans') }}</h1>
 
     {% if warning_message %}
         <div class="notice notice-warning is-dismissible">
@@ -21,20 +21,20 @@
 
     <!-- Auto-refresh controls -->
     <div class="polytrans-autorefresh-controls">
-        <label for="autorefresh-interval">{{ __('Auto-refresh every:', 'polytrans') }}</label>
+        <label for="autorefresh-interval">{{ __('Auto-refresh every:', 'treetank-trans') }}</label>
         <select id="autorefresh-interval">
-            <option value="0">{{ __('Disabled', 'polytrans') }}</option>
-            <option value="5">{{ __('5 seconds', 'polytrans') }}</option>
-            <option value="10">{{ __('10 seconds', 'polytrans') }}</option>
-            <option value="30">{{ __('30 seconds', 'polytrans') }}</option>
-            <option value="60">{{ __('1 minute', 'polytrans') }}</option>
-            <option value="300">{{ __('5 minutes', 'polytrans') }}</option>
+            <option value="0">{{ __('Disabled', 'treetank-trans') }}</option>
+            <option value="5">{{ __('5 seconds', 'treetank-trans') }}</option>
+            <option value="10">{{ __('10 seconds', 'treetank-trans') }}</option>
+            <option value="30">{{ __('30 seconds', 'treetank-trans') }}</option>
+            <option value="60">{{ __('1 minute', 'treetank-trans') }}</option>
+            <option value="300">{{ __('5 minutes', 'treetank-trans') }}</option>
         </select>
         <button type="button" id="pause-autorefresh" class="button">
-            {{ __('Pause', 'polytrans') }}
+            {{ __('Pause', 'treetank-trans') }}
         </button>
-        <button type="button" id="manual-refresh" class="button" title="{{ __('Refresh now', 'polytrans')|esc_attr }}">
-            {{ __('Refresh Now', 'polytrans') }}
+        <button type="button" id="manual-refresh" class="button" title="{{ __('Refresh now', 'treetank-trans')|esc_attr }}">
+            {{ __('Refresh Now', 'treetank-trans') }}
         </button>
         <span id="autorefresh-status"></span>
     </div>
@@ -45,38 +45,38 @@
 
         <div class="tablenav top">
             <div class="alignleft actions">
-                <label for="filter-by-level" class="screen-reader-text">{{ __('Filter by level', 'polytrans') }}</label>
+                <label for="filter-by-level" class="screen-reader-text">{{ __('Filter by level', 'treetank-trans') }}</label>
                 <select name="level" id="filter-by-level">
-                    <option value="">{{ __('All levels', 'polytrans') }}</option>
-                    <option value="info" {{ selected(level, 'info') }}>{{ __('Info', 'polytrans') }}</option>
-                    <option value="warning" {{ selected(level, 'warning') }}>{{ __('Warning', 'polytrans') }}</option>
-                    <option value="error" {{ selected(level, 'error') }}>{{ __('Error', 'polytrans') }}</option>
+                    <option value="">{{ __('All levels', 'treetank-trans') }}</option>
+                    <option value="info" {{ selected(level, 'info') }}>{{ __('Info', 'treetank-trans') }}</option>
+                    <option value="warning" {{ selected(level, 'warning') }}>{{ __('Warning', 'treetank-trans') }}</option>
+                    <option value="error" {{ selected(level, 'error') }}>{{ __('Error', 'treetank-trans') }}</option>
                 </select>
 
-                <label for="filter-by-source" class="screen-reader-text">{{ __('Filter by source', 'polytrans') }}</label>
+                <label for="filter-by-source" class="screen-reader-text">{{ __('Filter by source', 'treetank-trans') }}</label>
                 <select name="source" id="filter-by-source">
-                    <option value="">{{ __('All sources', 'polytrans') }}</option>
-                    <option value="web" {{ selected(source, 'web') }}>{{ __('Web', 'polytrans') }}</option>
-                    <option value="ajax" {{ selected(source, 'ajax') }}>{{ __('Ajax', 'polytrans') }}</option>
-                    <option value="cron" {{ selected(source, 'cron') }}>{{ __('Cron', 'polytrans') }}</option>
-                    <option value="cli" {{ selected(source, 'cli') }}>{{ __('CLI', 'polytrans') }}</option>
+                    <option value="">{{ __('All sources', 'treetank-trans') }}</option>
+                    <option value="web" {{ selected(source, 'web') }}>{{ __('Web', 'treetank-trans') }}</option>
+                    <option value="ajax" {{ selected(source, 'ajax') }}>{{ __('Ajax', 'treetank-trans') }}</option>
+                    <option value="cron" {{ selected(source, 'cron') }}>{{ __('Cron', 'treetank-trans') }}</option>
+                    <option value="cli" {{ selected(source, 'cli') }}>{{ __('CLI', 'treetank-trans') }}</option>
                 </select>
 
-                <label for="filter-by-post" class="screen-reader-text">{{ __('Filter by post ID', 'polytrans') }}</label>
-                <input type="number" name="post_id" id="filter-by-post" value="{{ post_id ? post_id|esc_attr : '' }}" placeholder="{{ __('Post ID', 'polytrans')|esc_attr }}">
+                <label for="filter-by-post" class="screen-reader-text">{{ __('Filter by post ID', 'treetank-trans') }}</label>
+                <input type="number" name="post_id" id="filter-by-post" value="{{ post_id ? post_id|esc_attr : '' }}" placeholder="{{ __('Post ID', 'treetank-trans')|esc_attr }}">
 
-                <input type="submit" class="button" value="{{ __('Filter', 'polytrans')|esc_attr }}">
+                <input type="submit" class="button" value="{{ __('Filter', 'treetank-trans')|esc_attr }}">
 
                 {% if has_filters %}
-                    <a href="{{ admin_url('admin.php?page=polytrans-logs')|esc_url }}" class="button">{{ __('Reset', 'polytrans') }}</a>
+                    <a href="{{ admin_url('admin.php?page=polytrans-logs')|esc_url }}" class="button">{{ __('Reset', 'treetank-trans') }}</a>
                 {% endif %}
             </div>
 
             <div class="alignright">
                 <p class="search-box">
-                    <label class="screen-reader-text" for="log-search-input">{{ __('Search Logs:', 'polytrans') }}</label>
-                    <input type="search" id="log-search-input" name="s" value="{{ search|esc_attr }}" placeholder="{{ __('Search logs...', 'polytrans')|esc_attr }}">
-                    <input type="submit" id="search-submit" class="button" value="{{ __('Search Logs', 'polytrans')|esc_attr }}">
+                    <label class="screen-reader-text" for="log-search-input">{{ __('Search Logs:', 'treetank-trans') }}</label>
+                    <input type="search" id="log-search-input" name="s" value="{{ search|esc_attr }}" placeholder="{{ __('Search logs...', 'treetank-trans')|esc_attr }}">
+                    <input type="submit" id="search-submit" class="button" value="{{ __('Search Logs', 'treetank-trans')|esc_attr }}">
                 </p>
             </div>
 

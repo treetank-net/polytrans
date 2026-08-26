@@ -1,9 +1,9 @@
 <table class="widefat fixed striped" id="translation-settings-table">
     <thead>
         <tr>
-            <th>{{ __('Language', 'polytrans') }}</th>
-            <th>{{ __('Post Status After Translation', 'polytrans') }}</th>
-            <th>{{ __('Reviewer', 'polytrans') }}</th>
+            <th>{{ __('Language', 'treetank-trans') }}</th>
+            <th>{{ __('Post Status After Translation', 'treetank-trans') }}</th>
+            <th>{{ __('Reviewer', 'treetank-trans') }}</th>
         </tr>
     </thead>
     <tbody>
@@ -19,7 +19,7 @@
                             <option value="{{ val|esc_attr }}" {{ selected(row.status, val) }}>{{ label|esc_html }}</option>
                         {% endfor %}
                     </select>
-                    <br><small>{{ __('Choose the status for posts after translation in this language. "Same as source" means the translation will be published if the source is published, or draft if the source is draft.', 'polytrans') }}</small>
+                    <br><small>{{ __('Choose the status for posts after translation in this language. "Same as source" means the translation will be published if the source is published, or draft if the source is draft.', 'treetank-trans') }}</small>
                 </td>
                 <td>
                     {% set reviewer_id = row.reviewer|default('none') %}
@@ -31,19 +31,19 @@
                         name="reviewer_suggest[{{ lang|esc_attr }}]"
                         value="{{ reviewer_label|esc_attr }}"
                         autocomplete="off"
-                        placeholder="{{ __('Type to search user...', 'polytrans')|esc_attr }}"
+                        placeholder="{{ __('Type to search user...', 'treetank-trans')|esc_attr }}"
                         style="width:100%;max-width:350px;"
                         data-user-autocomplete-for="#reviewer_hidden_{{ lang|esc_attr }}"
                         data-user-autocomplete-clear="#reviewer_clear_{{ lang|esc_attr }}">
                     <input type="hidden" name="reviewer[{{ lang|esc_attr }}]" id="reviewer_hidden_{{ lang|esc_attr }}" value="{{ reviewer_id|esc_attr }}">
                     <button type="button" class="button user-autocomplete-clear" id="reviewer_clear_{{ lang|esc_attr }}" data-lang="{{ lang|esc_attr }}" style="margin-left:0.5em;{% if reviewer_id == 'none' %}display:none;{% endif %}">&times;</button>
-                    <br><small>{{ __('Select a reviewer for this language. "None" disables review.', 'polytrans') }}</small>
+                    <br><small>{{ __('Select a reviewer for this language. "None" disables review.', 'treetank-trans') }}</small>
                 </td>
             </tr>
         {% endfor %}
         {% if not has_target %}
             <tr>
-                <td colspan="3" style="text-align:center; color:#888;">{{ __('No target languages selected. Please select at least one target language above.', 'polytrans') }}</td>
+                <td colspan="3" style="text-align:center; color:#888;">{{ __('No target languages selected. Please select at least one target language above.', 'treetank-trans') }}</td>
             </tr>
         {% endif %}
     </tbody>

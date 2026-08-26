@@ -155,23 +155,23 @@ class AssistantManager
 
 		// Required: name
 		if (empty($data['name']) || ! is_string($data['name'])) {
-			$errors['name'] = __('Name is required', 'polytrans');
+			$errors['name'] = __('Name is required', 'treetank-trans');
 		}
 
 		// Required: system_prompt
 		if (empty($data['system_prompt']) || ! is_string($data['system_prompt'])) {
-			$errors['system_prompt'] = __('System prompt is required', 'polytrans');
+			$errors['system_prompt'] = __('System prompt is required', 'treetank-trans');
 		}
 
 		// Required: api_parameters (must be valid JSON)
 		if (empty($data['api_parameters'])) {
-			$errors['api_parameters'] = __('API parameters are required', 'polytrans');
+			$errors['api_parameters'] = __('API parameters are required', 'treetank-trans');
 		} else {
 			// Validate JSON if it's a string
 			if (is_string($data['api_parameters'])) {
 				$decoded = json_decode($data['api_parameters'], true);
 				if (json_last_error() !== JSON_ERROR_NONE) {
-					$errors['api_parameters'] = __('Invalid JSON in api_parameters', 'polytrans');
+					$errors['api_parameters'] = __('Invalid JSON in api_parameters', 'treetank-trans');
 				}
 			}
 		}
@@ -181,18 +181,18 @@ class AssistantManager
 			$valid_providers = self::get_valid_providers_from_registry();
 			if (!in_array($data['provider'], $valid_providers, true)) {
 					/* translators: %s: comma-separated list of valid provider names */
-				$errors['provider'] = sprintf(__('Invalid provider. Allowed providers: %s', 'polytrans'), implode(', ', $valid_providers));
+				$errors['provider'] = sprintf(__('Invalid provider. Allowed providers: %s', 'treetank-trans'), implode(', ', $valid_providers));
 			}
 		}
 
 		// Optional: status (validate if present)
 		if (isset($data['status']) && ! in_array($data['status'], self::$valid_statuses, true)) {
-			$errors['status'] = __('Invalid status', 'polytrans');
+			$errors['status'] = __('Invalid status', 'treetank-trans');
 		}
 
 		// Optional: expected_format (validate if present)
 		if (isset($data['expected_format']) && ! in_array($data['expected_format'], self::$valid_formats, true)) {
-			$errors['expected_format'] = __('Invalid expected format', 'polytrans');
+			$errors['expected_format'] = __('Invalid expected format', 'treetank-trans');
 		}
 
 		// Optional: output_variables (validate JSON if present and not null)
@@ -200,7 +200,7 @@ class AssistantManager
 			if (is_string($data['output_variables'])) {
 				$decoded = json_decode($data['output_variables'], true);
 				if (json_last_error() !== JSON_ERROR_NONE) {
-					$errors['output_variables'] = __('Invalid JSON in output_variables', 'polytrans');
+					$errors['output_variables'] = __('Invalid JSON in output_variables', 'treetank-trans');
 				}
 			}
 		}
@@ -215,9 +215,9 @@ class AssistantManager
 					if (! $has_twig) {
 						$decoded = json_decode($schema_str, true);
 						if (json_last_error() !== JSON_ERROR_NONE) {
-							$errors['expected_output_schema'] = __('Invalid JSON in expected_output_schema', 'polytrans');
+							$errors['expected_output_schema'] = __('Invalid JSON in expected_output_schema', 'treetank-trans');
 						} elseif (! is_array($decoded)) {
-							$errors['expected_output_schema'] = __('Expected output schema must be a JSON object', 'polytrans');
+							$errors['expected_output_schema'] = __('Expected output schema must be a JSON object', 'treetank-trans');
 						}
 					}
 				}
@@ -243,7 +243,7 @@ class AssistantManager
 		// Validate data
 		$validation = self::validate_assistant_data($data);
 		if (! $validation['valid']) {
-			return new \WP_Error('invalid_data', __('Validation failed', 'polytrans'), $validation['errors']);
+			return new \WP_Error('invalid_data', __('Validation failed', 'treetank-trans'), $validation['errors']);
 		}
 
 		// Sanitize data
@@ -273,7 +273,7 @@ class AssistantManager
 		$result     = $wpdb->insert($table_name, $insert_data);
 
 		if (false === $result) {
-			return new \WP_Error('db_error', __('Failed to create assistant', 'polytrans'), $wpdb->last_error);
+			return new \WP_Error('db_error', __('Failed to create assistant', 'treetank-trans'), $wpdb->last_error);
 		}
 
 		return (int) $wpdb->insert_id;
@@ -332,13 +332,13 @@ class AssistantManager
 		// Check if assistant exists
 		$existing = self::get_assistant($id);
 		if (null === $existing) {
-			return new \WP_Error('not_found', __('Assistant not found', 'polytrans'));
+			return new \WP_Error('not_found', __('Assistant not found', 'treetank-trans'));
 		}
 
 		// Validate data
 		$validation = self::validate_assistant_data($data);
 		if (! $validation['valid']) {
-			return new \WP_Error('invalid_data', __('Validation failed', 'polytrans'), $validation['errors']);
+			return new \WP_Error('invalid_data', __('Validation failed', 'treetank-trans'), $validation['errors']);
 		}
 
 		// Sanitize data
@@ -372,7 +372,7 @@ class AssistantManager
 		);
 
 		if (false === $result) {
-			return new \WP_Error('db_error', __('Failed to update assistant', 'polytrans'), $wpdb->last_error);
+			return new \WP_Error('db_error', __('Failed to update assistant', 'treetank-trans'), $wpdb->last_error);
 		}
 
 		return true;

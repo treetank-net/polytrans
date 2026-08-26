@@ -1,9 +1,9 @@
 <div class="wrap">
     <h1>
         {% if is_new %}
-            {{ __('Add New Workflow', 'polytrans')|esc_html }}
+            {{ __('Add New Workflow', 'treetank-trans')|esc_html }}
         {% else %}
-            {{ __('Edit Workflow', 'polytrans')|esc_html }}
+            {{ __('Edit Workflow', 'treetank-trans')|esc_html }}
         {% endif %}
     </h1>
 
@@ -18,10 +18,10 @@
 
         <div class="workflow-editor-actions">
             <button type="submit" class="button button-primary">
-                {{ __('Save Workflow', 'polytrans')|esc_html }}
+                {{ __('Save Workflow', 'treetank-trans')|esc_html }}
             </button>
             <a href="{{ admin_url('admin.php?page=polytrans-workflows')|esc_url }}" class="button">
-                {{ __('Cancel', 'polytrans')|esc_html }}
+                {{ __('Cancel', 'treetank-trans')|esc_html }}
             </a>
         </div>
     </form>

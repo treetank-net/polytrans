@@ -34,7 +34,7 @@ class OpenAIProvider implements TranslationProviderInterface
      */
     public function get_name()
     {
-        return __('OpenAI', 'polytrans');
+        return __('OpenAI', 'treetank-trans');
     }
 
     /**
@@ -42,7 +42,7 @@ class OpenAIProvider implements TranslationProviderInterface
      */
     public function get_description()
     {
-        return __('AI-powered translation with custom assistants. Requires OpenAI API key and configured assistants.', 'polytrans');
+        return __('AI-powered translation with custom assistants. Requires OpenAI API key and configured assistants.', 'treetank-trans');
     }
 
     /**

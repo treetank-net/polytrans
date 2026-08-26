@@ -23,12 +23,12 @@ class ClaudeProvider implements TranslationProviderInterface
     
     public function get_name()
     {
-        return __('Claude', 'polytrans');
+        return __('Claude', 'treetank-trans');
     }
     
     public function get_description()
     {
-        return __('AI-powered translation with Claude. Requires Claude API key and configured assistants.', 'polytrans');
+        return __('AI-powered translation with Claude. Requires Claude API key and configured assistants.', 'treetank-trans');
     }
     
     public function get_settings_provider_class()

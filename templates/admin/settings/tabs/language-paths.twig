@@ -1,9 +1,9 @@
 {% set assistants_mapping = settings.assistants_mapping|default(settings.openai_assistants|default({})) %}
 {% set path_rules = settings.translation_path_rules|default(settings.openai_path_rules|default({})) %}
 
-<h2>{{ __('Translation Path Rules', 'polytrans') }}</h2>
+<h2>{{ __('Translation Path Rules', 'treetank-trans') }}</h2>
 <p class="description">
-    {{ __('Define routing rules for translations. Use intermediate languages for better quality (e.g., PL → EN → FR instead of direct PL → FR).', 'polytrans') }}
+    {{ __('Define routing rules for translations. Use intermediate languages for better quality (e.g., PL → EN → FR instead of direct PL → FR).', 'treetank-trans') }}
 </p>
 
 <div id="path-rules-container">
@@ -15,22 +15,22 @@
 </div>
 
 <button type="button" id="add-path-rule" class="button" style="margin-top: 10px;">
-    {{ __('Add Rule', 'polytrans') }}
+    {{ __('Add Rule', 'treetank-trans') }}
 </button>
 
 <hr style="margin: 30px 0;">
 
-<h2>{{ __('Provider/Assistant Mapping', 'polytrans') }}</h2>
+<h2>{{ __('Provider/Assistant Mapping', 'treetank-trans') }}</h2>
 <p class="description">
-    {{ __('Select which translation provider or assistant to use for each language pair. You can choose from AI providers or AI assistants (Managed or Provider API assistants).', 'polytrans') }}
+    {{ __('Select which translation provider or assistant to use for each language pair. You can choose from AI providers or AI assistants (Managed or Provider API assistants).', 'treetank-trans') }}
 </p>
 
 <div id="assistants-loading" style="display:none; padding: 10px; background: #f0f0f1; margin: 10px 0;">
-    <p><em>{{ __('Loading providers and assistants...', 'polytrans') }}</em></p>
+    <p><em>{{ __('Loading providers and assistants...', 'treetank-trans') }}</em></p>
 </div>
 
 <div id="assistants-error" style="display:none; padding: 10px; background: #f8d7da; color: #721c24; margin: 10px 0;">
-    <p>{{ __('Unable to load providers and assistants. Please check your API keys in provider configuration tabs if you want to use AI assistants.', 'polytrans') }}</p>
+    <p>{{ __('Unable to load providers and assistants. Please check your API keys in provider configuration tabs if you want to use AI assistants.', 'treetank-trans') }}</p>
 </div>
 
 <div id="assistants-mapping-container">

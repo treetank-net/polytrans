@@ -1,24 +1,24 @@
 <div class="wrap">
-    <h1 class="wp-heading-inline">{{ __('AI Assistants', 'polytrans') }}</h1>
+    <h1 class="wp-heading-inline">{{ __('AI Assistants', 'treetank-trans') }}</h1>
     <a href="{{ polytrans_admin_url('polytrans-assistants&action=new')|esc_url }}" class="page-title-action">
-        {{ __('Add New', 'polytrans') }}
+        {{ __('Add New', 'treetank-trans') }}
     </a>
     <hr class="wp-header-end">
 
     <p class="description">
-        {{ __('Manage AI assistants for content processing, translation enhancement, and workflow automation.', 'polytrans') }}
+        {{ __('Manage AI assistants for content processing, translation enhancement, and workflow automation.', 'treetank-trans') }}
     </p>
 
     {% if migration_status.migration_needed %}
         <div class="notice notice-warning">
             <p>
-                <strong>{{ __('Migration Available:', 'polytrans') }}</strong>
+                <strong>{{ __('Migration Available:', 'treetank-trans') }}</strong>
                 {% set steps_count = migration_status.ai_assistant_steps %}
-                {{ __('Found %d legacy workflow steps that can be migrated to managed assistants.', 'polytrans')|replace({'%d': steps_count}) }}
+                {{ __('Found %d legacy workflow steps that can be migrated to managed assistants.', 'treetank-trans')|replace({'%d': steps_count}) }}
             </p>
             <p>
                 <button type="button" id="migrate-workflows-btn" class="button button-primary">
-                    {{ __('Migrate Workflows Now', 'polytrans') }}
+                    {{ __('Migrate Workflows Now', 'treetank-trans') }}
                 </button>
                 <span class="spinner" style="float: none; margin: 0 10px;"></span>
             </p>
@@ -27,18 +27,18 @@
 
     {% if assistants is empty %}
         <div class="notice notice-info inline">
-            <p>{{ __('No assistants found. Create your first assistant to get started!', 'polytrans') }}</p>
+            <p>{{ __('No assistants found. Create your first assistant to get started!', 'treetank-trans') }}</p>
         </div>
     {% else %}
         <table class="wp-list-table widefat fixed striped">
             <thead>
                 <tr>
-                    <th scope="col" class="column-name">{{ __('Name', 'polytrans') }}</th>
-                    <th scope="col" class="column-provider">{{ __('Provider', 'polytrans') }}</th>
-                    <th scope="col" class="column-model">{{ __('Model', 'polytrans') }}</th>
-                    <th scope="col" class="column-format">{{ __('Response Format', 'polytrans') }}</th>
-                    <th scope="col" class="column-created">{{ __('Created', 'polytrans') }}</th>
-                    <th scope="col" class="column-actions">{{ __('Actions', 'polytrans') }}</th>
+                    <th scope="col" class="column-name">{{ __('Name', 'treetank-trans') }}</th>
+                    <th scope="col" class="column-provider">{{ __('Provider', 'treetank-trans') }}</th>
+                    <th scope="col" class="column-model">{{ __('Model', 'treetank-trans') }}</th>
+                    <th scope="col" class="column-format">{{ __('Response Format', 'treetank-trans') }}</th>
+                    <th scope="col" class="column-created">{{ __('Created', 'treetank-trans') }}</th>
+                    <th scope="col" class="column-actions">{{ __('Actions', 'treetank-trans') }}</th>
                 </tr>
             </thead>
             <tbody>
@@ -65,9 +65,9 @@
                                 {{ assistant.model|esc_html }}
                             {% else %}
                                 {% if assistant.has_default_model %}
-                                    <span style="color: #666; font-style: italic;">{{ __('default', 'polytrans') }}</span>
+                                    <span style="color: #666; font-style: italic;">{{ __('default', 'treetank-trans') }}</span>
                                 {% else %}
-                                    <span style="color: #dc3232; font-weight: bold;">{{ __('default', 'polytrans') }}</span>
+                                    <span style="color: #dc3232; font-weight: bold;">{{ __('default', 'treetank-trans') }}</span>
                                 {% endif %}
                             {% endif %}
                         </td>
@@ -75,7 +75,7 @@
                             {% if assistant.response_format %}
                                 {{ assistant.response_format|capitalize|esc_html }}
                             {% else %}
-                                <span style="color: #666; font-style: italic;">{{ __('default', 'polytrans') }}</span>
+                                <span style="color: #666; font-style: italic;">{{ __('default', 'treetank-trans') }}</span>
                             {% endif %}
                         </td>
                         <td class="column-created">
@@ -87,13 +87,13 @@
                         </td>
                         <td class="column-actions">
                             <a href="{{ polytrans_admin_url('polytrans-assistants&action=edit&assistant_id=' ~ assistant.id)|esc_url }}" class="button button-small">
-                                {{ __('Edit', 'polytrans') }}
+                                {{ __('Edit', 'treetank-trans') }}
                             </a>
                             <a href="{{ polytrans_admin_url('polytrans-assistants&action=test&assistant_id=' ~ assistant.id)|esc_url }}" class="button button-small">
-                                {{ __('Test', 'polytrans') }}
+                                {{ __('Test', 'treetank-trans') }}
                             </a>
                             <button type="button" class="button button-small button-link-delete assistant-delete" data-assistant-id="{{ assistant.id|esc_attr }}">
-                                {{ __('Delete', 'polytrans') }}
+                                {{ __('Delete', 'treetank-trans') }}
                             </button>
                         </td>
                     </tr>

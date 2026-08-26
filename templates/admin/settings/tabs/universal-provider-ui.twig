@@ -17,7 +17,7 @@
     {% if api_key_setting %}
         <!-- API Key Section -->
         <div class="provider-api-key-section" style="margin-top:2em;">
-            <h3>{{ __('API Key', 'polytrans') }}</h3>
+            <h3>{{ __('API Key', 'treetank-trans') }}</h3>
             <div style="display:flex;gap:0.5em;align-items:center;max-width:600px;">
                 <input type="password"
                        data-provider="{{ provider_id|esc_attr }}"
@@ -26,31 +26,31 @@
                        name="{{ api_key_setting|esc_attr }}"
                        value="{{ api_key|esc_attr }}"
                        style="width:100%"
-                       placeholder="{{ __('Enter your API key', 'polytrans')|esc_attr }}"
+                       placeholder="{{ __('Enter your API key', 'treetank-trans')|esc_attr }}"
                        autocomplete="off" />
                 <button type="button"
                         data-provider="{{ provider_id|esc_attr }}"
                         data-action="validate-key"
-                        class="button">{{ __('Validate', 'polytrans') }}</button>
+                        class="button">{{ __('Validate', 'treetank-trans') }}</button>
                 <button type="button"
                         data-provider="{{ provider_id|esc_attr }}"
                         data-action="toggle-visibility"
                         class="button">👁</button>
             </div>
             <div data-provider="{{ provider_id|esc_attr }}" data-field="validation-message" style="margin-top:0.5em;"></div>
-            <small>{{ __('Enter your %s API key. It will be validated before saving.', 'polytrans')|format(settings_provider.get_tab_label())|esc_html }}</small>
+            <small>{{ __('Enter your %s API key. It will be validated before saving.', 'treetank-trans')|format(settings_provider.get_tab_label())|esc_html }}</small>
         </div>
     {% endif %}
     
     {% if has_chat and not has_assistants_api %}
         <div class="notice notice-info inline" style="margin-top:2em;">
             <p>
-                <strong>{{ __('Note:', 'polytrans') }}</strong>
-                {{ __('%s does not have a dedicated Assistants API. To use %s for AI-powered translations, please create a "Managed Assistant" in the Assistants menu. Managed Assistants allow you to configure system prompts and user message templates for %s.', 'polytrans')|format(settings_provider.get_tab_label(), settings_provider.get_tab_label(), settings_provider.get_tab_label())|esc_html }}
+                <strong>{{ __('Note:', 'treetank-trans') }}</strong>
+                {{ __('%s does not have a dedicated Assistants API. To use %s for AI-powered translations, please create a "Managed Assistant" in the Assistants menu. Managed Assistants allow you to configure system prompts and user message templates for %s.', 'treetank-trans')|format(settings_provider.get_tab_label(), settings_provider.get_tab_label(), settings_provider.get_tab_label())|esc_html }}
             </p>
             <p>
                 <a href="{{ admin_url('admin.php?page=polytrans-assistants&action=new')|esc_url }}" class="button button-secondary">
-                    {{ __('Create Managed Assistant', 'polytrans') }}
+                    {{ __('Create Managed Assistant', 'treetank-trans') }}
                 </a>
             </p>
         </div>
@@ -59,7 +59,7 @@
     {% if has_chat_or_assistants %}
         <!-- Model Selection Section -->
         <div class="provider-model-section" style="margin-top:2em;">
-            <h3>{{ __('Default Model', 'polytrans') }}</h3>
+            <h3>{{ __('Default Model', 'treetank-trans') }}</h3>
             <div style="display:flex;gap:0.5em;align-items:center;max-width:600px;">
                 <select data-provider="{{ provider_id|esc_attr }}"
                         data-field="model"
@@ -67,15 +67,15 @@
                         id="{{ provider_id|esc_attr }}-model"
                         name="{{ model_setting_key|esc_attr }}"
                         style="flex:1;">
-                    <option value="">{{ __('Loading models...', 'polytrans') }}</option>
+                    <option value="">{{ __('Loading models...', 'treetank-trans') }}</option>
                 </select>
                 <button type="button"
                         data-provider="{{ provider_id|esc_attr }}"
                         data-action="refresh-models"
-                        class="button">{{ __('Refresh', 'polytrans') }}</button>
+                        class="button">{{ __('Refresh', 'treetank-trans') }}</button>
             </div>
             <div data-provider="{{ provider_id|esc_attr }}" data-field="model-message" style="margin-top:0.5em;"></div>
-            <small>{{ __('Default %s model to use for translations and AI Assistant steps.', 'polytrans')|format(settings_provider.get_tab_label())|esc_html }}</small>
+            <small>{{ __('Default %s model to use for translations and AI Assistant steps.', 'treetank-trans')|format(settings_provider.get_tab_label())|esc_html }}</small>
         </div>
 
         {# Site-wide reasoning effort; hidden by the field itself for classic models #}

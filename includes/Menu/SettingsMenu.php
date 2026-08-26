@@ -57,8 +57,8 @@ class SettingsMenu
         // in a spot nobody chose. ACF (80) and others crowd the same slot, so the
         // resulting order changed with whatever else the site had installed.
         add_menu_page(
-            __('PolyTrans', 'polytrans'),
-            __('PolyTrans', 'polytrans'),
+            __('PolyTrans', 'treetank-trans'),
+            __('PolyTrans', 'treetank-trans'),
             'edit_posts',
             'polytrans',
             [$this, 'render_overview'],
@@ -69,8 +69,8 @@ class SettingsMenu
         // Rename first submenu item from "PolyTrans" to "Overview"
         add_submenu_page(
             'polytrans',
-            __('Overview', 'polytrans'),
-            __('Overview', 'polytrans'),
+            __('Overview', 'treetank-trans'),
+            __('Overview', 'treetank-trans'),
             'edit_posts',
             'polytrans',
             [$this, 'render_overview']
@@ -79,8 +79,8 @@ class SettingsMenu
         // Settings submenu - admin only
         add_submenu_page(
             'polytrans',
-            __('Settings', 'polytrans'),
-            __('Settings', 'polytrans'),
+            __('Settings', 'treetank-trans'),
+            __('Settings', 'treetank-trans'),
             'manage_options',
             'polytrans-settings',
             [$this, 'render_settings']
@@ -104,11 +104,11 @@ class SettingsMenu
                 'ajaxUrl' => admin_url('admin-ajax.php'),
                 'nonce' => wp_create_nonce('polytrans_nonce'),
                 'i18n' => [
-                    'no_results' => esc_html__('No users found.', 'polytrans'),
-                    'searching' => esc_html__('Searching users...', 'polytrans'),
-                    'clear_selection' => esc_html__('Clear selection', 'polytrans'),
-                    'type_to_search' => esc_html__('Type to search users...', 'polytrans'),
-                    'min_chars' => esc_html__('Type at least 2 characters to search.', 'polytrans'),
+                    'no_results' => esc_html__('No users found.', 'treetank-trans'),
+                    'searching' => esc_html__('Searching users...', 'treetank-trans'),
+                    'clear_selection' => esc_html__('Clear selection', 'treetank-trans'),
+                    'type_to_search' => esc_html__('Type to search users...', 'treetank-trans'),
+                    'min_chars' => esc_html__('Type at least 2 characters to search.', 'treetank-trans'),
                 ]
             ]);
 
@@ -121,31 +121,31 @@ class SettingsMenu
                 'settings' => $settings,
                 'translation_receiver_endpoint' => $settings['translation_receiver_endpoint'] ?? '',
                 'i18n' => [
-                    'loading' => esc_html__('Loading...', 'polytrans'),
-                    'saving' => esc_html__('Saving...', 'polytrans'),
-                    'saved' => esc_html__('Settings saved successfully!', 'polytrans'),
+                    'loading' => esc_html__('Loading...', 'treetank-trans'),
+                    'saving' => esc_html__('Saving...', 'treetank-trans'),
+                    'saved' => esc_html__('Settings saved successfully!', 'treetank-trans'),
                     // Universal provider manager i18n
-                    'please_enter_api_key' => esc_html__('Please enter an API key', 'polytrans'),
-                    'validating' => esc_html__('Validating...', 'polytrans'),
-                    'api_key_valid' => esc_html__('API key is valid!', 'polytrans'),
-                    'api_key_invalid' => esc_html__('Invalid API key', 'polytrans'),
-                    'validation_failed' => esc_html__('Failed to validate API key. Please try again.', 'polytrans'),
-                    'refreshing' => esc_html__('Refreshing...', 'polytrans'),
-                    'models_refreshed' => esc_html__('Models refreshed', 'polytrans'),
-                    'no_models' => esc_html__('No models available', 'polytrans'),
-                    'none_selected' => esc_html__('None selected', 'polytrans'),
-                    'effort_provider_default' => esc_html__('Provider default', 'polytrans'),
-                    'dismiss_notice' => esc_html__('Dismiss this notice', 'polytrans'),
-                    'error' => esc_html__('An error occurred. Please try again.', 'polytrans'),
-                    'confirm_delete' => esc_html__('Are you sure you want to delete this item?', 'polytrans'),
-                    'test_connection' => esc_html__('Testing connection...', 'polytrans'),
-                    'connection_success' => esc_html__('Connection successful!', 'polytrans'),
-                    'connection_failed' => esc_html__('Connection failed. Please check your settings.', 'polytrans'),
-                    'invalid_url' => esc_html__('Please enter a valid URL.', 'polytrans'),
-                    'required_field' => esc_html__('This field is required.', 'polytrans'),
-                    'all' => esc_html__('All', 'polytrans'),
-                    'none_direct' => esc_html__('None (Direct)', 'polytrans'),
-                    'remove' => esc_html__('Remove', 'polytrans'),
+                    'please_enter_api_key' => esc_html__('Please enter an API key', 'treetank-trans'),
+                    'validating' => esc_html__('Validating...', 'treetank-trans'),
+                    'api_key_valid' => esc_html__('API key is valid!', 'treetank-trans'),
+                    'api_key_invalid' => esc_html__('Invalid API key', 'treetank-trans'),
+                    'validation_failed' => esc_html__('Failed to validate API key. Please try again.', 'treetank-trans'),
+                    'refreshing' => esc_html__('Refreshing...', 'treetank-trans'),
+                    'models_refreshed' => esc_html__('Models refreshed', 'treetank-trans'),
+                    'no_models' => esc_html__('No models available', 'treetank-trans'),
+                    'none_selected' => esc_html__('None selected', 'treetank-trans'),
+                    'effort_provider_default' => esc_html__('Provider default', 'treetank-trans'),
+                    'dismiss_notice' => esc_html__('Dismiss this notice', 'treetank-trans'),
+                    'error' => esc_html__('An error occurred. Please try again.', 'treetank-trans'),
+                    'confirm_delete' => esc_html__('Are you sure you want to delete this item?', 'treetank-trans'),
+                    'test_connection' => esc_html__('Testing connection...', 'treetank-trans'),
+                    'connection_success' => esc_html__('Connection successful!', 'treetank-trans'),
+                    'connection_failed' => esc_html__('Connection failed. Please check your settings.', 'treetank-trans'),
+                    'invalid_url' => esc_html__('Please enter a valid URL.', 'treetank-trans'),
+                    'required_field' => esc_html__('This field is required.', 'treetank-trans'),
+                    'all' => esc_html__('All', 'treetank-trans'),
+                    'none_direct' => esc_html__('None (Direct)', 'treetank-trans'),
+                    'remove' => esc_html__('Remove', 'treetank-trans'),
                 ]
             ];
             
@@ -181,7 +181,7 @@ class SettingsMenu
         check_ajax_referer('polytrans_nonce', 'nonce');
 
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(['message' => __('Insufficient permissions.', 'polytrans')], 403);
+            wp_send_json_error(['message' => __('Insufficient permissions.', 'treetank-trans')], 403);
         }
 
         wp_send_json_success(['stats' => RefinementRunStorage::stats()]);
@@ -192,7 +192,7 @@ class SettingsMenu
         check_ajax_referer('polytrans_nonce', 'nonce');
 
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(['message' => __('Insufficient permissions.', 'polytrans')], 403);
+            wp_send_json_error(['message' => __('Insufficient permissions.', 'treetank-trans')], 403);
         }
 
         $mode = isset($_POST['mode']) ? sanitize_key(wp_unslash($_POST['mode'])) : 'expired';
@@ -215,7 +215,7 @@ class SettingsMenu
         check_ajax_referer('polytrans_nonce', 'nonce');
 
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(['message' => __('Insufficient permissions.', 'polytrans')], 403);
+            wp_send_json_error(['message' => __('Insufficient permissions.', 'treetank-trans')], 403);
         }
 
         $retention_days = isset($_POST['logs_retention_days']) ? intval($_POST['logs_retention_days']) : null;
@@ -231,7 +231,7 @@ class SettingsMenu
         check_ajax_referer('polytrans_nonce', 'nonce');
 
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(['message' => __('Insufficient permissions.', 'polytrans')], 403);
+            wp_send_json_error(['message' => __('Insufficient permissions.', 'treetank-trans')], 403);
         }
 
         $mode = isset($_POST['mode']) ? sanitize_key(wp_unslash($_POST['mode'])) : 'old';

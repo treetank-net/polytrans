@@ -29,7 +29,7 @@ class ResolveTaxonomyStep extends AbstractWorkflowStep
      */
     public function get_name(): string
     {
-        return function_exists('__') ? __('Resolve Taxonomy', 'polytrans') : 'Resolve Taxonomy';
+        return function_exists('__') ? __('Resolve Taxonomy', 'treetank-trans') : 'Resolve Taxonomy';
     }
 
     /**
@@ -39,7 +39,7 @@ class ResolveTaxonomyStep extends AbstractWorkflowStep
     {
         $desc = 'Resolves taxonomy terms (categories, tags) to their target language equivalents using Polylang translations.';
         // phpcs:ignore WordPress.WP.I18n.NonSingularStringLiteralText -- Dynamic step description
-        return function_exists('__') ? __($desc, 'polytrans') : $desc;
+        return function_exists('__') ? __($desc, 'treetank-trans') : $desc;
     }
 
     /**

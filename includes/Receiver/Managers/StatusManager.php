@@ -87,7 +87,7 @@ class StatusManager
         $log[] = [
             'timestamp' => time(),
             /* translators: %d: translated post ID */
-            'msg' => sprintf(__('Translation created (Post ID: %d). Running post-processing workflows...', 'polytrans'), $new_post_id)
+            'msg' => sprintf(__('Translation created (Post ID: %d). Running post-processing workflows...', 'treetank-trans'), $new_post_id)
         ];
 
         update_post_meta($original_post_id, $log_key, $log);
@@ -138,7 +138,7 @@ class StatusManager
         $log[] = [
             'timestamp' => time(),
             /* translators: %d: translated post ID */
-            'msg' => sprintf(__('Translation completed. Post ID: %d', 'polytrans'), $new_post_id)
+            'msg' => sprintf(__('Translation completed. Post ID: %d', 'treetank-trans'), $new_post_id)
         ];
 
         update_post_meta($original_post_id, $log_key, $log);
@@ -180,7 +180,7 @@ class StatusManager
         $log[] = [
             'timestamp' => time(),
             /* translators: %s: error message */
-            'msg' => sprintf(__('Translation failed: %s', 'polytrans'), $error_message)
+            'msg' => sprintf(__('Translation failed: %s', 'treetank-trans'), $error_message)
         ];
 
         update_post_meta($original_post_id, $log_key, $log);
@@ -330,7 +330,7 @@ class StatusManager
                     'timestamp' => $now,
                     'msg' => sprintf(
                         /* translators: %1$s: translation status, %2$s: number of hours */
-                        __('Translation marked as failed after being stuck in "%1$s" status for %2$s hours.', 'polytrans'),
+                        __('Translation marked as failed after being stuck in "%1$s" status for %2$s hours.', 'treetank-trans'),
                         $item->meta_value,
                         round($elapsed_seconds / 3600, 1)
                     )

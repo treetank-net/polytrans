@@ -29,7 +29,7 @@ class ContextDataProvider implements VariableProviderInterface
      */
     public function get_provider_name()
     {
-        return __('Context Data Provider', 'polytrans');
+        return __('Context Data Provider', 'treetank-trans');
     }
 
     /**
@@ -90,31 +90,31 @@ class ContextDataProvider implements VariableProviderInterface
     {
         return [
             'site_context' => [
-                'description' => __('Complete site context information', 'polytrans'),
+                'description' => __('Complete site context information', 'treetank-trans'),
                 'example' => '{site_context.name} - {site_context.description}'
             ],
             'site_context.name' => [
-                'description' => __('Site name/title', 'polytrans'),
+                'description' => __('Site name/title', 'treetank-trans'),
                 'example' => '{site_context.name}'
             ],
             'site_context.url' => [
-                'description' => __('Site URL', 'polytrans'),
+                'description' => __('Site URL', 'treetank-trans'),
                 'example' => '{site_context.url}'
             ],
             'site_context.language' => [
-                'description' => __('Site default language', 'polytrans'),
+                'description' => __('Site default language', 'treetank-trans'),
                 'example' => '{site_context.language}'
             ],
             'recent_posts' => [
-                'description' => __('Array of recent posts (last 20)', 'polytrans'),
+                'description' => __('Array of recent posts (last 20)', 'treetank-trans'),
                 'example' => 'Context: Latest posts include {recent_posts}'
             ],
             'translation_context.source_language' => [
-                'description' => __('Source language of the translation', 'polytrans'),
+                'description' => __('Source language of the translation', 'treetank-trans'),
                 'example' => '{translation_context.source_language}'
             ],
             'translation_context.target_language' => [
-                'description' => __('Target language of the translation', 'polytrans'),
+                'description' => __('Target language of the translation', 'treetank-trans'),
                 'example' => '{translation_context.target_language}'
             ]
         ];

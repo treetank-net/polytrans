@@ -54,7 +54,7 @@ final class AssistantRefinementService
         $run_payload = $this->buildRunPayload($run_id, $execution);
 
         if (!$this->persistRunPayload($run_id, $run_payload)) {
-            return new \WP_Error('assistant_run_persist_failed', __('Failed to persist assistant run. Please retry.', 'polytrans'));
+            return new \WP_Error('assistant_run_persist_failed', __('Failed to persist assistant run. Please retry.', 'treetank-trans'));
         }
 
         return $this->buildRunResponse($run_payload);
@@ -75,13 +75,13 @@ final class AssistantRefinementService
     )
     {
         if ($assistantId <= 0) {
-            return new \WP_Error('invalid_assistant_id', __('Invalid assistant ID.', 'polytrans'));
+            return new \WP_Error('invalid_assistant_id', __('Invalid assistant ID.', 'treetank-trans'));
         }
         if (trim($runId) === '') {
-            return new \WP_Error('missing_run_id', __('Run ID is required.', 'polytrans'));
+            return new \WP_Error('missing_run_id', __('Run ID is required.', 'treetank-trans'));
         }
         if (trim($criteria) === '') {
-            return new \WP_Error('missing_refinement_criteria', __('Refinement criteria is required.', 'polytrans'));
+            return new \WP_Error('missing_refinement_criteria', __('Refinement criteria is required.', 'treetank-trans'));
         }
         if (trim($evaluatorPromptTemplate) === '') {
             $evaluatorPromptTemplate = PromptRefinementSettings::assistantEvaluator();
@@ -92,11 +92,11 @@ final class AssistantRefinementService
 
         $run_payload = $this->loadRunPayload($runId);
         if (!is_array($run_payload)) {
-            return new \WP_Error('assistant_run_not_found', __('Assistant run not found or expired. Run assistant step again.', 'polytrans'));
+            return new \WP_Error('assistant_run_not_found', __('Assistant run not found or expired. Run assistant step again.', 'treetank-trans'));
         }
 
         if ((int) ($run_payload['assistant_id'] ?? 0) !== $assistantId) {
-            return new \WP_Error('assistant_run_mismatch', __('Run ID does not belong to the selected assistant.', 'polytrans'));
+            return new \WP_Error('assistant_run_mismatch', __('Run ID does not belong to the selected assistant.', 'treetank-trans'));
         }
 
         $assistant_config = is_array($run_payload['assistant_config'] ?? null) ? $run_payload['assistant_config'] : [];
@@ -104,7 +104,7 @@ final class AssistantRefinementService
         $context = is_array($run_payload['context'] ?? null) ? $run_payload['context'] : [];
 
         if (empty($assistant_config) || empty($assistant_result)) {
-            return new \WP_Error('assistant_run_incomplete', __('Stored assistant run is incomplete. Please execute assistant step again.', 'polytrans'));
+            return new \WP_Error('assistant_run_incomplete', __('Stored assistant run is incomplete. Please execute assistant step again.', 'treetank-trans'));
         }
 
         $evaluation = $this->evaluateAssistantRun(
@@ -155,7 +155,7 @@ final class AssistantRefinementService
         $overrideExpectedOutputSchema = null
     ) {
         if (trim($criteria) === '') {
-            return new \WP_Error('missing_refinement_criteria', __('Refinement criteria is required.', 'polytrans'));
+            return new \WP_Error('missing_refinement_criteria', __('Refinement criteria is required.', 'treetank-trans'));
         }
         if (trim($evaluatorPromptTemplate) === '') {
             $evaluatorPromptTemplate = PromptRefinementSettings::assistantEvaluator();
@@ -224,10 +224,10 @@ final class AssistantRefinementService
         $refinementHistoryPayload = '[]'
     ) {
         if ($assistantId <= 0) {
-            return new \WP_Error('invalid_assistant_id', __('Invalid assistant ID.', 'polytrans'));
+            return new \WP_Error('invalid_assistant_id', __('Invalid assistant ID.', 'treetank-trans'));
         }
         if (trim($criteria) === '') {
-            return new \WP_Error('missing_refinement_criteria', __('Refinement criteria is required.', 'polytrans'));
+            return new \WP_Error('missing_refinement_criteria', __('Refinement criteria is required.', 'treetank-trans'));
         }
         if (trim($adjusterPromptTemplate) === '') {
             $adjusterPromptTemplate = PromptRefinementSettings::assistantAdjuster();
@@ -238,13 +238,13 @@ final class AssistantRefinementService
 
         $assistant = AssistantManager::get_assistant($assistantId);
         if (!$assistant) {
-            return new \WP_Error('assistant_not_found', __('Assistant not found.', 'polytrans'));
+            return new \WP_Error('assistant_not_found', __('Assistant not found.', 'treetank-trans'));
         }
         $promptObjective = $this->resolvePromptObjective($promptObjective, $assistant);
 
         $evaluations = $this->decodeEvaluations($evaluationsPayload);
         if (empty($evaluations)) {
-            return new \WP_Error('missing_evaluations', __('At least one evaluated post is required.', 'polytrans'));
+            return new \WP_Error('missing_evaluations', __('At least one evaluated post is required.', 'treetank-trans'));
         }
 
         $normalized_evaluations = array_map(static function ($item): array {
@@ -359,15 +359,15 @@ final class AssistantRefinementService
     public function applyPromptPack(int $assistantId, string $systemPrompt, string $userMessageTemplate, $expectedOutputSchema)
     {
         if ($assistantId <= 0) {
-            return new \WP_Error('invalid_assistant_id', __('Invalid assistant ID.', 'polytrans'));
+            return new \WP_Error('invalid_assistant_id', __('Invalid assistant ID.', 'treetank-trans'));
         }
         if (trim($systemPrompt) === '') {
-            return new \WP_Error('empty_system_prompt', __('System prompt cannot be empty.', 'polytrans'));
+            return new \WP_Error('empty_system_prompt', __('System prompt cannot be empty.', 'treetank-trans'));
         }
 
         $assistant = AssistantManager::get_assistant($assistantId);
         if (!$assistant) {
-            return new \WP_Error('assistant_not_found', __('Assistant not found.', 'polytrans'));
+            return new \WP_Error('assistant_not_found', __('Assistant not found.', 'treetank-trans'));
         }
 
         $previous_prompt_pack = PromptPackNormalizer::fromAssistant($assistant);
@@ -420,23 +420,23 @@ final class AssistantRefinementService
         $overrideExpectedOutputSchema
     ) {
         if ($assistantId <= 0) {
-            return new \WP_Error('invalid_assistant_id', __('Invalid assistant ID.', 'polytrans'));
+            return new \WP_Error('invalid_assistant_id', __('Invalid assistant ID.', 'treetank-trans'));
         }
         if ($selectedPostId <= 0) {
-            return new \WP_Error('invalid_post_id', __('Select a valid post for refinement.', 'polytrans'));
+            return new \WP_Error('invalid_post_id', __('Select a valid post for refinement.', 'treetank-trans'));
         }
 
         $assistant = AssistantManager::get_assistant($assistantId);
         if (!$assistant) {
-            return new \WP_Error('assistant_not_found', __('Assistant not found.', 'polytrans'));
+            return new \WP_Error('assistant_not_found', __('Assistant not found.', 'treetank-trans'));
         }
         if (($assistant['status'] ?? 'active') !== 'active') {
-            return new \WP_Error('assistant_inactive', __('Assistant is inactive.', 'polytrans'));
+            return new \WP_Error('assistant_inactive', __('Assistant is inactive.', 'treetank-trans'));
         }
 
         $context = PostTestContextBuilder::fromPost($selectedPostId, $sourceLanguage, $targetLanguage);
         if (!is_array($context)) {
-            return new \WP_Error('post_not_found', __('Selected post not found.', 'polytrans'));
+            return new \WP_Error('post_not_found', __('Selected post not found.', 'treetank-trans'));
         }
 
         $assistant_config = $assistant;
@@ -465,7 +465,7 @@ final class AssistantRefinementService
         if (empty($assistant_result['success'])) {
             return new \WP_Error(
                 'assistant_execution_failed',
-                (string) ($assistant_result['error'] ?? __('Assistant execution failed.', 'polytrans'))
+                (string) ($assistant_result['error'] ?? __('Assistant execution failed.', 'treetank-trans'))
             );
         }
 
@@ -826,7 +826,7 @@ final class AssistantRefinementService
             return $description;
         }
 
-        return __('Preserve the assistant original purpose and existing behavioral contract while applying the refinement criteria.', 'polytrans');
+        return __('Preserve the assistant original purpose and existing behavioral contract while applying the refinement criteria.', 'treetank-trans');
     }
 
     private function getRunTransientKey(string $runId): string

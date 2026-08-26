@@ -90,7 +90,7 @@ class AssistantMigration
             $workflow = $storage_manager->get_workflow($workflow_id);
 
             if (!$workflow) {
-                $stats['errors'][] = __('Workflow not found.', 'polytrans');
+                $stats['errors'][] = __('Workflow not found.', 'treetank-trans');
                 return $stats;
             }
 

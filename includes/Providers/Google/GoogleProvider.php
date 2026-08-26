@@ -30,7 +30,7 @@ class GoogleProvider implements TranslationProviderInterface
      */
     public function get_name()
     {
-        return __('Google Translate', 'polytrans');
+        return __('Google Translate', 'treetank-trans');
     }
 
     /**
@@ -38,7 +38,7 @@ class GoogleProvider implements TranslationProviderInterface
      */
     public function get_description()
     {
-        return __('Simple, fast translation using Google Translate public API. No API key required.', 'polytrans');
+        return __('Simple, fast translation using Google Translate public API. No API key required.', 'treetank-trans');
     }
 
     /**

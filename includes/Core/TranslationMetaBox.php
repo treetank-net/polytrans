@@ -35,8 +35,8 @@ class TranslationMetaBox
     private function __construct()
     {
         $this->translation_fields = [
-            'translated_by_human' => __('Prepared by Human', 'polytrans'),
-            'translated_by_machine' => __('Translation done by Machine', 'polytrans'),
+            'translated_by_human' => __('Prepared by Human', 'treetank-trans'),
+            'translated_by_machine' => __('Translation done by Machine', 'treetank-trans'),
         ];
     }
 

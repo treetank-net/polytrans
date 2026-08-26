@@ -1,5 +1,5 @@
-<h2>{{ __('Source (Main) Language', 'polytrans') }}</h2>
-<p>{{ __('Select the primary language that will appear in the first column of tag translations. This language will be considered the source for tag translations.', 'polytrans') }}</p>
+<h2>{{ __('Source (Main) Language', 'treetank-trans') }}</h2>
+<p>{{ __('Select the primary language that will appear in the first column of tag translations. This language will be considered the source for tag translations.', 'treetank-trans') }}</p>
 <select name="source_language" style="width:100%;max-width:300px;">
     {% for i, lang in langs %}
         <option value="{{ lang|esc_attr }}" {{ selected(source_language, lang) }}>
@@ -9,18 +9,18 @@
 </select>
 <br><br>
 
-<h2>{{ __('Base Tags List', 'polytrans') }}</h2>
-<p>{{ __('Enter the tags that you want to manage for translation (one per line or comma separated). These tags will appear in the tag translation table where you can set translations for each language.', 'polytrans') }}</p>
-<label for="base-tags-textarea"><strong>{{ __('Tags to translate:', 'polytrans') }}</strong></label><br />
-<textarea id="base-tags-textarea" name="base_tags" style="width:100%;min-height:150px;font-family:monospace;" placeholder="{{ __('Enter tags separated by new lines or commas...', 'polytrans')|esc_attr }}">{{ base_tags|esc_textarea }}</textarea>
-<br><small>{{ __('These tags will be used for automatic translation and tag mapping between languages. You can add tags that you want to translate now or that you want to use in future automatic translations.', 'polytrans') }}</small>
+<h2>{{ __('Base Tags List', 'treetank-trans') }}</h2>
+<p>{{ __('Enter the tags that you want to manage for translation (one per line or comma separated). These tags will appear in the tag translation table where you can set translations for each language.', 'treetank-trans') }}</p>
+<label for="base-tags-textarea"><strong>{{ __('Tags to translate:', 'treetank-trans') }}</strong></label><br />
+<textarea id="base-tags-textarea" name="base_tags" style="width:100%;min-height:150px;font-family:monospace;" placeholder="{{ __('Enter tags separated by new lines or commas...', 'treetank-trans')|esc_attr }}">{{ base_tags|esc_textarea }}</textarea>
+<br><small>{{ __('These tags will be used for automatic translation and tag mapping between languages. You can add tags that you want to translate now or that you want to use in future automatic translations.', 'treetank-trans') }}</small>
 
 <br><br>
-<h2>{{ __('Tag Grouping in Post Editor', 'polytrans') }}</h2>
-<p>{{ __('When enabled, the tag autocomplete dropdown in the post editor will group suggestions into PolyTrans-approved tags and other tags.', 'polytrans') }}</p>
+<h2>{{ __('Tag Grouping in Post Editor', 'treetank-trans') }}</h2>
+<p>{{ __('When enabled, the tag autocomplete dropdown in the post editor will group suggestions into PolyTrans-approved tags and other tags.', 'treetank-trans') }}</p>
 <label>
     <input type="checkbox" name="enable_tag_grouping" value="1" {{ enable_tag_grouping ? 'checked' : '' }} />
-    {{ __('Enable tag grouping in post editor', 'polytrans') }}
+    {{ __('Enable tag grouping in post editor', 'treetank-trans') }}
 </label>
-<br><small>{{ __('Requires base tags to be defined above. If no base tags are set, grouping will not be applied.', 'polytrans') }}</small>
+<br><small>{{ __('Requires base tags to be defined above. If no base tags are set, grouping will not be applied.', 'treetank-trans') }}</small>
 

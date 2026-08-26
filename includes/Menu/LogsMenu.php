@@ -34,8 +34,8 @@ class LogsMenu
     {
         add_submenu_page(
             'polytrans',
-            __('Logs', 'polytrans'),
-            __('Logs', 'polytrans'),
+            __('Logs', 'treetank-trans'),
+            __('Logs', 'treetank-trans'),
             'manage_options',
             'polytrans-logs',
             [$this, 'render_logs'],
@@ -71,15 +71,15 @@ class LogsMenu
                 'ajaxUrl' => admin_url('admin-ajax.php'),
                 'nonce' => wp_create_nonce('polytrans_refresh_logs'),
                 'strings' => [
-                    'showContext' => __('Show Context', 'polytrans'),
-                    'hideContext' => __('Hide Context', 'polytrans'),
-                    'refreshing' => __('Refreshing...', 'polytrans'),
-                    'autoRefreshDisabled' => __('Auto-refresh disabled', 'polytrans'),
-                    'paused' => __('Paused', 'polytrans'),
-                    'autoRefreshingEvery' => __('Auto-refreshing every', 'polytrans'),
-                    'seconds' => __('seconds', 'polytrans'),
-                    'pause' => __('Pause', 'polytrans'),
-                    'resume' => __('Resume', 'polytrans'),
+                    'showContext' => __('Show Context', 'treetank-trans'),
+                    'hideContext' => __('Hide Context', 'treetank-trans'),
+                    'refreshing' => __('Refreshing...', 'treetank-trans'),
+                    'autoRefreshDisabled' => __('Auto-refresh disabled', 'treetank-trans'),
+                    'paused' => __('Paused', 'treetank-trans'),
+                    'autoRefreshingEvery' => __('Auto-refreshing every', 'treetank-trans'),
+                    'seconds' => __('seconds', 'treetank-trans'),
+                    'pause' => __('Pause', 'treetank-trans'),
+                    'resume' => __('Resume', 'treetank-trans'),
                 ]
             ]);
         }

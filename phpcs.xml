@@ -54,7 +54,7 @@
     <rule ref="WordPress.WP.I18n">
         <properties>
             <property name="text_domain" type="array">
-                <element value="polytrans"/>
+                <element value="treetank-trans"/>
                 <element value="default"/>
             </property>
         </properties>
@@ -74,7 +74,7 @@
     <rule ref="WordPress.NamingConventions.PrefixAllGlobals">
         <properties>
             <property name="prefixes" type="array">
-                <element value="polytrans"/>
+                <element value="treetank-trans"/>
                 <element value="POLYTRANS"/>
                 <element value="PolyTrans"/>
             </property>

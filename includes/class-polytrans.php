@@ -189,7 +189,7 @@ class PolyTrans
         // Translation meta box
         add_meta_box(
             'polytrans_translation',
-            __('Translation', 'polytrans'),
+            __('Translation', 'treetank-trans'),
             [$this, 'translation_meta_box_callback'],
             ['post', 'page'],
             'side',
@@ -199,7 +199,7 @@ class PolyTrans
         // Translation scheduler meta box
         add_meta_box(
             'polytrans_translation_scheduler',
-            __('PolyTrans Scheduler', 'polytrans'),
+            __('PolyTrans Scheduler', 'treetank-trans'),
             [$this, 'translation_scheduler_meta_box_callback'],
             ['post', 'page'],
             'side',
@@ -331,7 +331,7 @@ class PolyTrans
             // No translations in non-terminal state
             add_action('admin_notices', function () {
                 echo '<div class="notice notice-success is-dismissible"><p>' .
-                    esc_html__('No stuck translations found.', 'polytrans') .
+                    esc_html__('No stuck translations found.', 'treetank-trans') .
                     '</p></div>';
             });
             return;
@@ -360,7 +360,7 @@ class PolyTrans
                 $status_key = '_polytrans_translation_status_' . $language;
                 $error_message = sprintf(
                     /* translators: %1$d: number of hours, %2$s: translation status */
-                    __('Translation timed out after %1$d hours in "%2$s" status.', 'polytrans'),
+                    __('Translation timed out after %1$d hours in "%2$s" status.', 'treetank-trans'),
                     $timeout_hours,
                     $item->meta_value
                 );
@@ -403,7 +403,7 @@ class PolyTrans
         // Show admin notice with results
         $message = sprintf(
             /* translators: %1$d: number of translations checked, %2$d: number of stuck translations fixed */
-            __('Checked %1$d translations, fixed %2$d stuck translations.', 'polytrans'),
+            __('Checked %1$d translations, fixed %2$d stuck translations.', 'treetank-trans'),
             $checked,
             $fixed
         );

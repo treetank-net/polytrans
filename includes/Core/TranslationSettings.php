@@ -48,10 +48,10 @@ class TranslationSettings
         $this->langs = function_exists('pll_languages_list') ? pll_languages_list(['fields' => 'slug']) : ['pl', 'en', 'it'];
         $this->lang_names = function_exists('pll_languages_list') ? pll_languages_list(['fields' => 'name']) : ['Polish', 'English', 'Italian'];
         $this->statuses = [
-            'publish' => __('Publish', 'polytrans'),
-            'draft' => __('Draft', 'polytrans'),
-            'pending' => __('Pending Review', 'polytrans'),
-            'source' => __('Same as source', 'polytrans'),
+            'publish' => __('Publish', 'treetank-trans'),
+            'draft' => __('Draft', 'treetank-trans'),
+            'pending' => __('Pending Review', 'treetank-trans'),
+            'source' => __('Same as source', 'treetank-trans'),
         ];
         
     }
@@ -87,12 +87,12 @@ class TranslationSettings
         
         if (!$nonce_check) {
             Diagnostics::log("Nonce check failed. Nonce: " . sanitize_text_field(wp_unslash($_POST['nonce'] ?? 'not set')) . ", Action: " . sanitize_text_field(wp_unslash($_POST['action'] ?? 'not set')));
-            wp_send_json_error(__('Security check failed.', 'polytrans'));
+            wp_send_json_error(__('Security check failed.', 'treetank-trans'));
             return;
         }
         
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(__('You do not have sufficient permissions to access this page.', 'polytrans'));
+            wp_send_json_error(__('You do not have sufficient permissions to access this page.', 'treetank-trans'));
             return;
         }
         
@@ -100,12 +100,12 @@ class TranslationSettings
         $api_key = sanitize_text_field(wp_unslash($_POST['api_key'] ?? ''));
         
         if (empty($provider_id)) {
-            wp_send_json_error(__('Provider ID is required.', 'polytrans'));
+            wp_send_json_error(__('Provider ID is required.', 'treetank-trans'));
             return;
         }
         
         if (empty($api_key)) {
-            wp_send_json_error(__('API key is required.', 'polytrans'));
+            wp_send_json_error(__('API key is required.', 'treetank-trans'));
             return;
         }
         
@@ -115,7 +115,7 @@ class TranslationSettings
         
         if (!$provider) {
             /* translators: %s: provider identifier */
-            wp_send_json_error(sprintf(__('Provider "%s" not found.', 'polytrans'), $provider_id));
+            wp_send_json_error(sprintf(__('Provider "%s" not found.', 'treetank-trans'), $provider_id));
             return;
         }
         
@@ -123,7 +123,7 @@ class TranslationSettings
         $settings_provider_class = $provider->get_settings_provider_class();
         if (!$settings_provider_class || !class_exists($settings_provider_class)) {
             /* translators: %s: provider identifier */
-            wp_send_json_error(sprintf(__('Settings provider not found for "%s".', 'polytrans'), $provider_id));
+            wp_send_json_error(sprintf(__('Settings provider not found for "%s".', 'treetank-trans'), $provider_id));
             return;
         }
         
@@ -138,11 +138,11 @@ class TranslationSettings
             try {
                 $is_valid = $settings_provider->validate_api_key($api_key);
                 if (!$is_valid) {
-                    $error_message = __('Invalid API key.', 'polytrans');
+                    $error_message = __('Invalid API key.', 'treetank-trans');
                 }
             } catch (\Exception $e) {
                 Diagnostics::log("Failed to validate API key for {$provider_id}: " . $e->getMessage());
-                $error_message = __('Validation failed due to an error: ', 'polytrans') . $e->getMessage();
+                $error_message = __('Validation failed due to an error: ', 'treetank-trans') . $e->getMessage();
                 wp_send_json_error($error_message);
                 return;
             }
@@ -154,15 +154,15 @@ class TranslationSettings
             if ($is_valid === false) {
                 $is_valid = !empty($api_key);
                 if (!$is_valid) {
-                    $error_message = __('API key cannot be empty.', 'polytrans');
+                    $error_message = __('API key cannot be empty.', 'treetank-trans');
                 }
             }
         }
         
         if ($is_valid) {
-            wp_send_json_success(__('API key is valid!', 'polytrans'));
+            wp_send_json_success(__('API key is valid!', 'treetank-trans'));
         } else {
-            wp_send_json_error($error_message ?: __('Invalid API key.', 'polytrans'));
+            wp_send_json_error($error_message ?: __('Invalid API key.', 'treetank-trans'));
         }
     }
 
@@ -187,7 +187,7 @@ class TranslationSettings
     {
         // Verify nonce for security
         if (!check_admin_referer('polytrans_settings')) {
-            wp_die(esc_html__('Security check failed.', 'polytrans'));
+            wp_die(esc_html__('Security check failed.', 'treetank-trans'));
         }
 
         $registry = \PolyTrans_Provider_Registry::get_instance();
@@ -309,7 +309,7 @@ class TranslationSettings
                         add_settings_error(
                             'polytrans_settings',
                             'path_validation_error',
-                            __('Some provider/assistant mappings are invalid: ', 'polytrans') . implode('; ', $error_messages),
+                            __('Some provider/assistant mappings are invalid: ', 'treetank-trans') . implode('; ', $error_messages),
                             'error'
                         );
                     }
@@ -351,7 +351,7 @@ class TranslationSettings
         );
 
         update_option('polytrans_settings', $settings);
-        echo '<div class="updated"><p>' . esc_html__('Settings saved.', 'polytrans') . '</p></div>';
+        echo '<div class="updated"><p>' . esc_html__('Settings saved.', 'treetank-trans') . '</p></div>';
     }
 
     /**
@@ -549,14 +549,14 @@ class TranslationSettings
     private function render_assistant_mapping_table($assistants_mapping)
     {
         if (empty($this->langs)) {
-            echo '<p><em>' . esc_html__('No languages configured. Please configure languages in Basic Settings first.', 'polytrans') . '</em></p>';
+            echo '<p><em>' . esc_html__('No languages configured. Please configure languages in Basic Settings first.', 'treetank-trans') . '</em></p>';
             return;
         }
 
         $language_pairs = $this->get_language_pairs();
 
         if (empty($language_pairs)) {
-            echo '<p><em>' . esc_html__('No language pairs available.', 'polytrans') . '</em></p>';
+            echo '<p><em>' . esc_html__('No language pairs available.', 'treetank-trans') . '</em></p>';
             return;
         }
 

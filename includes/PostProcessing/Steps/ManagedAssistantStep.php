@@ -38,7 +38,7 @@ class ManagedAssistantStep implements WorkflowStepInterface
      */
     public function get_name()
     {
-        return __('Managed AI Assistant', 'polytrans');
+        return __('Managed AI Assistant', 'treetank-trans');
     }
 
     /**
@@ -46,7 +46,7 @@ class ManagedAssistantStep implements WorkflowStepInterface
      */
     public function get_description()
     {
-        return __('Use a centrally managed AI assistant with Twig variable interpolation', 'polytrans');
+        return __('Use a centrally managed AI assistant with Twig variable interpolation', 'treetank-trans');
     }
 
     /**
@@ -396,7 +396,7 @@ class ManagedAssistantStep implements WorkflowStepInterface
     {
         // Get all available assistants
         $assistants = AssistantManager::get_all_assistants();
-        $assistant_options = ['' => __('Select an assistant...', 'polytrans')];
+        $assistant_options = ['' => __('Select an assistant...', 'treetank-trans')];
 
         foreach ($assistants as $assistant) {
             $label = $assistant['name'];
@@ -409,14 +409,14 @@ class ManagedAssistantStep implements WorkflowStepInterface
         return [
             'assistant_id' => [
                 'type' => 'select',
-                'label' => __('AI Assistant', 'polytrans'),
-                'description' => __('Select a managed AI assistant configured in the Assistants menu', 'polytrans'),
+                'label' => __('AI Assistant', 'treetank-trans'),
+                'description' => __('Select a managed AI assistant configured in the Assistants menu', 'treetank-trans'),
                 'options' => $assistant_options,
                 'required' => true
             ],
             'info' => [
                 'type' => 'info',
-                'content' => __('This step uses assistants configured in PolyTrans > AI Assistants. The assistant\'s prompt template will be rendered with Twig using the workflow context variables.', 'polytrans')
+                'content' => __('This step uses assistants configured in PolyTrans > AI Assistants. The assistant\'s prompt template will be rendered with Twig using the workflow context variables.', 'treetank-trans')
             ]
         ];
     }
@@ -428,18 +428,18 @@ class ManagedAssistantStep implements WorkflowStepInterface
     {
         $assistant_id = $step_config['assistant_id'] ?? 0;
         if (empty($assistant_id)) {
-            return __('No assistant selected', 'polytrans');
+            return __('No assistant selected', 'treetank-trans');
         }
 
         $assistant = AssistantManager::get_assistant($assistant_id);
         if (!$assistant) {
-            return __('Assistant not found', 'polytrans');
+            return __('Assistant not found', 'treetank-trans');
         }
 
         $info = '<strong>' . esc_html($assistant['name']) . '</strong><br>';
-        $info .= __('Provider:', 'polytrans') . ' ' . esc_html(ucfirst($assistant['provider'])) . '<br>';
-        $info .= __('Model:', 'polytrans') . ' ' . esc_html($assistant['model']) . '<br>';
-        $info .= __('Response Format:', 'polytrans') . ' ' . esc_html($assistant['response_format']);
+        $info .= __('Provider:', 'treetank-trans') . ' ' . esc_html(ucfirst($assistant['provider'])) . '<br>';
+        $info .= __('Model:', 'treetank-trans') . ' ' . esc_html($assistant['model']) . '<br>';
+        $info .= __('Response Format:', 'treetank-trans') . ' ' . esc_html($assistant['response_format']);
 
         return $info;
     }

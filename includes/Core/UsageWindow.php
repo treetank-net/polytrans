@@ -479,7 +479,7 @@ class UsageWindow
     {
         return sprintf(
             /* translators: 1: range start, 2: range end, 3: timezone name. */
-            __('%1$s to %2$s (%3$s)', 'polytrans'),
+            __('%1$s to %2$s (%3$s)', 'treetank-trans'),
             self::wp_format('j M Y, H:i', $this->from),
             self::wp_format('j M Y, H:i', $this->to),
             self::timezone_label()
@@ -597,15 +597,15 @@ class UsageWindow
     public static function preset_labels()
     {
         return [
-            '24h' => __('Last 24 hours', 'polytrans'),
-            'today' => __('Today', 'polytrans'),
-            'yesterday' => __('Yesterday', 'polytrans'),
-            '7d' => __('Last 7 days', 'polytrans'),
-            '30d' => __('Last 30 days', 'polytrans'),
-            '90d' => __('Last 90 days', 'polytrans'),
-            '12m' => __('Last 12 months', 'polytrans'),
-            self::PRESET_ALL => __('All time', 'polytrans'),
-            self::PRESET_CUSTOM => __('Custom range', 'polytrans'),
+            '24h' => __('Last 24 hours', 'treetank-trans'),
+            'today' => __('Today', 'treetank-trans'),
+            'yesterday' => __('Yesterday', 'treetank-trans'),
+            '7d' => __('Last 7 days', 'treetank-trans'),
+            '30d' => __('Last 30 days', 'treetank-trans'),
+            '90d' => __('Last 90 days', 'treetank-trans'),
+            '12m' => __('Last 12 months', 'treetank-trans'),
+            self::PRESET_ALL => __('All time', 'treetank-trans'),
+            self::PRESET_CUSTOM => __('Custom range', 'treetank-trans'),
         ];
     }
 
@@ -615,11 +615,11 @@ class UsageWindow
     public static function bucket_labels()
     {
         return [
-            self::BUCKET_AUTO => __('Automatic resolution', 'polytrans'),
-            self::BUCKET_HOUR => __('Hourly', 'polytrans'),
-            self::BUCKET_DAY => __('Daily', 'polytrans'),
-            self::BUCKET_WEEK => __('Weekly', 'polytrans'),
-            self::BUCKET_MONTH => __('Monthly', 'polytrans'),
+            self::BUCKET_AUTO => __('Automatic resolution', 'treetank-trans'),
+            self::BUCKET_HOUR => __('Hourly', 'treetank-trans'),
+            self::BUCKET_DAY => __('Daily', 'treetank-trans'),
+            self::BUCKET_WEEK => __('Weekly', 'treetank-trans'),
+            self::BUCKET_MONTH => __('Monthly', 'treetank-trans'),
         ];
     }
 

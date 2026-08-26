@@ -45,12 +45,12 @@ class AssistantExecutor
 		$assistant = AssistantManager::get_assistant($assistant_id);
 
 		if (null === $assistant) {
-			return new \WP_Error('assistant_not_found', __('Assistant not found', 'polytrans'));
+			return new \WP_Error('assistant_not_found', __('Assistant not found', 'treetank-trans'));
 		}
 
 		// Check if assistant is active
 		if ('active' !== $assistant['status']) {
-			return new \WP_Error('assistant_inactive', __('Assistant is inactive', 'polytrans'));
+			return new \WP_Error('assistant_inactive', __('Assistant is inactive', 'treetank-trans'));
 		}
 
 		// Execute using the assistant configuration
@@ -68,11 +68,11 @@ class AssistantExecutor
 	{
 		// Validate required fields
 		if (empty($config['system_prompt'])) {
-			return new \WP_Error('invalid_config', __('Missing required field: system_prompt', 'polytrans'));
+			return new \WP_Error('invalid_config', __('Missing required field: system_prompt', 'treetank-trans'));
 		}
 
 		if (empty($config['api_parameters'])) {
-			return new \WP_Error('invalid_config', __('Missing required field: api_parameters', 'polytrans'));
+			return new \WP_Error('invalid_config', __('Missing required field: api_parameters', 'treetank-trans'));
 		}
 
 		// Interpolate prompts with context variables
@@ -197,7 +197,7 @@ class AssistantExecutor
 				'unsupported_provider',
 				sprintf(
 					// translators: %s is the provider name
-					__('Provider "%s" is not supported or API key is not configured', 'polytrans'),
+					__('Provider "%s" is not supported or API key is not configured', 'treetank-trans'),
 					$provider
 				)
 			);
@@ -241,7 +241,7 @@ class AssistantExecutor
 			$error_code = $result['error_code'] ?? 'api_error';
 			return new \WP_Error(
 				$error_code,
-				$result['error'] ?? __('API request failed', 'polytrans'),
+				$result['error'] ?? __('API request failed', 'treetank-trans'),
 				array(
 					'status' => $result['status'] ?? null,
 					'retry_after' => $result['retry_after'] ?? null,
@@ -294,7 +294,7 @@ class AssistantExecutor
 				);
 				return new \WP_Error(
 					'truncated_response',
-					__('AI response was truncated due to max_tokens limit. Increase max_tokens or simplify the request.', 'polytrans')
+					__('AI response was truncated due to max_tokens limit. Increase max_tokens or simplify the request.', 'treetank-trans')
 				);
 			}
 		}
@@ -307,7 +307,7 @@ class AssistantExecutor
 				);
 				return new \WP_Error(
 					'truncated_response',
-					__('AI response was truncated due to max_tokens limit. Increase max_tokens or simplify the request.', 'polytrans')
+					__('AI response was truncated due to max_tokens limit. Increase max_tokens or simplify the request.', 'treetank-trans')
 				);
 			}
 		}
@@ -316,7 +316,7 @@ class AssistantExecutor
 		$content = self::extract_content_from_response($response, $provider);
 
 		if (null === $content) {
-			return new \WP_Error('invalid_response', __('Failed to extract content from API response', 'polytrans'));
+			return new \WP_Error('invalid_response', __('Failed to extract content from API response', 'treetank-trans'));
 		}
 
 		// Reject empty or whitespace-only responses
@@ -328,7 +328,7 @@ class AssistantExecutor
 			);
 			return new \WP_Error(
 				'empty_response',
-				__('AI returned an empty response. This may indicate a timeout or API issue.', 'polytrans')
+				__('AI returned an empty response. This may indicate a timeout or API issue.', 'treetank-trans')
 			);
 		}
 
@@ -449,7 +449,7 @@ class AssistantExecutor
 
 			return new \WP_Error(
 				'invalid_json',
-				__('Failed to parse JSON response', 'polytrans'),
+				__('Failed to parse JSON response', 'treetank-trans'),
 				array(
 					'json_error' => json_last_error_msg(),
 					'json_error_code' => json_last_error(),
@@ -475,7 +475,7 @@ class AssistantExecutor
 					'warnings' => array(
 						sprintf(
 							// translators: %s is a comma-separated list of missing variable names
-							__('Missing expected fields: %s', 'polytrans'),
+							__('Missing expected fields: %s', 'treetank-trans'),
 							implode(', ', $missing)
 						),
 					),

@@ -79,8 +79,8 @@ class AssistantsMenu
     {
         add_submenu_page(
             'polytrans',
-            __('AI Assistants', 'polytrans'),
-            __('AI Assistants', 'polytrans'),
+            __('AI Assistants', 'treetank-trans'),
+            __('AI Assistants', 'treetank-trans'),
             'manage_options',
             'polytrans-assistants',
             [$this, 'render_assistants_page']
@@ -164,33 +164,33 @@ class AssistantsMenu
                 $current_provider => $capability_payload['default_model'],
             ],
             'strings' => [
-                'confirmDelete' => __('Are you sure you want to delete this assistant?', 'polytrans'),
-                'saveSuccess' => __('Assistant saved successfully.', 'polytrans'),
-                'saveError' => __('Failed to save assistant.', 'polytrans'),
-                'deleteSuccess' => __('Assistant deleted successfully.', 'polytrans'),
-                'deleteError' => __('Failed to delete assistant.', 'polytrans'),
-                'loading' => __('Loading...', 'polytrans'),
-                'requiredField' => __('This field is required.', 'polytrans'),
-                'effortProviderDefault' => __('Provider default', 'polytrans'),
-                'temperatureUnsupported' => __('This model does not accept a temperature parameter.', 'polytrans'),
+                'confirmDelete' => __('Are you sure you want to delete this assistant?', 'treetank-trans'),
+                'saveSuccess' => __('Assistant saved successfully.', 'treetank-trans'),
+                'saveError' => __('Failed to save assistant.', 'treetank-trans'),
+                'deleteSuccess' => __('Assistant deleted successfully.', 'treetank-trans'),
+                'deleteError' => __('Failed to delete assistant.', 'treetank-trans'),
+                'loading' => __('Loading...', 'treetank-trans'),
+                'requiredField' => __('This field is required.', 'treetank-trans'),
+                'effortProviderDefault' => __('Provider default', 'treetank-trans'),
+                'temperatureUnsupported' => __('This model does not accept a temperature parameter.', 'treetank-trans'),
             ],
             'providers' => [
                 'openai' => [
-                    'label' => __('OpenAI', 'polytrans'),
+                    'label' => __('OpenAI', 'treetank-trans'),
                     'models' => ['gpt-4', 'gpt-4-turbo-preview', 'gpt-3.5-turbo']
                 ],
                 'claude' => [
-                    'label' => __('Claude (Anthropic)', 'polytrans'),
+                    'label' => __('Claude (Anthropic)', 'treetank-trans'),
                     'models' => ['claude-3-opus', 'claude-3-sonnet', 'claude-3-haiku']
                 ],
                 'gemini' => [
-                    'label' => __('Gemini (Google)', 'polytrans'),
+                    'label' => __('Gemini (Google)', 'treetank-trans'),
                     'models' => ['gemini-pro', 'gemini-pro-vision']
                 ]
             ],
             'responseFormats' => [
-                'text' => __('Text', 'polytrans'),
-                'json' => __('JSON', 'polytrans')
+                'text' => __('Text', 'treetank-trans'),
+                'json' => __('JSON', 'treetank-trans')
             ],
             'descriptionPrompts' => [
                 'system' => PromptRefinementSettings::descriptionGeneratorSystem(),
@@ -261,20 +261,20 @@ class AssistantsMenu
                 $current_provider => $editor_capability_payload['default_model'],
             ],
             'strings' => [
-                'confirmDelete' => __('Are you sure you want to delete this assistant?', 'polytrans'),
-                'saveSuccess' => __('Assistant saved successfully.', 'polytrans'),
-                'saveError' => __('Failed to save assistant.', 'polytrans'),
-                'deleteSuccess' => __('Assistant deleted successfully.', 'polytrans'),
-                'deleteError' => __('Failed to delete assistant.', 'polytrans'),
-                'loading' => __('Loading...', 'polytrans'),
-                'requiredField' => __('This field is required.', 'polytrans'),
-                'effortProviderDefault' => __('Provider default', 'polytrans'),
-                'temperatureUnsupported' => __('This model does not accept a temperature parameter.', 'polytrans'),
+                'confirmDelete' => __('Are you sure you want to delete this assistant?', 'treetank-trans'),
+                'saveSuccess' => __('Assistant saved successfully.', 'treetank-trans'),
+                'saveError' => __('Failed to save assistant.', 'treetank-trans'),
+                'deleteSuccess' => __('Assistant deleted successfully.', 'treetank-trans'),
+                'deleteError' => __('Failed to delete assistant.', 'treetank-trans'),
+                'loading' => __('Loading...', 'treetank-trans'),
+                'requiredField' => __('This field is required.', 'treetank-trans'),
+                'effortProviderDefault' => __('Provider default', 'treetank-trans'),
+                'temperatureUnsupported' => __('This model does not accept a temperature parameter.', 'treetank-trans'),
             ],
             'providers' => $providers_js,
             'responseFormats' => [
-                'text' => __('Text', 'polytrans'),
-                'json' => __('JSON', 'polytrans')
+                'text' => __('Text', 'treetank-trans'),
+                'json' => __('JSON', 'treetank-trans')
             ],
             'descriptionPrompts' => [
                 'system' => PromptRefinementSettings::descriptionGeneratorSystem(),
@@ -323,7 +323,7 @@ class AssistantsMenu
     {
         $assistant = AssistantManager::get_assistant($assistant_id);
         if (!$assistant) {
-            wp_die(esc_html__('Assistant not found.', 'polytrans'));
+            wp_die(esc_html__('Assistant not found.', 'treetank-trans'));
         }
 
         wp_add_inline_script(
@@ -408,7 +408,7 @@ class AssistantsMenu
         } else {
             $assistant = AssistantManager::get_assistant($assistant_id);
             if (!$assistant) {
-                wp_die(esc_html__('Assistant not found.', 'polytrans'));
+                wp_die(esc_html__('Assistant not found.', 'treetank-trans'));
             }
 
             // Map expected_format to response_format for UI consistency
@@ -495,15 +495,15 @@ class AssistantsMenu
         // Prepare providers list for JS (legacy format)
         $providers_js = [
             'openai' => [
-                'label' => __('OpenAI', 'polytrans'),
+                'label' => __('OpenAI', 'treetank-trans'),
                 'models' => ['gpt-4', 'gpt-4-turbo-preview', 'gpt-3.5-turbo']
             ],
             'claude' => [
-                'label' => __('Claude (Anthropic)', 'polytrans'),
+                'label' => __('Claude (Anthropic)', 'treetank-trans'),
                 'models' => ['claude-3-opus', 'claude-3-sonnet', 'claude-3-haiku']
             ],
             'gemini' => [
-                'label' => __('Gemini (Google)', 'polytrans'),
+                'label' => __('Gemini (Google)', 'treetank-trans'),
                 'models' => ['gemini-pro', 'gemini-pro-vision']
             ]
         ];
@@ -558,7 +558,7 @@ class AssistantsMenu
         check_ajax_referer('polytrans_assistants', 'nonce');
 
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(['message' => __('Permission denied.', 'polytrans')]);
+            wp_send_json_error(['message' => __('Permission denied.', 'treetank-trans')]);
         }
 
         $assistant_id = isset($_POST['assistant_id']) ? intval($_POST['assistant_id']) : 0;
@@ -599,7 +599,7 @@ class AssistantsMenu
         // Validate required fields
         // System prompt is only required if provider supports it
         if (empty($name) || empty($provider)) {
-            wp_send_json_error(['message' => __('Required fields are missing.', 'polytrans')]);
+            wp_send_json_error(['message' => __('Required fields are missing.', 'treetank-trans')]);
         }
 
         // If provider doesn't support system prompt, ensure it's empty
@@ -607,7 +607,7 @@ class AssistantsMenu
             $system_prompt = ''; // Clear system prompt if provider doesn't support it
         } elseif (empty($system_prompt)) {
             // Only require system prompt if provider supports it
-            wp_send_json_error(['message' => __('System Instructions are required for this provider.', 'polytrans')]);
+            wp_send_json_error(['message' => __('System Instructions are required for this provider.', 'treetank-trans')]);
         }
 
         // Prepare API parameters - only store the knob the model actually accepts.
@@ -666,11 +666,11 @@ class AssistantsMenu
                 }
 
                 wp_send_json_success([
-                    'message' => __('Assistant saved successfully.', 'polytrans'),
+                    'message' => __('Assistant saved successfully.', 'treetank-trans'),
                     'assistant_id' => $assistant_id
                 ]);
             } else {
-                wp_send_json_error(['message' => __('Failed to save assistant.', 'polytrans')]);
+                wp_send_json_error(['message' => __('Failed to save assistant.', 'treetank-trans')]);
             }
         } catch (\Exception $e) {
             wp_send_json_error(['message' => esc_html($e->getMessage())]);
@@ -685,22 +685,22 @@ class AssistantsMenu
         check_ajax_referer('polytrans_assistants', 'nonce');
 
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(['message' => __('Permission denied.', 'polytrans')]);
+            wp_send_json_error(['message' => __('Permission denied.', 'treetank-trans')]);
         }
 
         $assistant_id = isset($_POST['assistant_id']) ? intval($_POST['assistant_id']) : 0;
 
         if ($assistant_id <= 0) {
-            wp_send_json_error(['message' => __('Invalid assistant ID.', 'polytrans')]);
+            wp_send_json_error(['message' => __('Invalid assistant ID.', 'treetank-trans')]);
         }
 
         try {
             $result = AssistantManager::delete_assistant($assistant_id);
 
             if ($result) {
-                wp_send_json_success(['message' => __('Assistant deleted successfully.', 'polytrans')]);
+                wp_send_json_success(['message' => __('Assistant deleted successfully.', 'treetank-trans')]);
             } else {
-                wp_send_json_error(['message' => __('Failed to delete assistant.', 'polytrans')]);
+                wp_send_json_error(['message' => __('Failed to delete assistant.', 'treetank-trans')]);
             }
         } catch (\Exception $e) {
             wp_send_json_error(['message' => esc_html($e->getMessage())]);
@@ -715,13 +715,13 @@ class AssistantsMenu
         check_ajax_referer('polytrans_assistants', 'nonce');
 
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(['message' => __('Permission denied.', 'polytrans')]);
+            wp_send_json_error(['message' => __('Permission denied.', 'treetank-trans')]);
         }
 
         $assistant_id = isset($_POST['assistant_id']) ? intval($_POST['assistant_id']) : 0;
 
         if ($assistant_id <= 0) {
-            wp_send_json_error(['message' => __('Invalid assistant ID.', 'polytrans')]);
+            wp_send_json_error(['message' => __('Invalid assistant ID.', 'treetank-trans')]);
         }
 
         try {
@@ -730,7 +730,7 @@ class AssistantsMenu
             if ($assistant) {
                 wp_send_json_success(['assistant' => $assistant]);
             } else {
-                wp_send_json_error(['message' => __('Assistant not found.', 'polytrans')]);
+                wp_send_json_error(['message' => __('Assistant not found.', 'treetank-trans')]);
             }
         } catch (\Exception $e) {
             wp_send_json_error(['message' => esc_html($e->getMessage())]);
@@ -746,7 +746,7 @@ class AssistantsMenu
         check_ajax_referer('polytrans_assistants', 'nonce');
 
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(['message' => __('Permission denied.', 'polytrans')]);
+            wp_send_json_error(['message' => __('Permission denied.', 'treetank-trans')]);
         }
 
         try {
@@ -754,14 +754,14 @@ class AssistantsMenu
 
             if (!empty($stats['errors'])) {
                 wp_send_json_error([
-                    'message' => __('Migration completed with errors.', 'polytrans'),
+                    'message' => __('Migration completed with errors.', 'treetank-trans'),
                     'stats' => $stats
                 ]);
             } else {
                 wp_send_json_success([
                     'message' => sprintf(
                         /* translators: %1$d: number of steps migrated, %2$d: number of assistants created */
-                        __('Migration completed successfully! Migrated %1$d steps and created %2$d assistants.', 'polytrans'),
+                        __('Migration completed successfully! Migrated %1$d steps and created %2$d assistants.', 'treetank-trans'),
                         $stats['steps_migrated'],
                         $stats['assistants_created']
                     ),
@@ -852,7 +852,7 @@ class AssistantsMenu
         $default_model = (string) ($settings[$provider_id . '_model'] ?? '');
 
         if ($default_model !== '') {
-            $models[__('Global setting', 'polytrans')][$default_model] = $default_model;
+            $models[__('Global setting', 'treetank-trans')][$default_model] = $default_model;
         }
 
         return [
@@ -905,12 +905,12 @@ class AssistantsMenu
         }
 
         if (!$nonce_check) {
-            wp_send_json_error(__('Security check failed.', 'polytrans'));
+            wp_send_json_error(__('Security check failed.', 'treetank-trans'));
             return;
         }
 
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(__('You do not have sufficient permissions to access this page.', 'polytrans'));
+            wp_send_json_error(__('You do not have sufficient permissions to access this page.', 'treetank-trans'));
             return;
         }
 
@@ -939,7 +939,7 @@ class AssistantsMenu
         check_ajax_referer('polytrans_assistants', 'nonce');
 
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(['message' => __('Permission denied.', 'polytrans')]);
+            wp_send_json_error(['message' => __('Permission denied.', 'treetank-trans')]);
         }
 
         $outcome = $this->run_assistant_test([
@@ -977,22 +977,22 @@ class AssistantsMenu
         $content = (string) ($params['content'] ?? '');
 
         if ($assistant_id <= 0) {
-            return ['success' => false, 'data' => ['message' => __('Invalid assistant ID.', 'polytrans')]];
+            return ['success' => false, 'data' => ['message' => __('Invalid assistant ID.', 'treetank-trans')]];
         }
 
         if ($selected_post_id <= 0 && trim(wp_strip_all_tags($content)) === '') {
-            return ['success' => false, 'data' => ['message' => __('Test content is required.', 'polytrans')]];
+            return ['success' => false, 'data' => ['message' => __('Test content is required.', 'treetank-trans')]];
         }
 
         $assistant = AssistantManager::get_assistant($assistant_id);
         if (!$assistant) {
-            return ['success' => false, 'data' => ['message' => __('Assistant not found.', 'polytrans')]];
+            return ['success' => false, 'data' => ['message' => __('Assistant not found.', 'treetank-trans')]];
         }
 
         if ($selected_post_id > 0) {
             $context = PostTestContextBuilder::fromPost($selected_post_id, $source_language, $target_language);
             if ($context === null) {
-                return ['success' => false, 'data' => ['message' => __('Selected post not found.', 'polytrans')]];
+                return ['success' => false, 'data' => ['message' => __('Selected post not found.', 'treetank-trans')]];
             }
         } else {
             $context = PostTestContextBuilder::fromText($title, $content, $source_language, $target_language);
@@ -1028,7 +1028,7 @@ class AssistantsMenu
         if (empty($result['success'])) {
             return [
                 'success' => false,
-                'data' => ['message' => $result['error'] ?? __('Assistant execution failed.', 'polytrans')],
+                'data' => ['message' => $result['error'] ?? __('Assistant execution failed.', 'treetank-trans')],
             ];
         }
 
@@ -1061,18 +1061,18 @@ class AssistantsMenu
     public function ajax_dispatch_assistant_job()
     {
         if (!check_ajax_referer('polytrans_assistants', 'nonce', false)) {
-            wp_send_json_error(['message' => __('Security check failed.', 'polytrans')]);
+            wp_send_json_error(['message' => __('Security check failed.', 'treetank-trans')]);
             return;
         }
 
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(['message' => __('Permission denied.', 'polytrans')]);
+            wp_send_json_error(['message' => __('Permission denied.', 'treetank-trans')]);
             return;
         }
 
         $job_type = isset($_POST['job_type']) ? sanitize_text_field(wp_unslash($_POST['job_type'])) : '';
         if (!in_array($job_type, ['assistant_test'], true)) {
-            wp_send_json_error(['message' => __('Invalid job type.', 'polytrans')]);
+            wp_send_json_error(['message' => __('Invalid job type.', 'treetank-trans')]);
             return;
         }
 
@@ -1094,24 +1094,24 @@ class AssistantsMenu
     public function ajax_poll_assistant_job()
     {
         if (!check_ajax_referer('polytrans_assistants', 'nonce', false)) {
-            wp_send_json_error(['message' => __('Security check failed.', 'polytrans')]);
+            wp_send_json_error(['message' => __('Security check failed.', 'treetank-trans')]);
             return;
         }
 
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(['message' => __('Permission denied.', 'polytrans')]);
+            wp_send_json_error(['message' => __('Permission denied.', 'treetank-trans')]);
             return;
         }
 
         $job_id = isset($_POST['job_id']) ? sanitize_text_field(wp_unslash($_POST['job_id'])) : '';
         if ($job_id === '') {
-            wp_send_json_error(['message' => __('Missing job ID.', 'polytrans')]);
+            wp_send_json_error(['message' => __('Missing job ID.', 'treetank-trans')]);
             return;
         }
 
         $job = AsyncJobRunner::poll($job_id);
         if ($job === null) {
-            wp_send_json_error(['message' => __('Job not found or expired.', 'polytrans')]);
+            wp_send_json_error(['message' => __('Job not found or expired.', 'treetank-trans')]);
             return;
         }
 
@@ -1149,7 +1149,7 @@ class AssistantsMenu
         check_ajax_referer('polytrans_assistants', 'nonce');
 
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(['message' => __('Permission denied.', 'polytrans')]);
+            wp_send_json_error(['message' => __('Permission denied.', 'treetank-trans')]);
         }
 
         $language = isset($_POST['language']) ? sanitize_text_field(wp_unslash($_POST['language'])) : '';
@@ -1172,7 +1172,7 @@ class AssistantsMenu
         check_ajax_referer('polytrans_assistants', 'nonce');
 
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(['message' => __('Permission denied.', 'polytrans')]);
+            wp_send_json_error(['message' => __('Permission denied.', 'treetank-trans')]);
         }
 
         $assistant_id = isset($_POST['assistant_id']) ? intval($_POST['assistant_id']) : 0;
@@ -1213,7 +1213,7 @@ class AssistantsMenu
         check_ajax_referer('polytrans_assistants', 'nonce');
 
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(['message' => __('Permission denied.', 'polytrans')]);
+            wp_send_json_error(['message' => __('Permission denied.', 'treetank-trans')]);
         }
 
         $assistant_id = isset($_POST['assistant_id']) ? intval($_POST['assistant_id']) : 0;
@@ -1245,7 +1245,7 @@ class AssistantsMenu
         check_ajax_referer('polytrans_assistants', 'nonce');
 
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(['message' => __('Permission denied.', 'polytrans')]);
+            wp_send_json_error(['message' => __('Permission denied.', 'treetank-trans')]);
         }
 
         $assistant_id = isset($_POST['assistant_id']) ? intval($_POST['assistant_id']) : 0;
@@ -1296,7 +1296,7 @@ class AssistantsMenu
         check_ajax_referer('polytrans_assistants', 'nonce');
 
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(['message' => __('Permission denied.', 'polytrans')]);
+            wp_send_json_error(['message' => __('Permission denied.', 'treetank-trans')]);
         }
 
         $assistant_id = isset($_POST['assistant_id']) ? intval($_POST['assistant_id']) : 0;
@@ -1349,7 +1349,7 @@ class AssistantsMenu
         check_ajax_referer('polytrans_assistants', 'nonce');
 
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(['message' => __('Permission denied.', 'polytrans')]);
+            wp_send_json_error(['message' => __('Permission denied.', 'treetank-trans')]);
         }
 
         $assistant_id = isset($_POST['assistant_id']) ? intval($_POST['assistant_id']) : 0;
@@ -1384,7 +1384,7 @@ class AssistantsMenu
         check_ajax_referer('polytrans_assistants', 'nonce');
 
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(['message' => __('Permission denied.', 'polytrans')]);
+            wp_send_json_error(['message' => __('Permission denied.', 'treetank-trans')]);
         }
 
         $assistant_id = isset($_POST['assistant_id']) ? intval($_POST['assistant_id']) : 0;
@@ -1438,19 +1438,19 @@ class AssistantsMenu
         check_ajax_referer('polytrans_assistants', 'nonce');
 
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(['message' => __('Permission denied.', 'polytrans')]);
+            wp_send_json_error(['message' => __('Permission denied.', 'treetank-trans')]);
         }
 
         $assistant_id = isset($_POST['assistant_id']) ? intval($_POST['assistant_id']) : 0;
         $description = isset($_POST['description']) ? wp_kses_post(wp_unslash($_POST['description'])) : '';
 
         if ($assistant_id <= 0) {
-            wp_send_json_error(['message' => __('Assistant must be saved before its description can be updated.', 'polytrans')]);
+            wp_send_json_error(['message' => __('Assistant must be saved before its description can be updated.', 'treetank-trans')]);
         }
 
         $assistant = AssistantManager::get_assistant($assistant_id);
         if (!is_array($assistant)) {
-            wp_send_json_error(['message' => __('Assistant not found.', 'polytrans')]);
+            wp_send_json_error(['message' => __('Assistant not found.', 'treetank-trans')]);
         }
 
         $assistant['description'] = $description;
@@ -1464,7 +1464,7 @@ class AssistantsMenu
         }
 
         wp_send_json_success([
-            'message' => __('Assistant description saved.', 'polytrans'),
+            'message' => __('Assistant description saved.', 'treetank-trans'),
             'assistant_id' => $assistant_id,
             'description' => $description,
         ]);

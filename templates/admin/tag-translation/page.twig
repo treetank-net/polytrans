@@ -1,25 +1,25 @@
 <div class="wrap">
-    <h1>{{ __('Tag Translations', 'polytrans')|esc_html }}</h1>
+    <h1>{{ __('Tag Translations', 'treetank-trans')|esc_html }}</h1>
 
     <div class="tag-translation-admin-desc">
-        <p>{{ __('This view lets you manage translations for the tags specified in the Translation Settings. You can set translations for each language, and use the import/export functionality to manage translations in bulk.', 'polytrans')|esc_html }}</p>
+        <p>{{ __('This view lets you manage translations for the tags specified in the Translation Settings. You can set translations for each language, and use the import/export functionality to manage translations in bulk.', 'treetank-trans')|esc_html }}</p>
         <p>
-            <strong>{{ __('Note:', 'polytrans')|esc_html }}</strong>
+            <strong>{{ __('Note:', 'treetank-trans')|esc_html }}</strong>
             {% set settings_url = admin_url('admin.php?page=polytrans')|esc_url %}
-            {% set settings_link = '<a href="' ~ settings_url ~ '">' ~ __('Translation Settings → Tag Settings', 'polytrans')|esc_html ~ '</a>' %}
+            {% set settings_link = '<a href="' ~ settings_url ~ '">' ~ __('Translation Settings → Tag Settings', 'treetank-trans')|esc_html ~ '</a>' %}
             {# This link is built from an escaped WordPress admin URL and translated label, so the anchor is safe to render as HTML. #}
-            {{ __('To add or remove tags from the translation list, please go to %s.', 'polytrans')|format(settings_link)|raw }}
+            {{ __('To add or remove tags from the translation list, please go to %s.', 'treetank-trans')|format(settings_link)|raw }}
         </p>
     </div>
 
     {% if can_manage_options %}
         <div class="tag-translation-controls">
-            <button id="export-tag-csv" class="button button-primary">{{ __('Export CSV', 'polytrans')|esc_html }}</button>
-            <button id="show-import-csv" class="button">{{ __('Import CSV', 'polytrans')|esc_html }}</button>
+            <button id="export-tag-csv" class="button button-primary">{{ __('Export CSV', 'treetank-trans')|esc_html }}</button>
+            <button id="show-import-csv" class="button">{{ __('Import CSV', 'treetank-trans')|esc_html }}</button>
             <span id="import-csv-area" class="import-csv-area">
                 <input type="file" id="import-csv-file" accept=".csv,text/csv" />
-                <button id="import-csv-submit" class="button button-secondary">{{ __('Import', 'polytrans')|esc_html }}</button>
-                <button id="import-csv-cancel" class="button">{{ __('Cancel', 'polytrans')|esc_html }}</button>
+                <button id="import-csv-submit" class="button button-secondary">{{ __('Import', 'treetank-trans')|esc_html }}</button>
+                <button id="import-csv-cancel" class="button">{{ __('Cancel', 'treetank-trans')|esc_html }}</button>
             </span>
         </div>
     {% endif %}
@@ -27,10 +27,10 @@
     <table class="widefat fixed striped" id="tag-translation-table">
         <thead>
             <tr>
-                <th>{{ source_lang_name|esc_html }} {{ __('Tag', 'polytrans')|esc_html }}</th>
+                <th>{{ source_lang_name|esc_html }} {{ __('Tag', 'treetank-trans')|esc_html }}</th>
                 {% for lang in langs %}
                     {% if lang != source_language %}
-                        <th>{{ lang|upper|esc_html }} {{ __('Translation', 'polytrans')|esc_html }}</th>
+                        <th>{{ lang|upper|esc_html }} {{ __('Translation', 'treetank-trans')|esc_html }}</th>
                     {% endif %}
                 {% endfor %}
             </tr>
@@ -52,7 +52,7 @@
                                     data-translation-id="{{ translation.term_id|default('')|esc_attr }}"
                                     value="{{ translation.name|default('')|esc_attr }}"
                                     class="tag-translation-input"
-                                    placeholder="{{ __('Enter or select tag...', 'polytrans')|esc_attr }}" />
+                                    placeholder="{{ __('Enter or select tag...', 'treetank-trans')|esc_attr }}" />
                             </td>
                         {% endif %}
                     {% endfor %}

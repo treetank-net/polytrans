@@ -71,7 +71,7 @@ class OpenAIChatClientAdapter implements ChatClientInterface
             return [
                 'success' => false,
                 'data' => null,
-                'error' => __('OpenAI model is not selected. Please select a model in settings.', 'polytrans'),
+                'error' => __('OpenAI model is not selected. Please select a model in settings.', 'treetank-trans'),
                 'error_code' => 'model_not_selected',
             ];
         }

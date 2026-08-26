@@ -42,8 +42,8 @@ class UsageMenu
     {
         add_submenu_page(
             'polytrans',
-            __('AI Costs', 'polytrans'),
-            __('AI Costs', 'polytrans'),
+            __('AI Costs', 'treetank-trans'),
+            __('AI Costs', 'treetank-trans'),
             'manage_options',
             self::PAGE_SLUG,
             [$this, 'render'],
@@ -84,7 +84,7 @@ class UsageMenu
     public function render()
     {
         if (!current_user_can('manage_options')) {
-            wp_die(esc_html__('You do not have permission to view this page.', 'polytrans'));
+            wp_die(esc_html__('You do not have permission to view this page.', 'treetank-trans'));
         }
 
         // Creates the table on first view, so the page works on an installation that
@@ -198,9 +198,9 @@ class UsageMenu
     private function activity_choices()
     {
         return [
-            'translation' => __('Translation', 'polytrans'),
-            'workflow_step' => __('Workflow step', 'polytrans'),
-            'assistant_test' => __('Assistant test', 'polytrans'),
+            'translation' => __('Translation', 'treetank-trans'),
+            'workflow_step' => __('Workflow step', 'treetank-trans'),
+            'assistant_test' => __('Assistant test', 'treetank-trans'),
         ];
     }
 

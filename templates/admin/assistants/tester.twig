@@ -1,51 +1,51 @@
 <div class="wrap">
-    <h1>{{ __('Test Assistant', 'polytrans') }}: {{ assistant.name|esc_html }}</h1>
+    <h1>{{ __('Test Assistant', 'treetank-trans') }}: {{ assistant.name|esc_html }}</h1>
 
     <p>
         <a href="{{ polytrans_admin_url('polytrans-assistants')|esc_url }}" class="button">
-            {{ __('Back to Assistants', 'polytrans') }}
+            {{ __('Back to Assistants', 'treetank-trans') }}
         </a>
         <a href="{{ polytrans_admin_url('polytrans-assistants&action=edit&assistant_id=' ~ assistant.id)|esc_url }}" class="button">
-            {{ __('Edit Assistant', 'polytrans') }}
+            {{ __('Edit Assistant', 'treetank-trans') }}
         </a>
     </p>
 
     <div id="assistant-tester-container" data-assistant-id="{{ assistant.id|esc_attr }}" data-assistant-name="{{ assistant.name|esc_attr }}" data-assistant-expected-format="{{ (assistant.expected_format ?? 'text')|esc_attr }}">
-        <div class="assistant-test-tabs" role="tablist" aria-label="{{ __('Assistant testing modes', 'polytrans') }}">
+        <div class="assistant-test-tabs" role="tablist" aria-label="{{ __('Assistant testing modes', 'treetank-trans') }}">
             <button type="button" class="button assistant-test-tab is-active" data-mode="test">
-                {{ __('Prompt Test', 'polytrans') }}
+                {{ __('Prompt Test', 'treetank-trans') }}
             </button>
             <button type="button" class="button assistant-test-tab" data-mode="refine">
-                {{ __('Prompt Refinement', 'polytrans') }}
+                {{ __('Prompt Refinement', 'treetank-trans') }}
             </button>
         </div>
 
         <div id="assistant-mode-test" class="assistant-mode-panel">
             <div class="assistant-test-panel">
-                <h2>{{ __('Single Prompt Test', 'polytrans') }}</h2>
+                <h2>{{ __('Single Prompt Test', 'treetank-trans') }}</h2>
                 <p class="description">
-                    {{ __('Run the selected managed assistant on one real post and inspect output, interpolated prompts, and context.', 'polytrans') }}
+                    {{ __('Run the selected managed assistant on one real post and inspect output, interpolated prompts, and context.', 'treetank-trans') }}
                 </p>
 
                 <table class="form-table" role="presentation">
                     <tbody>
                         <tr>
-                            <th scope="row"><label for="assistant-test-source-language">{{ __('Source Language', 'polytrans') }}</label></th>
+                            <th scope="row"><label for="assistant-test-source-language">{{ __('Source Language', 'treetank-trans') }}</label></th>
                             <td><input type="text" id="assistant-test-source-language" class="small-text" value="en"></td>
                         </tr>
                         <tr>
-                            <th scope="row"><label for="assistant-test-target-language">{{ __('Target Language', 'polytrans') }}</label></th>
+                            <th scope="row"><label for="assistant-test-target-language">{{ __('Target Language', 'treetank-trans') }}</label></th>
                             <td><input type="text" id="assistant-test-target-language" class="small-text" value="pl"></td>
                         </tr>
                         <tr id="assistant-existing-post-row">
-                            <th scope="row"><label for="assistant-test-recent-posts">{{ __('Existing Post', 'polytrans') }}</label></th>
+                            <th scope="row"><label for="assistant-test-recent-posts">{{ __('Existing Post', 'treetank-trans') }}</label></th>
                             <td>
                                 <select id="assistant-test-recent-posts" class="regular-text">
-                                    <option value="">{{ __('Loading posts...', 'polytrans') }}</option>
+                                    <option value="">{{ __('Loading posts...', 'treetank-trans') }}</option>
                                 </select>
-                                <p class="description">{{ __('Loads last 20 posts (optionally filtered by source language).', 'polytrans') }}</p>
+                                <p class="description">{{ __('Loads last 20 posts (optionally filtered by source language).', 'treetank-trans') }}</p>
                                 <div id="assistant-selected-post-info" style="display:none; margin-top:10px; padding:10px; background:#f6f7f7; border:1px solid #dcdcde;">
-                                    <strong>{{ __('Selected post', 'polytrans') }}:</strong>
+                                    <strong>{{ __('Selected post', 'treetank-trans') }}:</strong>
                                     <div id="assistant-selected-post-details"></div>
                                 </div>
                             </td>
@@ -55,7 +55,7 @@
 
                 <p>
                     <button type="button" id="run-assistant-test-btn" class="button button-primary">
-                        {{ __('Run Test', 'polytrans') }}
+                        {{ __('Run Test', 'treetank-trans') }}
                     </button>
                     <span class="spinner" style="float:none; margin:0 10px;"></span>
                 </p>
@@ -66,91 +66,91 @@
 
         <div id="assistant-mode-refine" class="assistant-mode-panel" style="display:none;">
             <div class="assistant-test-panel">
-                <h2>{{ __('Prompt Refinement', 'polytrans') }}</h2>
+                <h2>{{ __('Prompt Refinement', 'treetank-trans') }}</h2>
                 <p class="description">
-                    {{ __('Evaluate assistant behavior over selected real posts, then generate a proposed prompt adjustment pack.', 'polytrans') }}
+                    {{ __('Evaluate assistant behavior over selected real posts, then generate a proposed prompt adjustment pack.', 'treetank-trans') }}
                 </p>
 
                 <table class="form-table" role="presentation">
                     <tbody>
                         <tr>
-                            <th scope="row"><label for="assistant-refine-source-language">{{ __('Source Language', 'polytrans') }}</label></th>
+                            <th scope="row"><label for="assistant-refine-source-language">{{ __('Source Language', 'treetank-trans') }}</label></th>
                             <td><input type="text" id="assistant-refine-source-language" class="small-text" value="en"></td>
                         </tr>
                         <tr>
-                            <th scope="row"><label for="assistant-refine-target-language">{{ __('Target Language', 'polytrans') }}</label></th>
+                            <th scope="row"><label for="assistant-refine-target-language">{{ __('Target Language', 'treetank-trans') }}</label></th>
                             <td><input type="text" id="assistant-refine-target-language" class="small-text" value="pl"></td>
                         </tr>
                         <tr>
-                            <th scope="row"><label for="assistant-refine-recent-posts">{{ __('Posts for Refinement', 'polytrans') }}</label></th>
+                            <th scope="row"><label for="assistant-refine-recent-posts">{{ __('Posts for Refinement', 'treetank-trans') }}</label></th>
                             <td>
                                 <select id="assistant-refine-recent-posts" class="large-text" size="10" multiple>
-                                    <option value="">{{ __('Loading posts...', 'polytrans') }}</option>
+                                    <option value="">{{ __('Loading posts...', 'treetank-trans') }}</option>
                                 </select>
                                 <p>
-                                    <button type="button" id="assistant-refine-refresh-posts" class="button">{{ __('Refresh List', 'polytrans') }}</button>
-                                    <button type="button" id="assistant-refine-select-all-posts" class="button">{{ __('Select All', 'polytrans') }}</button>
-                                    <button type="button" id="assistant-refine-clear-posts" class="button">{{ __('Clear', 'polytrans') }}</button>
+                                    <button type="button" id="assistant-refine-refresh-posts" class="button">{{ __('Refresh List', 'treetank-trans') }}</button>
+                                    <button type="button" id="assistant-refine-select-all-posts" class="button">{{ __('Select All', 'treetank-trans') }}</button>
+                                    <button type="button" id="assistant-refine-clear-posts" class="button">{{ __('Clear', 'treetank-trans') }}</button>
                                 </p>
-                                <p class="description">{{ __('Choose at least one post. The refinement run executes and evaluates the assistant on each selected post.', 'polytrans') }}</p>
+                                <p class="description">{{ __('Choose at least one post. The refinement run executes and evaluates the assistant on each selected post.', 'treetank-trans') }}</p>
                             </td>
                         </tr>
                         <tr>
-                            <th scope="row"><label for="assistant-refine-criteria">{{ __('Refinement Criteria', 'polytrans') }}</label></th>
+                            <th scope="row"><label for="assistant-refine-criteria">{{ __('Refinement Criteria', 'treetank-trans') }}</label></th>
                             <td>
-                                <textarea id="assistant-refine-criteria" class="large-text code" rows="4" placeholder="{{ __('Example: Make this assistant output more reliable and easier to use downstream. Prefer a shorter, clearer prompt with fewer conflicting rules.', 'polytrans') }}"></textarea>
-                                <p class="description">{{ __('Good criteria describe the operational improvement you want. Prefer reliability, clarity, and conflict removal over simply asking for more instructions.', 'polytrans') }}</p>
+                                <textarea id="assistant-refine-criteria" class="large-text code" rows="4" placeholder="{{ __('Example: Make this assistant output more reliable and easier to use downstream. Prefer a shorter, clearer prompt with fewer conflicting rules.', 'treetank-trans') }}"></textarea>
+                                <p class="description">{{ __('Good criteria describe the operational improvement you want. Prefer reliability, clarity, and conflict removal over simply asking for more instructions.', 'treetank-trans') }}</p>
                             </td>
                         </tr>
                         <tr>
-                            <th scope="row"><label for="assistant-refine-objective">{{ __('Primary Purpose', 'polytrans') }}</label></th>
+                            <th scope="row"><label for="assistant-refine-objective">{{ __('Primary Purpose', 'treetank-trans') }}</label></th>
                             <td>
-                                <textarea id="assistant-refine-objective" class="large-text code" rows="3" placeholder="{{ __('Describe what this prompt must still do after refinement.', 'polytrans') }}">{{ assistant.description|default('')|esc_textarea }}</textarea>
+                                <textarea id="assistant-refine-objective" class="large-text code" rows="3" placeholder="{{ __('Describe what this prompt must still do after refinement.', 'treetank-trans') }}">{{ assistant.description|default('')|esc_textarea }}</textarea>
                                 <p>
                                     <button type="button" id="assistant-generate-objective-btn" class="button">
-                                        {{ __('Generate from Assistant Prompt', 'polytrans') }}
+                                        {{ __('Generate from Assistant Prompt', 'treetank-trans') }}
                                     </button>
                                 </p>
-                                <p class="description">{{ __('Loaded from the assistant description. The evaluator and adjuster use this as the original job that must remain aligned while applying the refinement criteria.', 'polytrans') }}</p>
+                                <p class="description">{{ __('Loaded from the assistant description. The evaluator and adjuster use this as the original job that must remain aligned while applying the refinement criteria.', 'treetank-trans') }}</p>
                             </td>
                         </tr>
                         <tr>
-                            <th scope="row"><label for="assistant-refine-iterations">{{ __('Full Re-eval Iterations', 'polytrans') }}</label></th>
+                            <th scope="row"><label for="assistant-refine-iterations">{{ __('Full Re-eval Iterations', 'treetank-trans') }}</label></th>
                             <td>
                                 <input type="number" id="assistant-refine-iterations" class="small-text" min="1" max="10" step="1" value="2">
-                                <p class="description">{{ __('Each iteration runs assistant + evaluator on the same selected posts, then runs prompt adjuster. Iteration 2+ is full re-eval of adjusted prompts.', 'polytrans') }}</p>
+                                <p class="description">{{ __('Each iteration runs assistant + evaluator on the same selected posts, then runs prompt adjuster. Iteration 2+ is full re-eval of adjusted prompts.', 'treetank-trans') }}</p>
                             </td>
                         </tr>
                         <tr id="assistant-refine-evaluator-prompts-row">
-                            <th scope="row">{{ __('Evaluator Prompts', 'polytrans') }}</th>
+                            <th scope="row">{{ __('Evaluator Prompts', 'treetank-trans') }}</th>
                             <td>
                                 <div class="assistant-refinement-prompt-grid">
                                     <div class="assistant-refinement-prompt-field">
-                                        <label for="assistant-refine-evaluator-system-prompt"><strong>{{ __('System Prompt', 'polytrans') }}</strong></label>
+                                        <label for="assistant-refine-evaluator-system-prompt"><strong>{{ __('System Prompt', 'treetank-trans') }}</strong></label>
                                         <textarea id="assistant-refine-evaluator-system-prompt" class="large-text code" rows="10">{{ default_evaluator_system_prompt|esc_textarea }}</textarea>
                                     </div>
                                     <div class="assistant-refinement-prompt-field">
-                                        <label for="assistant-refine-evaluator-template"><strong>{{ __('User Message Template', 'polytrans') }}</strong></label>
+                                        <label for="assistant-refine-evaluator-template"><strong>{{ __('User Message Template', 'treetank-trans') }}</strong></label>
                                         <textarea id="assistant-refine-evaluator-template" class="large-text code" rows="10">{{ default_evaluator_prompt_template|esc_textarea }}</textarea>
                                     </div>
                                 </div>
-                                <p class="description">{{ __('Template variables: criteria, prompt_objective, interpolated_system_prompt, interpolated_user_message, assistant_output, source_language, target_language, include_expected_output_schema, expected_output_schema.', 'polytrans') }}</p>
+                                <p class="description">{{ __('Template variables: criteria, prompt_objective, interpolated_system_prompt, interpolated_user_message, assistant_output, source_language, target_language, include_expected_output_schema, expected_output_schema.', 'treetank-trans') }}</p>
                             </td>
                         </tr>
                         <tr>
-                            <th scope="row">{{ __('Prompt Adjuster Prompts', 'polytrans') }}</th>
+                            <th scope="row">{{ __('Prompt Adjuster Prompts', 'treetank-trans') }}</th>
                             <td>
                                 <div class="assistant-refinement-prompt-grid">
                                     <div class="assistant-refinement-prompt-field">
-                                        <label for="assistant-refine-adjuster-system-prompt"><strong>{{ __('System Prompt', 'polytrans') }}</strong></label>
+                                        <label for="assistant-refine-adjuster-system-prompt"><strong>{{ __('System Prompt', 'treetank-trans') }}</strong></label>
                                         <textarea id="assistant-refine-adjuster-system-prompt" class="large-text code" rows="12">{{ default_adjuster_system_prompt|esc_textarea }}</textarea>
                                     </div>
                                     <div class="assistant-refinement-prompt-field">
-                                        <label for="assistant-refine-adjuster-template"><strong>{{ __('User Message Template', 'polytrans') }}</strong></label>
+                                        <label for="assistant-refine-adjuster-template"><strong>{{ __('User Message Template', 'treetank-trans') }}</strong></label>
                                         <textarea id="assistant-refine-adjuster-template" class="large-text code" rows="12">{{ default_adjuster_prompt_template|esc_textarea }}</textarea>
                                     </div>
                                 </div>
-                                <p class="description">{{ __('Template variables: criteria, prompt_objective, adjust_expected_output_schema, non_interpolated_system_prompt, non_interpolated_user_message_template, non_interpolated_expected_output_schema, evaluations, evaluations_json.', 'polytrans') }}</p>
+                                <p class="description">{{ __('Template variables: criteria, prompt_objective, adjust_expected_output_schema, non_interpolated_system_prompt, non_interpolated_user_message_template, non_interpolated_expected_output_schema, evaluations, evaluations_json.', 'treetank-trans') }}</p>
                             </td>
                         </tr>
                     </tbody>
@@ -158,7 +158,7 @@
 
                 <p>
                     <button type="button" id="run-assistant-refinement-btn" class="button button-primary">
-                        {{ __('Run Refinement', 'polytrans') }}
+                        {{ __('Run Refinement', 'treetank-trans') }}
                     </button>
                     <span class="spinner" style="float:none; margin:0 10px;"></span>
                 </p>

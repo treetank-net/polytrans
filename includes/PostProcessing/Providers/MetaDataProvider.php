@@ -29,7 +29,7 @@ class MetaDataProvider implements VariableProviderInterface
      */
     public function get_provider_name()
     {
-        return __('Meta Data Provider', 'polytrans');
+        return __('Meta Data Provider', 'treetank-trans');
     }
 
     /**
@@ -82,19 +82,19 @@ class MetaDataProvider implements VariableProviderInterface
     {
         return [
             'original_meta' => [
-                'description' => __('All custom fields from original post', 'polytrans'),
+                'description' => __('All custom fields from original post', 'treetank-trans'),
                 'example' => '{original_meta.seo_title}'
             ],
             'translated_meta' => [
-                'description' => __('All custom fields from translated post', 'polytrans'),
+                'description' => __('All custom fields from translated post', 'treetank-trans'),
                 'example' => '{translated_meta.seo_description}'
             ],
             'original_meta.custom_field' => [
-                'description' => __('Specific custom field from original post', 'polytrans'),
+                'description' => __('Specific custom field from original post', 'treetank-trans'),
                 'example' => '{original_meta.your_custom_field_name}'
             ],
             'translated_meta.custom_field' => [
-                'description' => __('Specific custom field from translated post', 'polytrans'),
+                'description' => __('Specific custom field from translated post', 'treetank-trans'),
                 'example' => '{translated_meta.your_custom_field_name}'
             ]
         ];

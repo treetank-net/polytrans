@@ -56,7 +56,7 @@ class WorkflowMetabox
         foreach ($post_types as $post_type) {
             add_meta_box(
                 'polytrans-workflows-metabox',
-                __('PolyTrans Workflows', 'polytrans'),
+                __('PolyTrans Workflows', 'treetank-trans'),
                 [$this, 'render_meta_box'],
                 $post_type,
                 'side',
@@ -88,11 +88,11 @@ class WorkflowMetabox
             'nonce' => wp_create_nonce('polytrans_workflows_nonce'),
             'executePageUrl' => admin_url('admin.php?page=polytrans-execute-workflow'),
             'strings' => [
-                'executing' => __('Executing...', 'polytrans'),
-                'execute' => __('Execute', 'polytrans'),
-                'error' => __('Error', 'polytrans'),
-                'success' => __('Success', 'polytrans'),
-                'confirmExecute' => __('Execute this workflow on the current post?', 'polytrans'),
+                'executing' => __('Executing...', 'treetank-trans'),
+                'execute' => __('Execute', 'treetank-trans'),
+                'error' => __('Error', 'treetank-trans'),
+                'success' => __('Success', 'treetank-trans'),
+                'confirmExecute' => __('Execute this workflow on the current post?', 'treetank-trans'),
             ]
         ]);
 
@@ -145,7 +145,7 @@ class WorkflowMetabox
         <div class="polytrans-workflows-metabox">
             <?php if (empty($post_language)): ?>
                 <p class="description">
-                    <?php esc_html_e('This post has no language assigned.', 'polytrans'); ?>
+                    <?php esc_html_e('This post has no language assigned.', 'treetank-trans'); ?>
                 </p>
             <?php elseif (empty($available_workflows)): ?>
                 <p class="description">
@@ -154,7 +154,7 @@ class WorkflowMetabox
                     echo wp_kses(
                         sprintf(
                             /* translators: %s: language name wrapped in <strong> tags */
-                            __('No workflows available for %s posts.', 'polytrans'),
+                            __('No workflows available for %s posts.', 'treetank-trans'),
                             '<strong>' . esc_html($lang_name) . '</strong>'
                         ),
                         ['strong' => []]
@@ -163,7 +163,7 @@ class WorkflowMetabox
                 </p>
                 <p>
                     <a href="<?php echo esc_url(admin_url('admin.php?page=polytrans-workflows&action=new')); ?>" class="button button-small">
-                        <?php esc_html_e('Create Workflow', 'polytrans'); ?>
+                        <?php esc_html_e('Create Workflow', 'treetank-trans'); ?>
                     </a>
                 </p>
             <?php else: ?>
@@ -171,7 +171,7 @@ class WorkflowMetabox
                     <div class="polytrans-execution-status" data-execution-id="<?php echo esc_attr($running_execution['execution_id']); ?>">
                         <div class="execution-running">
                             <span class="dashicons dashicons-update-alt spinning"></span>
-                            <strong><?php esc_html_e('Workflow Running...', 'polytrans'); ?></strong>
+                            <strong><?php esc_html_e('Workflow Running...', 'treetank-trans'); ?></strong>
                             <p class="description"><?php echo esc_html($running_execution['workflow_name']); ?></p>
                         </div>
                     </div>
@@ -183,7 +183,7 @@ class WorkflowMetabox
                         <?php 
                     printf(
                             /* translators: %d: number of available workflows */
-                            esc_html__('%d workflow(s) available:', 'polytrans'),
+                            esc_html__('%d workflow(s) available:', 'treetank-trans'),
                             count($available_workflows)
                         ); 
                         ?>
@@ -195,7 +195,7 @@ class WorkflowMetabox
                                 <?php echo esc_html($workflow['name']); ?>
                                 <?php if (!empty($workflow['steps'])): ?>
                                     <span class="workflow-steps-count">
-                                        (<?php echo count($workflow['steps']); ?> <?php esc_html_e('steps', 'polytrans'); ?>)
+                                        (<?php echo count($workflow['steps']); ?> <?php esc_html_e('steps', 'treetank-trans'); ?>)
                                     </span>
                                 <?php endif; ?>
                             </div>
@@ -206,7 +206,7 @@ class WorkflowMetabox
                                     data-workflow-id="<?php echo esc_attr($workflow['id']); ?>"
                                     data-workflow-name="<?php echo esc_attr($workflow['name']); ?>"
                                     data-post-id="<?php echo esc_attr($post->ID); ?>">
-                                    <?php esc_html_e('Execute', 'polytrans'); ?>
+                                    <?php esc_html_e('Execute', 'treetank-trans'); ?>
                                 </button>
                             </div>
                         </div>
@@ -217,7 +217,7 @@ class WorkflowMetabox
 
                 <p>
                     <a href="<?php echo esc_url(admin_url('admin.php?page=polytrans-execute-workflow&post_id=' . $post->ID . '&language=' . urlencode($post_language))); ?>" class="button button-small" target="_blank">
-                        <?php esc_html_e('Advanced Execution', 'polytrans'); ?>
+                        <?php esc_html_e('Advanced Execution', 'treetank-trans'); ?>
                     </a>
                 </p>
             <?php endif; ?>

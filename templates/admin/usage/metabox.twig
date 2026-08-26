@@ -6,7 +6,7 @@
     {% if summary.unpriced_calls > 0 %}
         <p class="polytrans-usage-metabox__note">
             {# Stated plainly: the figure above is short by whatever these cost. #}
-            {{ summary.unpriced_calls|esc_html }} {{ __('calls had no price available', 'polytrans') }}
+            {{ summary.unpriced_calls|esc_html }} {{ __('calls had no price available', 'treetank-trans') }}
         </p>
     {% endif %}
 
@@ -25,20 +25,20 @@
 
     {% if models|length > 0 %}
         <p class="polytrans-usage-metabox__note">
-            {{ __('Models', 'polytrans') }}:
+            {{ __('Models', 'treetank-trans') }}:
             {% for row in models %}{{ row.label|esc_html }}{% if not loop.last %}, {% endif %}{% endfor %}
         </p>
     {% endif %}
 
     <p class="polytrans-usage-metabox__note">
-        {{ summary.calls|esc_html }} {{ __('calls', 'polytrans') }},
-        {{ (summary.tokens_input + summary.tokens_output)|number_format(0, '.', ' ') }} {{ __('tokens', 'polytrans') }}
+        {{ summary.calls|esc_html }} {{ __('calls', 'treetank-trans') }},
+        {{ (summary.tokens_input + summary.tokens_output)|number_format(0, '.', ' ') }} {{ __('tokens', 'treetank-trans') }}
         {% if reasoning_share > 0 %}
-            &middot; {{ reasoning_share|esc_html }}% {{ __('reasoning', 'polytrans') }}
+            &middot; {{ reasoning_share|esc_html }}% {{ __('reasoning', 'treetank-trans') }}
         {% endif %}
     </p>
 
     <p class="polytrans-usage-metabox__note">
-        <a href="{{ dashboard_url|esc_url }}">{{ __('All AI costs', 'polytrans') }} &rarr;</a>
+        <a href="{{ dashboard_url|esc_url }}">{{ __('All AI costs', 'treetank-trans') }} &rarr;</a>
     </p>
 </div>

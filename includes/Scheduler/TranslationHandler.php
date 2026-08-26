@@ -165,7 +165,7 @@ class TranslationHandler
             update_post_meta($post_id, $needs_review_key, $needs_review ? '1' : '0');
             update_post_meta($post_id, $log_key, [[
                 'timestamp' => $now,
-                'msg' => __('Translation scheduled.', 'polytrans'),
+                'msg' => __('Translation scheduled.', 'treetank-trans'),
             ]]);
 
             if (!in_array($lang, $scheduled_langs, true)) {
@@ -220,7 +220,7 @@ class TranslationHandler
         $log[] = [
             'timestamp' => time(),
             /* translators: %s: transport mode (internal or external) */
-            'msg' => sprintf(__('Translation process scheduled (mode: %s).', 'polytrans'), $transport_mode)
+            'msg' => sprintf(__('Translation process scheduled (mode: %s).', 'treetank-trans'), $transport_mode)
         ];
         update_post_meta($post_id, $log_key, $log);
         LogsManager::log("Translation scheduled for post $post_id from $source_lang to $target_lang (mode: $transport_mode)", "info");
@@ -254,7 +254,7 @@ class TranslationHandler
         // Add a log entry about spawning the background process
         $log[] = [
             'timestamp' => time(),
-            'msg' => __('Spawning background process for translation.', 'polytrans')
+            'msg' => __('Spawning background process for translation.', 'treetank-trans')
         ];
         update_post_meta($post_id, $log_key, $log);
 
@@ -277,7 +277,7 @@ class TranslationHandler
                 'timestamp' => time(),
                 'msg' => sprintf(
                     /* translators: %s: URL to the logs page */
-                    __('Translation request queued in background process. <a href="%s" target="_blank">View logs</a> for more details.', 'polytrans'),
+                    __('Translation request queued in background process. <a href="%s" target="_blank">View logs</a> for more details.', 'treetank-trans'),
                     esc_url($logs_url)
                 )
             ];
@@ -290,7 +290,7 @@ class TranslationHandler
         // If background process spawning failed, log the error
         $log[] = [
             'timestamp' => time(),
-            'msg' => __('Failed to start background process. Please check server configuration.', 'polytrans')
+            'msg' => __('Failed to start background process. Please check server configuration.', 'treetank-trans')
         ];
         LogsManager::log("Failed to spawn background process for post $post_id translation", "info");
         update_post_meta($post_id, $status_key, 'failed');
@@ -318,7 +318,7 @@ class TranslationHandler
             // Log error if no endpoint is configured
             $log[] = [
                 'timestamp' => time(),
-                'msg' => __('Failed to send translation request: No translation endpoint configured.', 'polytrans')
+                'msg' => __('Failed to send translation request: No translation endpoint configured.', 'treetank-trans')
             ];
             LogsManager::log("Failed to send external translation request for post $post_id: No endpoint configured", "info");
             update_post_meta($post_id, $status_key, 'failed');
@@ -339,7 +339,7 @@ class TranslationHandler
         $log[] = [
             'timestamp' => time(),
             /* translators: %s: translation endpoint URL */
-            'msg' => sprintf(__('Sending translation request to external endpoint: %s', 'polytrans'), $translation_endpoint)
+            'msg' => sprintf(__('Sending translation request to external endpoint: %s', 'treetank-trans'), $translation_endpoint)
         ];
         update_post_meta($post_id, $log_key, $log);
 
@@ -348,7 +348,7 @@ class TranslationHandler
         if (!$post) {
             $log[] = [
                 'timestamp' => time(),
-                'msg' => __('Failed to send translation request: Post not found.', 'polytrans')
+                'msg' => __('Failed to send translation request: Post not found.', 'treetank-trans')
             ];
             LogsManager::log("Failed to send external translation request for post $post_id: Post not found", "info");
             update_post_meta($post_id, $status_key, 'failed');
@@ -399,7 +399,7 @@ class TranslationHandler
                 'timestamp' => time(),
                 'msg' => sprintf(
                     /* translators: %1$d: number of context articles, %2$s: target language code */
-                    __('Payload includes: source article + %1$d context articles in %2$s', 'polytrans'),
+                    __('Payload includes: source article + %1$d context articles in %2$s', 'treetank-trans'),
                     count($context_articles),
                     $target_lang
                 )
@@ -415,7 +415,7 @@ class TranslationHandler
                 'timestamp' => time(),
                 'msg' => sprintf(
                     /* translators: %s: target language code */
-                    __('No context articles found in %s - sending only source article', 'polytrans'),
+                    __('No context articles found in %s - sending only source article', 'treetank-trans'),
                     $target_lang
                 )
             ];
@@ -501,7 +501,7 @@ class TranslationHandler
         // Log success if request was accepted
         $log[] = [
             'timestamp' => time(),
-            'msg' => __('Translation request sent successfully to external endpoint. Awaiting response.', 'polytrans')
+            'msg' => __('Translation request sent successfully to external endpoint. Awaiting response.', 'treetank-trans')
         ];
         LogsManager::log("External translation request sent successfully for post $post_id", "info");
 
@@ -518,16 +518,16 @@ class TranslationHandler
     {
         // Check if post exists
         if (!$post_id || !get_post($post_id)) {
-            return ['message' => __('Cannot translate: the post does not exist.', 'polytrans')];
+            return ['message' => __('Cannot translate: the post does not exist.', 'treetank-trans')];
         }
 
         // Check if post is currently being edited (has an active edit lock)
         $lock = wp_check_post_lock($post_id);
         if ($lock) {
             $user = get_userdata($lock);
-            $lock_user = $user ? $user->display_name : __('another user', 'polytrans');
+            $lock_user = $user ? $user->display_name : __('another user', 'treetank-trans');
             /* translators: %s: display name of the user currently editing the post */
-            return ['message' => sprintf(__('Cannot translate: the post is currently being edited by %s.', 'polytrans'), $lock_user)];
+            return ['message' => sprintf(__('Cannot translate: the post is currently being edited by %s.', 'treetank-trans'), $lock_user)];
         }
 
         // Check for unsaved changes - WordPress sets a revision when autosave happens
@@ -537,14 +537,14 @@ class TranslationHandler
             $latest_revision = array_shift($revisions);
             $post = get_post($post_id);
             if ($latest_revision->post_modified > $post->post_modified) {
-                return ['message' => __('Cannot translate: the article has unsaved changes. Please save the post first.', 'polytrans')];
+                return ['message' => __('Cannot translate: the article has unsaved changes. Please save the post first.', 'treetank-trans')];
             }
         }
 
         // Legacy dirty check for backwards compatibility
         $is_dirty = get_post_meta($post_id, 'is_dirty', true);
         if ($is_dirty === '1' || $is_dirty === 1 || $is_dirty === true) {
-            return ['message' => __('Cannot translate: the article has unsaved changes or is marked as dirty.', 'polytrans')];
+            return ['message' => __('Cannot translate: the article has unsaved changes or is marked as dirty.', 'treetank-trans')];
         }
 
         // Get allowed targets from settings
@@ -555,14 +555,14 @@ class TranslationHandler
         }
         if ($scope === 'regional') {
             if (empty($targets)) {
-                return ['message' => __('Please select at least one target language for regional translation.', 'polytrans')];
+                return ['message' => __('Please select at least one target language for regional translation.', 'treetank-trans')];
             }
         }
 
         $invalid_targets = array_diff($targets, $allowed_targets);
         if (!empty($invalid_targets)) {
             return [
-                'message' => __('Invalid target language(s) selected.', 'polytrans'),
+                'message' => __('Invalid target language(s) selected.', 'treetank-trans'),
                 'invalid_targets' => $invalid_targets
             ];
         }
@@ -739,7 +739,7 @@ class TranslationHandler
         update_post_meta($post_id, $log_key, [
             [
                 'timestamp' => time(),
-                'msg' => sprintf(__('Translation retry initiated by user.', 'polytrans'))
+                'msg' => sprintf(__('Translation retry initiated by user.', 'treetank-trans'))
             ]
         ]);
 
@@ -758,7 +758,7 @@ class TranslationHandler
 
         wp_send_json_success([
             /* translators: %s: uppercase language code */
-            'message' => sprintf(__('Translation retry started for %s', 'polytrans'), strtoupper($lang)),
+            'message' => sprintf(__('Translation retry started for %s', 'treetank-trans'), strtoupper($lang)),
             'scheduled_langs' => $scheduled_langs,
             'lang' => $lang
         ]);
@@ -824,7 +824,7 @@ class TranslationHandler
                     'timestamp' => $current_time,
                     'msg' => sprintf(
                         /* translators: %d: number of hours of inactivity */
-                        __('Translation automatically marked as failed after %d hours of inactivity.', 'polytrans'),
+                        __('Translation automatically marked as failed after %d hours of inactivity.', 'treetank-trans'),
                         $timeout_hours
                     )
                 ];

@@ -802,7 +802,7 @@ class UsageReport
         if (array_key_exists('label', $row) && ($row['label'] === null || $row['label'] === '')) {
             // Not '(none)': a blank model means the provider named none, and a reader
             // needs to tell that apart from a dimension that genuinely does not apply.
-            $row['label'] = __('not reported', 'polytrans');
+            $row['label'] = __('not reported', 'treetank-trans');
         }
 
         return $row;

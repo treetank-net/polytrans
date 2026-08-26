@@ -31,7 +31,7 @@ class ArticlesDataProvider implements VariableProviderInterface
      */
     public function get_provider_name()
     {
-        return __('Recent Articles Provider', 'polytrans');
+        return __('Recent Articles Provider', 'treetank-trans');
     }
 
     /**
@@ -92,31 +92,31 @@ class ArticlesDataProvider implements VariableProviderInterface
     {
         return [
             'recent_articles' => [
-                'description' => __('Array of recent published articles with full data', 'polytrans'),
+                'description' => __('Array of recent published articles with full data', 'treetank-trans'),
                 'example' => '{recent_articles.0.title} or {recent_articles.1.excerpt}'
             ],
             'recent_articles_count' => [
-                'description' => __('Number of recent articles retrieved', 'polytrans'),
+                'description' => __('Number of recent articles retrieved', 'treetank-trans'),
                 'example' => '{recent_articles_count}'
             ],
             'recent_articles_summary' => [
-                'description' => __('Formatted summary of recent articles for AI processing', 'polytrans'),
+                'description' => __('Formatted summary of recent articles for AI processing', 'treetank-trans'),
                 'example' => '{recent_articles_summary}'
             ],
             'recent_articles.X.title' => [
-                'description' => __('Title of article at index X (0-based)', 'polytrans'),
+                'description' => __('Title of article at index X (0-based)', 'treetank-trans'),
                 'example' => '{recent_articles.0.title}'
             ],
             'recent_articles.X.excerpt' => [
-                'description' => __('Excerpt of article at index X', 'polytrans'),
+                'description' => __('Excerpt of article at index X', 'treetank-trans'),
                 'example' => '{recent_articles.0.excerpt}'
             ],
             'recent_articles.X.url' => [
-                'description' => __('URL of article at index X', 'polytrans'),
+                'description' => __('URL of article at index X', 'treetank-trans'),
                 'example' => '{recent_articles.0.url}'
             ],
             'recent_articles.X.categories' => [
-                'description' => __('Categories of article at index X', 'polytrans'),
+                'description' => __('Categories of article at index X', 'treetank-trans'),
                 'example' => '{recent_articles.0.categories}'
             ]
         ];

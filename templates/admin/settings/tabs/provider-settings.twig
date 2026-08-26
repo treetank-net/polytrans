@@ -1,6 +1,6 @@
 <div class="translation-provider-section">
-    <h2>{{ __('Enabled Translation Providers', 'polytrans') }}</h2>
-    <p>{{ __('Select which translation services are available for use. You can enable multiple providers and assign specific providers or assistants to language pairs in the Language Paths tab.', 'polytrans') }}</p>
+    <h2>{{ __('Enabled Translation Providers', 'treetank-trans') }}</h2>
+    <p>{{ __('Select which translation services are available for use. You can enable multiple providers and assign specific providers or assistants to language pairs in the Language Paths tab.', 'treetank-trans') }}</p>
     <div style="margin-bottom:2em;">
         {% for provider_id, provider in providers %}
             <label style="display:block;margin-bottom:0.5em;">
@@ -12,13 +12,13 @@
                 <strong>{{ provider.get_name()|esc_html }}</strong>&nbsp;
                 <span style="color:#666;">{{ provider.get_description()|esc_html }}</span>
                 {% if provider_id == 'openai' %}
-                    <span style="color:#888; font-style:italic;"> ({{ __('provides assistants, not direct translation', 'polytrans') }})</span>
+                    <span style="color:#888; font-style:italic;"> ({{ __('provides assistants, not direct translation', 'treetank-trans') }})</span>
                 {% endif %}
             </label>
         {% endfor %}
     </div>
     <p class="description">
-        {{ __('Enable providers to make them available in Language Paths. AI providers (OpenAI, Claude, Gemini) provide translation and AI assistants.', 'polytrans') }}
+        {{ __('Enable providers to make them available in Language Paths. AI providers (OpenAI, Claude, Gemini) provide translation and AI assistants.', 'treetank-trans') }}
     </p>
 </div>
 

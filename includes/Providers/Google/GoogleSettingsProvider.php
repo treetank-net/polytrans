@@ -22,12 +22,12 @@ class GoogleSettingsProvider implements SettingsProviderInterface
 
     public function get_tab_label()
     {
-        return __('Google Translate', 'polytrans');
+        return __('Google Translate', 'treetank-trans');
     }
 
     public function get_tab_description()
     {
-        return __('Simple, fast translation using Google Translate public API. No API key required.', 'polytrans');
+        return __('Simple, fast translation using Google Translate public API. No API key required.', 'treetank-trans');
     }
 
     public function get_required_js_files()
@@ -47,7 +47,7 @@ class GoogleSettingsProvider implements SettingsProviderInterface
 
     public function render_settings_ui(array $settings, array $languages, array $language_names)
     {
-        echo '<p>' . esc_html__('Google Translate uses the public API and requires no configuration.', 'polytrans') . '</p>';
+        echo '<p>' . esc_html__('Google Translate uses the public API and requires no configuration.', 'treetank-trans') . '</p>';
     }
 
     public function validate_settings(array $posted_data)

@@ -78,8 +78,8 @@ class PostprocessingMenu
     {
         add_submenu_page(
             'polytrans',
-            __('Post-Processing Workflows', 'polytrans'),
-            __('Post-Processing', 'polytrans'),
+            __('Post-Processing Workflows', 'treetank-trans'),
+            __('Post-Processing', 'treetank-trans'),
             'edit_posts',
             'polytrans-workflows',
             [$this, 'render_workflow_page']
@@ -87,8 +87,8 @@ class PostprocessingMenu
 
         add_submenu_page(
             'polytrans',
-            __('Execute Workflow', 'polytrans'),
-            __('Execute Workflow', 'polytrans'),
+            __('Execute Workflow', 'treetank-trans'),
+            __('Execute Workflow', 'treetank-trans'),
             'edit_posts',
             'polytrans-execute-workflow',
             [$this, 'render_execute_workflow_page']
@@ -151,7 +151,7 @@ class PostprocessingMenu
                 $provider_models = ($provider_id === 'openai') ? $openai_models : [];
                 $default_model = $settings[$provider_id . '_model'] ?? '';
                 if (!empty($default_model)) {
-                    $provider_models[__('Global setting', 'polytrans')][$default_model] = $default_model;
+                    $provider_models[__('Global setting', 'treetank-trans')][$default_model] = $default_model;
                     $default_models[$provider_id] = $default_model;
                 }
                 $model_capabilities[$provider_id] = \PolyTrans\Core\ModelCapabilities::get_capabilities_payload(
@@ -170,36 +170,36 @@ class PostprocessingMenu
                 'modelCapabilities' => $model_capabilities,
                 'defaultModels' => $default_models,
                 'strings' => [
-                    'confirmDelete' => __('Are you sure you want to delete this workflow?', 'polytrans'),
-                    'confirmDuplicate' => __('Create a copy of this workflow?', 'polytrans'),
-                    'saveSuccess' => __('Workflow saved successfully!', 'polytrans'),
-                    'saveError' => __('Error saving workflow.', 'polytrans'),
-                    'deleteSuccess' => __('Workflow deleted successfully!', 'polytrans'),
-                    'deleteError' => __('Error deleting workflow.', 'polytrans'),
-                    'testSuccess' => __('Test completed successfully!', 'polytrans'),
-                    'testError' => __('Test failed.', 'polytrans'),
-                    'loading' => __('Loading...', 'polytrans'),
-                    'addStep' => __('Add Step', 'polytrans'),
-                    'removeStep' => __('Remove Step', 'polytrans'),
-                    'moveUp' => __('Move Up', 'polytrans'),
-                    'moveDown' => __('Move Down', 'polytrans'),
-                    'clearSelection' => __('Clear', 'polytrans'),
-                    'noProviderSelected' => __('No provider selected. A random enabled provider will be used.', 'polytrans'),
-                    'allLanguages' => __('All languages', 'polytrans'),
-                    'allLanguagesOption' => __('— All languages —', 'polytrans'),
-                    'allLanguagesDescription' => __('Select a specific language or "All languages" to run this workflow for any translation target', 'polytrans'),
-                    'enableWorkflow' => __('Enable workflow', 'polytrans'),
-                    'disableWorkflow' => __('Disable workflow', 'polytrans'),
-                    'enabled' => __('Enabled', 'polytrans'),
-                    'disabled' => __('Disabled', 'polytrans'),
-                    'confirmMigrateWorkflow' => __('This will migrate legacy AI assistant steps in this workflow to managed assistants. Unsaved editor changes will not be included. Continue?', 'polytrans'),
-                    'migrateWorkflow' => __('Migrate this workflow', 'polytrans'),
-                    'migratingWorkflow' => __('Migrating...', 'polytrans'),
-                    'migrationError' => __('Migration failed. Please check logs.', 'polytrans'),
-                    'temperature' => __('Temperature', 'polytrans'),
-                    'temperatureHint' => __('AI creativity level (lower = focused, higher = creative)', 'polytrans'),
-                    'reasoningEffort' => __('Reasoning Effort', 'polytrans'),
-                    'effortProviderDefault' => __('Provider default', 'polytrans'),
+                    'confirmDelete' => __('Are you sure you want to delete this workflow?', 'treetank-trans'),
+                    'confirmDuplicate' => __('Create a copy of this workflow?', 'treetank-trans'),
+                    'saveSuccess' => __('Workflow saved successfully!', 'treetank-trans'),
+                    'saveError' => __('Error saving workflow.', 'treetank-trans'),
+                    'deleteSuccess' => __('Workflow deleted successfully!', 'treetank-trans'),
+                    'deleteError' => __('Error deleting workflow.', 'treetank-trans'),
+                    'testSuccess' => __('Test completed successfully!', 'treetank-trans'),
+                    'testError' => __('Test failed.', 'treetank-trans'),
+                    'loading' => __('Loading...', 'treetank-trans'),
+                    'addStep' => __('Add Step', 'treetank-trans'),
+                    'removeStep' => __('Remove Step', 'treetank-trans'),
+                    'moveUp' => __('Move Up', 'treetank-trans'),
+                    'moveDown' => __('Move Down', 'treetank-trans'),
+                    'clearSelection' => __('Clear', 'treetank-trans'),
+                    'noProviderSelected' => __('No provider selected. A random enabled provider will be used.', 'treetank-trans'),
+                    'allLanguages' => __('All languages', 'treetank-trans'),
+                    'allLanguagesOption' => __('— All languages —', 'treetank-trans'),
+                    'allLanguagesDescription' => __('Select a specific language or "All languages" to run this workflow for any translation target', 'treetank-trans'),
+                    'enableWorkflow' => __('Enable workflow', 'treetank-trans'),
+                    'disableWorkflow' => __('Disable workflow', 'treetank-trans'),
+                    'enabled' => __('Enabled', 'treetank-trans'),
+                    'disabled' => __('Disabled', 'treetank-trans'),
+                    'confirmMigrateWorkflow' => __('This will migrate legacy AI assistant steps in this workflow to managed assistants. Unsaved editor changes will not be included. Continue?', 'treetank-trans'),
+                    'migrateWorkflow' => __('Migrate this workflow', 'treetank-trans'),
+                    'migratingWorkflow' => __('Migrating...', 'treetank-trans'),
+                    'migrationError' => __('Migration failed. Please check logs.', 'treetank-trans'),
+                    'temperature' => __('Temperature', 'treetank-trans'),
+                    'temperatureHint' => __('AI creativity level (lower = focused, higher = creative)', 'treetank-trans'),
+                    'reasoningEffort' => __('Reasoning Effort', 'treetank-trans'),
+                    'effortProviderDefault' => __('Provider default', 'treetank-trans'),
                 ],
                 'descriptionPrompts' => [
                     'system' => PromptRefinementSettings::descriptionGeneratorSystem(),
@@ -215,11 +215,11 @@ class PostprocessingMenu
                 'ajaxUrl' => admin_url('admin-ajax.php'),
                 'nonce' => wp_create_nonce('polytrans_nonce'),
                 'i18n' => [
-                    'no_results' => esc_html__('No users found.', 'polytrans'),
-                    'searching' => esc_html__('Searching users...', 'polytrans'),
-                    'clear_selection' => esc_html__('Clear selection', 'polytrans'),
-                    'type_to_search' => esc_html__('Type to search users...', 'polytrans'),
-                    'min_chars' => esc_html__('Type at least 2 characters to search.', 'polytrans'),
+                    'no_results' => esc_html__('No users found.', 'treetank-trans'),
+                    'searching' => esc_html__('Searching users...', 'treetank-trans'),
+                    'clear_selection' => esc_html__('Clear selection', 'treetank-trans'),
+                    'type_to_search' => esc_html__('Type to search users...', 'treetank-trans'),
+                    'min_chars' => esc_html__('Type at least 2 characters to search.', 'treetank-trans'),
                 ]
             ]);
         }
@@ -250,30 +250,30 @@ class PostprocessingMenu
                 'nonce' => wp_create_nonce('polytrans_workflows_nonce'),
                 'languages' => array_combine($langs, $lang_names),
                 'strings' => [
-                    'loading' => __('Loading...', 'polytrans'),
-                    'searching' => __('Searching...', 'polytrans'),
-                    'selectWorkflow' => __('Select workflow...', 'polytrans'),
-                    'selectPost' => __('Select a post...', 'polytrans'),
-                    'noWorkflows' => __('No workflows available', 'polytrans'),
-                    'noPosts' => __('No posts found', 'polytrans'),
-                    'executing' => __('Executing...', 'polytrans'),
-                    'verifying' => __('Verifying...', 'polytrans'),
-                    'verify' => __('Verify', 'polytrans'),
-                    'execute' => __('Execute Workflow', 'polytrans'),
-                    'executeAnother' => __('Execute Another Workflow', 'polytrans'),
-                    'viewPost' => __('View Post', 'polytrans'),
-                    'editPost' => __('Edit Post', 'polytrans'),
-                    'success' => __('Success!', 'polytrans'),
-                    'failed' => __('Failed', 'polytrans'),
-                    'error' => __('Error', 'polytrans'),
-                    'alreadyRunning' => __('This workflow is already running on this post.', 'polytrans'),
-                    'workflowNotFound' => __('Selected workflow does not exist.', 'polytrans'),
-                    'postNotFound' => __('Selected post does not exist.', 'polytrans'),
-                    'noTranslation' => __('This post does not have a translation in the selected language.', 'polytrans'),
-                    'languageMismatch' => __('Post translation language does not match workflow language.', 'polytrans'),
-                    'permissionDenied' => __('You do not have permission to execute workflows on this post.', 'polytrans'),
-                    'timeout' => __('Execution timed out. Please check logs for details.', 'polytrans'),
-                    'allLanguages' => __('All languages', 'polytrans'),
+                    'loading' => __('Loading...', 'treetank-trans'),
+                    'searching' => __('Searching...', 'treetank-trans'),
+                    'selectWorkflow' => __('Select workflow...', 'treetank-trans'),
+                    'selectPost' => __('Select a post...', 'treetank-trans'),
+                    'noWorkflows' => __('No workflows available', 'treetank-trans'),
+                    'noPosts' => __('No posts found', 'treetank-trans'),
+                    'executing' => __('Executing...', 'treetank-trans'),
+                    'verifying' => __('Verifying...', 'treetank-trans'),
+                    'verify' => __('Verify', 'treetank-trans'),
+                    'execute' => __('Execute Workflow', 'treetank-trans'),
+                    'executeAnother' => __('Execute Another Workflow', 'treetank-trans'),
+                    'viewPost' => __('View Post', 'treetank-trans'),
+                    'editPost' => __('Edit Post', 'treetank-trans'),
+                    'success' => __('Success!', 'treetank-trans'),
+                    'failed' => __('Failed', 'treetank-trans'),
+                    'error' => __('Error', 'treetank-trans'),
+                    'alreadyRunning' => __('This workflow is already running on this post.', 'treetank-trans'),
+                    'workflowNotFound' => __('Selected workflow does not exist.', 'treetank-trans'),
+                    'postNotFound' => __('Selected post does not exist.', 'treetank-trans'),
+                    'noTranslation' => __('This post does not have a translation in the selected language.', 'treetank-trans'),
+                    'languageMismatch' => __('Post translation language does not match workflow language.', 'treetank-trans'),
+                    'permissionDenied' => __('You do not have permission to execute workflows on this post.', 'treetank-trans'),
+                    'timeout' => __('Execution timed out. Please check logs for details.', 'treetank-trans'),
+                    'allLanguages' => __('All languages', 'treetank-trans'),
                 ]
             ]);
         }
@@ -359,7 +359,7 @@ class PostprocessingMenu
         } else {
             $workflow = $storage_manager->get_workflow($workflow_id);
             if (!$workflow) {
-                wp_die(esc_html__('Workflow not found.', 'polytrans'));
+                wp_die(esc_html__('Workflow not found.', 'treetank-trans'));
             }
 
             // Ensure workflow has proper default values for any missing fields
@@ -408,7 +408,7 @@ class PostprocessingMenu
 
         $workflow = $storage_manager->get_workflow($workflow_id);
         if (!$workflow) {
-            wp_die(esc_html__('Workflow not found.', 'polytrans'));
+            wp_die(esc_html__('Workflow not found.', 'treetank-trans'));
         }
 
         // Pass workflow test data to JavaScript via enqueued script
@@ -561,12 +561,12 @@ class PostprocessingMenu
 
         if ($saveResult['success']) {
             wp_send_json_success([
-                'message' => __('Workflow saved successfully!', 'polytrans'),
+                'message' => __('Workflow saved successfully!', 'treetank-trans'),
                 'workflow_id' => $workflow['id']
             ]);
         } else {
             wp_send_json_error([
-                'message' => __('Failed to save workflow.', 'polytrans'),
+                'message' => __('Failed to save workflow.', 'treetank-trans'),
                 'errors' => $saveResult['errors'] ?? []
             ]);
         }
@@ -643,8 +643,8 @@ class PostprocessingMenu
             wp_send_json_success([
                 'enabled' => $workflow['enabled'],
                 'message' => $workflow['enabled']
-                    ? __('Workflow enabled', 'polytrans')
-                    : __('Workflow disabled', 'polytrans')
+                    ? __('Workflow enabled', 'treetank-trans')
+                    : __('Workflow disabled', 'treetank-trans')
             ]);
         } else {
             wp_send_json_error('Failed to update workflow');
@@ -681,7 +681,7 @@ class PostprocessingMenu
 
         if ($new_workflow_id) {
             wp_send_json_success([
-                'message' => __('Workflow duplicated successfully!', 'polytrans'),
+                'message' => __('Workflow duplicated successfully!', 'treetank-trans'),
                 'new_workflow_id' => $new_workflow_id
             ]);
         } else {
@@ -728,19 +728,19 @@ class PostprocessingMenu
     public function ajax_migrate_workflow()
     {
         if (!check_ajax_referer('polytrans_workflows_nonce', 'nonce', false)) {
-            wp_send_json_error(['message' => __('Security check failed', 'polytrans')]);
+            wp_send_json_error(['message' => __('Security check failed', 'treetank-trans')]);
             return;
         }
 
         if (!current_user_can('edit_posts')) {
-            wp_send_json_error(['message' => __('Insufficient permissions', 'polytrans')]);
+            wp_send_json_error(['message' => __('Insufficient permissions', 'treetank-trans')]);
             return;
         }
 
         $workflow_id = isset($_POST['workflow_id']) ? sanitize_text_field(wp_unslash($_POST['workflow_id'])) : '';
 
         if (empty($workflow_id)) {
-            wp_send_json_error(['message' => __('No workflow ID provided', 'polytrans')]);
+            wp_send_json_error(['message' => __('No workflow ID provided', 'treetank-trans')]);
             return;
         }
 
@@ -748,7 +748,7 @@ class PostprocessingMenu
 
         if (!empty($stats['errors'])) {
             wp_send_json_error([
-                'message' => __('Migration completed with errors.', 'polytrans'),
+                'message' => __('Migration completed with errors.', 'treetank-trans'),
                 'stats' => $stats,
             ]);
             return;
@@ -756,7 +756,7 @@ class PostprocessingMenu
 
         if ((int) ($stats['steps_migrated'] ?? 0) === 0) {
             wp_send_json_success([
-                'message' => __('No legacy AI assistant steps were found in this workflow.', 'polytrans'),
+                'message' => __('No legacy AI assistant steps were found in this workflow.', 'treetank-trans'),
                 'stats' => $stats,
             ]);
             return;
@@ -765,7 +765,7 @@ class PostprocessingMenu
         wp_send_json_success([
             'message' => sprintf(
                 /* translators: %1$d: number of steps migrated, %2$d: number of assistants created */
-                __('Migration completed successfully. Migrated %1$d steps and created %2$d assistants.', 'polytrans'),
+                __('Migration completed successfully. Migrated %1$d steps and created %2$d assistants.', 'treetank-trans'),
                 $stats['steps_migrated'],
                 $stats['assistants_created']
             ),
@@ -844,7 +844,7 @@ class PostprocessingMenu
             wp_send_json_error([
                 'message' => sprintf(
                     /* translators: %1$s: post language code, %2$s: workflow target language code */
-                    __('Selected post is in %1$s but workflow requires %2$s', 'polytrans'),
+                    __('Selected post is in %1$s but workflow requires %2$s', 'treetank-trans'),
                     $post_language,
                     $target_language
                 )
@@ -1129,12 +1129,12 @@ class PostprocessingMenu
     public function ajax_run_workflow_refinement_post()
     {
         if (!check_ajax_referer('polytrans_workflows_nonce', 'nonce', false)) {
-            wp_send_json_error(['message' => __('Security check failed.', 'polytrans')]);
+            wp_send_json_error(['message' => __('Security check failed.', 'treetank-trans')]);
             return;
         }
 
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(['message' => __('Permission denied.', 'polytrans')]);
+            wp_send_json_error(['message' => __('Permission denied.', 'treetank-trans')]);
             return;
         }
 
@@ -1177,12 +1177,12 @@ class PostprocessingMenu
     public function ajax_evaluate_workflow_refinement_run()
     {
         if (!check_ajax_referer('polytrans_workflows_nonce', 'nonce', false)) {
-            wp_send_json_error(['message' => __('Security check failed.', 'polytrans')]);
+            wp_send_json_error(['message' => __('Security check failed.', 'treetank-trans')]);
             return;
         }
 
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(['message' => __('Permission denied.', 'polytrans')]);
+            wp_send_json_error(['message' => __('Permission denied.', 'treetank-trans')]);
             return;
         }
 
@@ -1215,12 +1215,12 @@ class PostprocessingMenu
     public function ajax_adjust_workflow_prompt()
     {
         if (!check_ajax_referer('polytrans_workflows_nonce', 'nonce', false)) {
-            wp_send_json_error(['message' => __('Security check failed.', 'polytrans')]);
+            wp_send_json_error(['message' => __('Security check failed.', 'treetank-trans')]);
             return;
         }
 
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(['message' => __('Permission denied.', 'polytrans')]);
+            wp_send_json_error(['message' => __('Permission denied.', 'treetank-trans')]);
             return;
         }
 
@@ -1279,12 +1279,12 @@ class PostprocessingMenu
     public function ajax_apply_workflow_prompt_pack()
     {
         if (!check_ajax_referer('polytrans_workflows_nonce', 'nonce', false)) {
-            wp_send_json_error(['message' => __('Security check failed.', 'polytrans')]);
+            wp_send_json_error(['message' => __('Security check failed.', 'treetank-trans')]);
             return;
         }
 
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(['message' => __('Permission denied.', 'polytrans')]);
+            wp_send_json_error(['message' => __('Permission denied.', 'treetank-trans')]);
             return;
         }
 
@@ -1330,19 +1330,19 @@ class PostprocessingMenu
     public function ajax_generate_workflow_description()
     {
         if (!check_ajax_referer('polytrans_workflows_nonce', 'nonce', false)) {
-            wp_send_json_error(['message' => __('Security check failed.', 'polytrans')]);
+            wp_send_json_error(['message' => __('Security check failed.', 'treetank-trans')]);
             return;
         }
 
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(['message' => __('Permission denied.', 'polytrans')]);
+            wp_send_json_error(['message' => __('Permission denied.', 'treetank-trans')]);
             return;
         }
 
         // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitized on this line by PolyTrans\Core\sanitize_input_deep(); Plugin Check runs PHPCS with its own bundled ruleset, which cannot be given customSanitizingFunctions, and WPCS only accepts a sanitizer reached as a plain function call.
         $workflow = isset($_POST['workflow']) ? sanitize_input_deep(wp_unslash($_POST['workflow'])) : [];
         if (!is_array($workflow)) {
-            wp_send_json_error(['message' => __('Workflow payload is required.', 'polytrans')]);
+            wp_send_json_error(['message' => __('Workflow payload is required.', 'treetank-trans')]);
             return;
         }
 
@@ -1378,19 +1378,19 @@ class PostprocessingMenu
     public function ajax_generate_workflow_criteria()
     {
         if (!check_ajax_referer('polytrans_workflows_nonce', 'nonce', false)) {
-            wp_send_json_error(['message' => __('Security check failed.', 'polytrans')]);
+            wp_send_json_error(['message' => __('Security check failed.', 'treetank-trans')]);
             return;
         }
 
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(['message' => __('Permission denied.', 'polytrans')]);
+            wp_send_json_error(['message' => __('Permission denied.', 'treetank-trans')]);
             return;
         }
 
         // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitized on this line by PolyTrans\Core\sanitize_input_deep(); Plugin Check runs PHPCS with its own bundled ruleset, which cannot be given customSanitizingFunctions, and WPCS only accepts a sanitizer reached as a plain function call.
         $workflow = isset($_POST['workflow']) ? sanitize_input_deep(wp_unslash($_POST['workflow'])) : [];
         if (!is_array($workflow)) {
-            wp_send_json_error(['message' => __('Workflow payload is required.', 'polytrans')]);
+            wp_send_json_error(['message' => __('Workflow payload is required.', 'treetank-trans')]);
             return;
         }
 
@@ -1422,12 +1422,12 @@ class PostprocessingMenu
     public function ajax_save_workflow_description(): void
     {
         if (!check_ajax_referer('polytrans_workflows_nonce', 'nonce', false)) {
-            wp_send_json_error(['message' => __('Security check failed.', 'polytrans')]);
+            wp_send_json_error(['message' => __('Security check failed.', 'treetank-trans')]);
             return;
         }
 
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(['message' => __('Permission denied.', 'polytrans')]);
+            wp_send_json_error(['message' => __('Permission denied.', 'treetank-trans')]);
             return;
         }
 
@@ -1437,7 +1437,7 @@ class PostprocessingMenu
         $description = isset($_POST['description']) ? wp_kses_post(wp_unslash($_POST['description'])) : '';
 
         if ($workflow_id === '') {
-            wp_send_json_error(['message' => __('Workflow must be saved before its description can be updated.', 'polytrans')]);
+            wp_send_json_error(['message' => __('Workflow must be saved before its description can be updated.', 'treetank-trans')]);
             return;
         }
 
@@ -1446,7 +1446,7 @@ class PostprocessingMenu
         $workflow = $storage_manager->get_workflow($workflow_id);
 
         if (!$workflow) {
-            wp_send_json_error(['message' => __('Workflow not found.', 'polytrans')]);
+            wp_send_json_error(['message' => __('Workflow not found.', 'treetank-trans')]);
             return;
         }
 
@@ -1465,7 +1465,7 @@ class PostprocessingMenu
             }
 
             if (!$updated) {
-                wp_send_json_error(['message' => __('Workflow step not found.', 'polytrans')]);
+                wp_send_json_error(['message' => __('Workflow step not found.', 'treetank-trans')]);
                 return;
             }
         } else {
@@ -1475,14 +1475,14 @@ class PostprocessingMenu
         $result = $storage_manager->save_workflow($workflow);
         if (empty($result['success'])) {
             wp_send_json_error([
-                'message' => __('Failed to save workflow description.', 'polytrans'),
+                'message' => __('Failed to save workflow description.', 'treetank-trans'),
                 'errors' => $result['errors'] ?? [],
             ]);
             return;
         }
 
         wp_send_json_success([
-            'message' => __('Workflow description saved.', 'polytrans'),
+            'message' => __('Workflow description saved.', 'treetank-trans'),
             'workflow_id' => $workflow_id,
             'target_type' => $target_type,
             'target_step_id' => $target_step_id,
@@ -1496,11 +1496,11 @@ class PostprocessingMenu
     public function ajax_dispatch_async_job()
     {
         if (!check_ajax_referer('polytrans_workflows_nonce', 'nonce', false)) {
-            wp_send_json_error(['message' => __('Security check failed.', 'polytrans')]);
+            wp_send_json_error(['message' => __('Security check failed.', 'treetank-trans')]);
             return;
         }
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(['message' => __('Permission denied.', 'polytrans')]);
+            wp_send_json_error(['message' => __('Permission denied.', 'treetank-trans')]);
             return;
         }
 
@@ -1510,7 +1510,7 @@ class PostprocessingMenu
 
         $allowed_types = ['workflow_run', 'workflow_evaluate', 'workflow_adjust'];
         if (!in_array($job_type, $allowed_types, true)) {
-            wp_send_json_error(['message' => __('Invalid job type.', 'polytrans')]);
+            wp_send_json_error(['message' => __('Invalid job type.', 'treetank-trans')]);
             return;
         }
 
@@ -1524,23 +1524,23 @@ class PostprocessingMenu
     public function ajax_poll_async_job()
     {
         if (!check_ajax_referer('polytrans_workflows_nonce', 'nonce', false)) {
-            wp_send_json_error(['message' => __('Security check failed.', 'polytrans')]);
+            wp_send_json_error(['message' => __('Security check failed.', 'treetank-trans')]);
             return;
         }
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(['message' => __('Permission denied.', 'polytrans')]);
+            wp_send_json_error(['message' => __('Permission denied.', 'treetank-trans')]);
             return;
         }
 
         $job_id = isset($_POST['job_id']) ? sanitize_text_field(wp_unslash($_POST['job_id'])) : '';
         if ($job_id === '') {
-            wp_send_json_error(['message' => __('Missing job ID.', 'polytrans')]);
+            wp_send_json_error(['message' => __('Missing job ID.', 'treetank-trans')]);
             return;
         }
 
         $job = AsyncJobRunner::poll($job_id);
         if ($job === null) {
-            wp_send_json_error(['message' => __('Job not found or expired.', 'polytrans')]);
+            wp_send_json_error(['message' => __('Job not found or expired.', 'treetank-trans')]);
             return;
         }
 

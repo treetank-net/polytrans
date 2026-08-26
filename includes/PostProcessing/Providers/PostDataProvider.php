@@ -56,7 +56,7 @@ class PostDataProvider implements VariableProviderInterface
      */
     public function get_provider_name()
     {
-        return __('Post Data Provider', 'polytrans');
+        return __('Post Data Provider', 'treetank-trans');
     }
 
     /**
@@ -188,57 +188,57 @@ class PostDataProvider implements VariableProviderInterface
         return [
             // Top-level convenience aliases (most commonly used)
             'title' => [
-                'description' => __('Translated post title', 'polytrans'),
+                'description' => __('Translated post title', 'treetank-trans'),
                 'example' => '{{ title }}'
             ],
             'content' => [
-                'description' => __('Translated post content', 'polytrans'),
+                'description' => __('Translated post content', 'treetank-trans'),
                 'example' => '{{ content }}'
             ],
             'excerpt' => [
-                'description' => __('Translated post excerpt', 'polytrans'),
+                'description' => __('Translated post excerpt', 'treetank-trans'),
                 'example' => '{{ excerpt }}'
             ],
             // Short aliases (Phase 0.1 - RECOMMENDED)
             'original.title' => [
-                'description' => __('Original post title', 'polytrans'),
+                'description' => __('Original post title', 'treetank-trans'),
                 'example' => '{{ original.title }}'
             ],
             'original.content' => [
-                'description' => __('Original post content', 'polytrans'),
+                'description' => __('Original post content', 'treetank-trans'),
                 'example' => '{{ original.content }}'
             ],
             'original.excerpt' => [
-                'description' => __('Original post excerpt', 'polytrans'),
+                'description' => __('Original post excerpt', 'treetank-trans'),
                 'example' => '{{ original.excerpt }}'
             ],
             'original.meta.KEY' => [
-                'description' => __('Original post meta field', 'polytrans'),
+                'description' => __('Original post meta field', 'treetank-trans'),
                 'example' => '{{ original.meta.seo_title }}'
             ],
             'translated.title' => [
-                'description' => __('Translated post title', 'polytrans'),
+                'description' => __('Translated post title', 'treetank-trans'),
                 'example' => '{{ translated.title }}'
             ],
             'translated.content' => [
-                'description' => __('Translated post content', 'polytrans'),
+                'description' => __('Translated post content', 'treetank-trans'),
                 'example' => '{{ translated.content }}'
             ],
             'translated.excerpt' => [
-                'description' => __('Translated post excerpt', 'polytrans'),
+                'description' => __('Translated post excerpt', 'treetank-trans'),
                 'example' => '{{ translated.excerpt }}'
             ],
             'translated.meta.KEY' => [
-                'description' => __('Translated post meta field', 'polytrans'),
+                'description' => __('Translated post meta field', 'treetank-trans'),
                 'example' => '{{ translated.meta.seo_description }}'
             ],
             // Legacy (still supported for backward compatibility)
             'original_post.title' => [
-                'description' => __('Original post title (legacy)', 'polytrans'),
+                'description' => __('Original post title (legacy)', 'treetank-trans'),
                 'example' => '{{ original_post.title }}'
             ],
             'translated_post.title' => [
-                'description' => __('Translated post title (legacy)', 'polytrans'),
+                'description' => __('Translated post title (legacy)', 'treetank-trans'),
                 'example' => '{{ translated_post.title }}'
             ]
         ];

@@ -134,7 +134,7 @@ class TranslationReceiverExtension
             'target_language' => $target_language,
             'run_id' => $run_id,
             /* translators: %d: the ID of the newly created translated post */
-            'message' => sprintf(__('Translation successfully created with post ID %d', 'polytrans'), $result['created_post_id'])
+            'message' => sprintf(__('Translation successfully created with post ID %d', 'treetank-trans'), $result['created_post_id'])
         ], 201);
     }
 

@@ -29,7 +29,7 @@ final class PromptChatRunner
                 $errorPrefix . '_provider_unavailable',
                 sprintf(
                     /* translators: %s: provider ID */
-                    __('Provider "%s" is not available for refinement.', 'polytrans'),
+                    __('Provider "%s" is not available for refinement.', 'treetank-trans'),
                     $provider
                 )
             );
@@ -63,14 +63,14 @@ final class PromptChatRunner
         if (empty($result['success'])) {
             return new \WP_Error(
                 $errorPrefix . '_api_error',
-                (string) ($result['error'] ?? __('Prompt refinement request failed.', 'polytrans'))
+                (string) ($result['error'] ?? __('Prompt refinement request failed.', 'treetank-trans'))
             );
         }
 
         $raw = $result['data'] ?? [];
         $content = $client->extract_content($raw);
         if ($content === null || trim((string) $content) === '') {
-            return new \WP_Error($errorPrefix . '_empty_response', __('Prompt refinement returned an empty response.', 'polytrans'));
+            return new \WP_Error($errorPrefix . '_empty_response', __('Prompt refinement returned an empty response.', 'treetank-trans'));
         }
 
         return [

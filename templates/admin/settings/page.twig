@@ -1,24 +1,24 @@
 {% set has_provider_tabs = settings_providers|length > 0 %}
 
 <div class="wrap">
-    <h1>{{ __('Translation Settings', 'polytrans') }}</h1>
-    <p>{{ __('Configure translation workflow for each language. You can specify the default post status after translation, assign a reviewer, and customize the emails sent to the reviewer and author.', 'polytrans') }}</p>
+    <h1>{{ __('Translation Settings', 'treetank-trans') }}</h1>
+    <p>{{ __('Configure translation workflow for each language. You can specify the default post status after translation, assign a reviewer, and customize the emails sent to the reviewer and author.', 'treetank-trans') }}</p>
 
     <!-- Tab Navigation -->
     <div class="nav-tab-wrapper">
-        <a href="#provider-settings" class="nav-tab nav-tab-active" id="provider-tab">{{ __('Translation Provider', 'polytrans') }}</a>
-        <a href="#basic-settings" class="nav-tab" id="basic-tab">{{ __('Basic Settings', 'polytrans') }}</a>
-        <a href="#language-paths-settings" class="nav-tab" id="language-paths-tab">{{ __('Language Paths', 'polytrans') }}</a>
-        <a href="#tag-settings" class="nav-tab" id="tag-tab">{{ __('Tag Settings', 'polytrans') }}</a>
-        <a href="#email-settings" class="nav-tab" id="email-tab">{{ __('Email Settings', 'polytrans') }}</a>
-        <a href="#prompt-refinement-settings" class="nav-tab" id="prompt-refinement-tab">{{ __('Refinement Prompts', 'polytrans') }}</a>
-        <a href="#maintenance-settings" class="nav-tab" id="maintenance-tab">{{ __('Maintenance', 'polytrans') }}</a>
+        <a href="#provider-settings" class="nav-tab nav-tab-active" id="provider-tab">{{ __('Translation Provider', 'treetank-trans') }}</a>
+        <a href="#basic-settings" class="nav-tab" id="basic-tab">{{ __('Basic Settings', 'treetank-trans') }}</a>
+        <a href="#language-paths-settings" class="nav-tab" id="language-paths-tab">{{ __('Language Paths', 'treetank-trans') }}</a>
+        <a href="#tag-settings" class="nav-tab" id="tag-tab">{{ __('Tag Settings', 'treetank-trans') }}</a>
+        <a href="#email-settings" class="nav-tab" id="email-tab">{{ __('Email Settings', 'treetank-trans') }}</a>
+        <a href="#prompt-refinement-settings" class="nav-tab" id="prompt-refinement-tab">{{ __('Refinement Prompts', 'treetank-trans') }}</a>
+        <a href="#maintenance-settings" class="nav-tab" id="maintenance-tab">{{ __('Maintenance', 'treetank-trans') }}</a>
         {% for provider_id, settings_provider in settings_providers %}
             <a href="#{{ provider_id|esc_attr }}-settings" class="nav-tab provider-settings-tab" id="{{ provider_id|esc_attr }}-tab">
                 {{ settings_provider.get_tab_label()|esc_html }}
             </a>
         {% endfor %}
-        <a href="#advanced-settings" class="nav-tab" id="advanced-tab">{{ __('Advanced Settings', 'polytrans') }}</a>
+        <a href="#advanced-settings" class="nav-tab" id="advanced-tab">{{ __('Advanced Settings', 'treetank-trans') }}</a>
     </div>
 
     <form method="post">
@@ -125,6 +125,6 @@
             }) }}
         </div>
 
-        <p><input type="submit" class="button button-primary" value="{{ __('Save Settings', 'polytrans')|esc_attr }}"></p>
+        <p><input type="submit" class="button button-primary" value="{{ __('Save Settings', 'treetank-trans')|esc_attr }}"></p>
     </form>
 </div>

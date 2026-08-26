@@ -32,7 +32,7 @@ class OpenAISettingsProvider implements SettingsProviderInterface
      */
     public function get_tab_label()
     {
-        return __('OpenAI Configuration', 'polytrans');
+        return __('OpenAI Configuration', 'treetank-trans');
     }
 
     /**
@@ -40,7 +40,7 @@ class OpenAISettingsProvider implements SettingsProviderInterface
      */
     public function get_tab_description()
     {
-        return __('Configure your OpenAI API key and translation assistants for AI-powered translations.', 'polytrans');
+        return __('Configure your OpenAI API key and translation assistants for AI-powered translations.', 'treetank-trans');
     }
 
     /**
@@ -113,7 +113,7 @@ class OpenAISettingsProvider implements SettingsProviderInterface
 
             <!-- API Key Section -->
             <div class="openai-api-key-section">
-                <h3><?php esc_html_e('API Key', 'polytrans'); ?></h3>
+                <h3><?php esc_html_e('API Key', 'treetank-trans'); ?></h3>
                 <div style="display:flex;gap:0.5em;align-items:center;max-width:600px;">
                     <input type="password"
                         id="openai-api-key"
@@ -124,19 +124,19 @@ class OpenAISettingsProvider implements SettingsProviderInterface
                         style="width:100%"
                         placeholder="sk-..."
                         autocomplete="off" />
-                    <button type="button" data-provider="openai" data-action="validate-key" id="validate-openai-key" class="button"><?php esc_html_e('Validate', 'polytrans'); ?></button>
+                    <button type="button" data-provider="openai" data-action="validate-key" id="validate-openai-key" class="button"><?php esc_html_e('Validate', 'treetank-trans'); ?></button>
                     <button type="button" data-provider="openai" data-action="toggle-visibility" id="toggle-openai-key-visibility" class="button">👁</button>
                 </div>
                 <div data-provider="openai" data-field="validation-message" id="openai-validation-message" style="margin-top:0.5em;"></div>
-                <small><?php esc_html_e('Enter your OpenAI API key. It will be validated before saving.', 'polytrans'); ?></small>
+                <small><?php esc_html_e('Enter your OpenAI API key. It will be validated before saving.', 'treetank-trans'); ?></small>
             </div>
 
             <!-- Model Selection Section -->
             <div class="openai-model-section" style="margin-top:2em;">
-                <h3><?php esc_html_e('Default Model', 'polytrans'); ?></h3>
+                <h3><?php esc_html_e('Default Model', 'treetank-trans'); ?></h3>
                 <?php $this->render_model_selection($openai_model); ?>
                 <div data-provider="openai" data-field="model-message" id="openai-model-message" style="margin-top:0.5em;"></div>
-                <br><small><?php esc_html_e('Default OpenAI model to use for translations and AI Assistant steps. This can be overridden per workflow step.', 'polytrans'); ?></small>
+                <br><small><?php esc_html_e('Default OpenAI model to use for translations and AI Assistant steps. This can be overridden per workflow step.', 'treetank-trans'); ?></small>
             </div>
 
             <?php
@@ -146,12 +146,12 @@ class OpenAISettingsProvider implements SettingsProviderInterface
 
             <div style="margin-top:2em; padding: 15px; background: #f0f6fc; border-left: 4px solid #0073aa;">
                 <p style="margin: 0;">
-                    <strong><?php esc_html_e('Note:', 'polytrans'); ?></strong>
-                    <?php esc_html_e('Assistant Mapping and Translation Path Rules have been moved to the', 'polytrans'); ?>
+                    <strong><?php esc_html_e('Note:', 'treetank-trans'); ?></strong>
+                    <?php esc_html_e('Assistant Mapping and Translation Path Rules have been moved to the', 'treetank-trans'); ?>
                     <a href="<?php echo esc_url(admin_url('admin.php?page=polytrans-settings#language-paths-settings')); ?>">
-                        <?php esc_html_e('Language Paths', 'polytrans'); ?>
+                        <?php esc_html_e('Language Paths', 'treetank-trans'); ?>
                     </a>
-                    <?php esc_html_e('tab for better organization.', 'polytrans'); ?>
+                    <?php esc_html_e('tab for better organization.', 'treetank-trans'); ?>
                 </p>
             </div>
         </div>
@@ -292,14 +292,14 @@ class OpenAISettingsProvider implements SettingsProviderInterface
         $assistants = $settings['openai_assistants'] ?? [];
 
         if (empty($api_key)) {
-            return __('OpenAI API key is required.', 'polytrans');
+            return __('OpenAI API key is required.', 'treetank-trans');
         }
 
         $assistant_count = count(array_filter($assistants, function ($id) {
             return !empty($id);
         }));
         if ($assistant_count === 0) {
-            return __('At least one translation assistant must be configured.', 'polytrans');
+            return __('At least one translation assistant must be configured.', 'treetank-trans');
         }
 
         return ''; // Properly configured
@@ -371,7 +371,7 @@ class OpenAISettingsProvider implements SettingsProviderInterface
         $language_pairs = $this->get_language_pairs($languages);
 
         if (empty($language_pairs)) {
-            echo '<p><em>' . esc_html__('No language pairs available. Please configure languages first.', 'polytrans') . '</em></p>';
+            echo '<p><em>' . esc_html__('No language pairs available. Please configure languages first.', 'treetank-trans') . '</em></p>';
             return;
         }
 
@@ -379,9 +379,9 @@ class OpenAISettingsProvider implements SettingsProviderInterface
         <table class="widefat fixed striped" id="openai-assistants-table">
             <thead>
                 <tr>
-                    <th style="width:30%;"><?php esc_html_e('Translation Pair', 'polytrans'); ?></th>
-                    <th style="width:30%;"><?php esc_html_e('Translation Path', 'polytrans'); ?></th>
-                    <th style="width:40%;"><?php esc_html_e('Assistant', 'polytrans'); ?></th>
+                    <th style="width:30%;"><?php esc_html_e('Translation Pair', 'treetank-trans'); ?></th>
+                    <th style="width:30%;"><?php esc_html_e('Translation Path', 'treetank-trans'); ?></th>
+                    <th style="width:40%;"><?php esc_html_e('Assistant', 'treetank-trans'); ?></th>
                 </tr>
             </thead>
             <tbody>
@@ -400,7 +400,7 @@ class OpenAISettingsProvider implements SettingsProviderInterface
                             <strong><?php echo esc_html($source_name); ?> → <?php echo esc_html($target_name); ?></strong>
                         </td>
                         <td>
-                            <span class="translation-path-direct"><?php esc_html_e('Direct', 'polytrans'); ?></span>
+                            <span class="translation-path-direct"><?php esc_html_e('Direct', 'treetank-trans'); ?></span>
                             <br><small class="translation-path-details">
                                 <?php echo esc_html($source_name . ' → ' . $target_name); ?>
                             </small>
@@ -420,7 +420,7 @@ class OpenAISettingsProvider implements SettingsProviderInterface
                                 data-pair="<?php echo esc_attr($assistant_key); ?>"
                                 data-selected="<?php echo esc_attr($selected_assistant); ?>"
                                 data-hidden-input="assistant_hidden_<?php echo esc_attr($assistant_key); ?>">
-                                <option value=""><?php esc_html_e('Not selected', 'polytrans'); ?></option>
+                                <option value=""><?php esc_html_e('Not selected', 'treetank-trans'); ?></option>
                                 <!-- Options will be populated via JavaScript when assistants are loaded -->
                             </select>
 
@@ -430,7 +430,7 @@ class OpenAISettingsProvider implements SettingsProviderInterface
 
                 <tr class="no-relevant-pairs-message" style="display:none;">
                     <td colspan="3" style="text-align:center; color:#888; font-style:italic; padding:20px;">
-                        <?php esc_html_e('No relevant language pairs available. Please check your source/target language selections and OpenAI source language configuration.', 'polytrans'); ?>
+                        <?php esc_html_e('No relevant language pairs available. Please check your source/target language selections and OpenAI source language configuration.', 'treetank-trans'); ?>
                     </td>
                 </tr>
             </tbody>
@@ -759,7 +759,7 @@ class OpenAISettingsProvider implements SettingsProviderInterface
         
         // Always add "None selected" option first
         $none_selected = empty($selected_model) ? 'selected' : '';
-        echo '<option value="" ' . esc_attr($none_selected) . '>' . esc_html__('None selected', 'polytrans') . '</option>';
+        echo '<option value="" ' . esc_attr($none_selected) . '>' . esc_html__('None selected', 'treetank-trans') . '</option>';
 
         foreach ($grouped_models as $group_name => $models) {
             echo '<optgroup label="' . esc_attr($group_name) . '">';
@@ -772,7 +772,7 @@ class OpenAISettingsProvider implements SettingsProviderInterface
         }
 
         echo '</select>';
-        echo '<button type="button" data-provider="openai" data-action="refresh-models" id="refresh-openai-models" class="button" style="margin-left: 0.5em;" title="' . esc_attr__('Refresh models from OpenAI API', 'polytrans') . '">' . esc_html__('Refresh', 'polytrans') . '</button>';
+        echo '<button type="button" data-provider="openai" data-action="refresh-models" id="refresh-openai-models" class="button" style="margin-left: 0.5em;" title="' . esc_attr__('Refresh models from OpenAI API', 'treetank-trans') . '">' . esc_html__('Refresh', 'treetank-trans') . '</button>';
     }
 
     /**
@@ -798,26 +798,26 @@ class OpenAISettingsProvider implements SettingsProviderInterface
         }
 
         if (!$nonce_check) {
-            wp_send_json_error(__('Security check failed.', 'polytrans'));
+            wp_send_json_error(__('Security check failed.', 'treetank-trans'));
         }
 
         if (!current_user_can('manage_options')) {
-            wp_die(esc_html__('You do not have sufficient permissions to access this page.', 'polytrans'));
+            wp_die(esc_html__('You do not have sufficient permissions to access this page.', 'treetank-trans'));
         }
 
         $api_key = sanitize_text_field(wp_unslash($_POST['api_key'] ?? ''));
 
         if (empty($api_key)) {
-            wp_send_json_error(__('API key is required.', 'polytrans'));
+            wp_send_json_error(__('API key is required.', 'treetank-trans'));
         }
 
         // Validate the OpenAI API key
         $is_valid_key = $this->validate_openai_api_key($api_key);
 
         if ($is_valid_key) {
-            wp_send_json_success(__('API key is valid!', 'polytrans'));
+            wp_send_json_success(__('API key is valid!', 'treetank-trans'));
         } else {
-            wp_send_json_error(__('Invalid API key.', 'polytrans'));
+            wp_send_json_error(__('Invalid API key.', 'treetank-trans'));
         }
     }
 
@@ -839,11 +839,11 @@ class OpenAISettingsProvider implements SettingsProviderInterface
         }
 
         if (!$nonce_check) {
-            wp_send_json_error(__('Security check failed.', 'polytrans'));
+            wp_send_json_error(__('Security check failed.', 'treetank-trans'));
         }
 
         if (!current_user_can('manage_options')) {
-            wp_die(esc_html__('You do not have sufficient permissions to access this page.', 'polytrans'));
+            wp_die(esc_html__('You do not have sufficient permissions to access this page.', 'treetank-trans'));
         }
 
         // Get API key from POST or fallback to settings
@@ -993,11 +993,11 @@ class OpenAISettingsProvider implements SettingsProviderInterface
         }
 
         if (!$nonce_check) {
-            wp_send_json_error(__('Security check failed.', 'polytrans'));
+            wp_send_json_error(__('Security check failed.', 'treetank-trans'));
         }
 
         if (!current_user_can('manage_options')) {
-            wp_die(esc_html__('You do not have sufficient permissions to access this page.', 'polytrans'));
+            wp_die(esc_html__('You do not have sufficient permissions to access this page.', 'treetank-trans'));
         }
 
         $api_key = sanitize_text_field(wp_unslash($_POST['api_key'] ?? ''));
@@ -1129,11 +1129,11 @@ class OpenAISettingsProvider implements SettingsProviderInterface
         }
 
         if (!$nonce_check) {
-            wp_send_json_error(__('Security check failed.', 'polytrans'));
+            wp_send_json_error(__('Security check failed.', 'treetank-trans'));
         }
 
         if (!current_user_can('manage_options')) {
-            wp_die(esc_html__('You do not have sufficient permissions to access this page.', 'polytrans'));
+            wp_die(esc_html__('You do not have sufficient permissions to access this page.', 'treetank-trans'));
         }
 
         $settings = get_option('polytrans_settings', []);

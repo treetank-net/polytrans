@@ -30,7 +30,7 @@ class AiAssistantStep implements WorkflowStepInterface
      */
     public function get_name()
     {
-        return __('AI Assistant', 'polytrans');
+        return __('AI Assistant', 'treetank-trans');
     }
 
     /**
@@ -38,7 +38,7 @@ class AiAssistantStep implements WorkflowStepInterface
      */
     public function get_description()
     {
-        return __('Process content using an AI assistant with custom system prompt and user message templates', 'polytrans');
+        return __('Process content using an AI assistant with custom system prompt and user message templates', 'treetank-trans');
     }
 
     /**
@@ -252,25 +252,25 @@ class AiAssistantStep implements WorkflowStepInterface
         return [
             'system_prompt' => [
                 'type' => 'textarea',
-                'label' => __('System Prompt', 'polytrans'),
-                'description' => __('Instructions for the AI assistant. Use {variable_name} to include data from context.', 'polytrans'),
+                'label' => __('System Prompt', 'treetank-trans'),
+                'description' => __('Instructions for the AI assistant. Use {variable_name} to include data from context.', 'treetank-trans'),
                 'required' => true,
                 'rows' => 6
             ],
             'user_message' => [
                 'type' => 'textarea',
-                'label' => __('User Message Template', 'polytrans'),
-                'description' => __('Template for the user message. Use {variable_name} to include data from context.', 'polytrans'),
+                'label' => __('User Message Template', 'treetank-trans'),
+                'description' => __('Template for the user message. Use {variable_name} to include data from context.', 'treetank-trans'),
                 'required' => true,
                 'rows' => 4,
                 'placeholder' => 'Title: {title}\nContent: {content}\nTarget Language: {target_language}\n\nPlease review this translated content and provide your analysis.'
             ],
             'model' => [
                 'type' => 'select',
-                'label' => __('AI Model', 'polytrans'),
-                'description' => __('OpenAI model to use for this step (overrides global setting)', 'polytrans'),
+                'label' => __('AI Model', 'treetank-trans'),
+                'description' => __('OpenAI model to use for this step (overrides global setting)', 'treetank-trans'),
                 'options' => [
-                    '' => __('Use Global Setting', 'polytrans'),
+                    '' => __('Use Global Setting', 'treetank-trans'),
                     'gpt-3.5-turbo' => 'GPT-3.5 Turbo',
                     'gpt-4' => 'GPT-4',
                     'gpt-4-turbo' => 'GPT-4 Turbo',
@@ -281,24 +281,24 @@ class AiAssistantStep implements WorkflowStepInterface
             ],
             'expected_format' => [
                 'type' => 'select',
-                'label' => __('Expected Response Format', 'polytrans'),
-                'description' => __('How the AI should format its response', 'polytrans'),
+                'label' => __('Expected Response Format', 'treetank-trans'),
+                'description' => __('How the AI should format its response', 'treetank-trans'),
                 'options' => [
-                    'text' => __('Plain Text', 'polytrans'),
-                    'json' => __('JSON Object', 'polytrans')
+                    'text' => __('Plain Text', 'treetank-trans'),
+                    'json' => __('JSON Object', 'treetank-trans')
                 ],
                 'default' => 'text'
             ],
             'output_variables' => [
                 'type' => 'text',
-                'label' => __('Output Variables', 'polytrans'),
-                'description' => __('Comma-separated list of variable names to extract from JSON response', 'polytrans'),
+                'label' => __('Output Variables', 'treetank-trans'),
+                'description' => __('Comma-separated list of variable names to extract from JSON response', 'treetank-trans'),
                 'placeholder' => 'reviewed_content, suggestions, score'
             ],
             'temperature' => [
                 'type' => 'number',
-                'label' => __('Temperature', 'polytrans'),
-                'description' => __('AI creativity level (0.0 = focused, 1.0 = creative). Ignored by reasoning models.', 'polytrans'),
+                'label' => __('Temperature', 'treetank-trans'),
+                'description' => __('AI creativity level (0.0 = focused, 1.0 = creative). Ignored by reasoning models.', 'treetank-trans'),
                 'min' => 0.0,
                 'max' => 1.0,
                 'step' => 0.1,
@@ -306,17 +306,17 @@ class AiAssistantStep implements WorkflowStepInterface
             ],
             'reasoning_effort' => [
                 'type' => 'select',
-                'label' => __('Reasoning Effort', 'polytrans'),
-                'description' => __('Used instead of temperature by reasoning models. Translated to the provider-native parameter (OpenAI reasoning_effort, Gemini thinkingConfig.thinkingLevel, Claude output_config.effort).', 'polytrans'),
+                'label' => __('Reasoning Effort', 'treetank-trans'),
+                'description' => __('Used instead of temperature by reasoning models. Translated to the provider-native parameter (OpenAI reasoning_effort, Gemini thinkingConfig.thinkingLevel, Claude output_config.effort).', 'treetank-trans'),
                 'options' => [
-                    '' => __('Provider default', 'polytrans'),
-                    'none' => __('None', 'polytrans'),
-                    'minimal' => __('Minimal', 'polytrans'),
-                    'low' => __('Low', 'polytrans'),
-                    'medium' => __('Medium', 'polytrans'),
-                    'high' => __('High', 'polytrans'),
-                    'xhigh' => __('Extra high', 'polytrans'),
-                    'max' => __('Maximum', 'polytrans'),
+                    '' => __('Provider default', 'treetank-trans'),
+                    'none' => __('None', 'treetank-trans'),
+                    'minimal' => __('Minimal', 'treetank-trans'),
+                    'low' => __('Low', 'treetank-trans'),
+                    'medium' => __('Medium', 'treetank-trans'),
+                    'high' => __('High', 'treetank-trans'),
+                    'xhigh' => __('Extra high', 'treetank-trans'),
+                    'max' => __('Maximum', 'treetank-trans'),
                 ],
                 'default' => ''
             ]

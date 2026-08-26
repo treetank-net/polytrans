@@ -1,32 +1,32 @@
 <div class="wrap">
-    <h1 class="wp-heading-inline">{{ __('Post-Processing Workflows', 'polytrans')|esc_html }}</h1>
+    <h1 class="wp-heading-inline">{{ __('Post-Processing Workflows', 'treetank-trans')|esc_html }}</h1>
     <a href="{{ admin_url('admin.php?page=polytrans-workflows&action=new')|esc_url }}" class="page-title-action">
-        {{ __('Add New Workflow', 'polytrans')|esc_html }}
+        {{ __('Add New Workflow', 'treetank-trans')|esc_html }}
     </a>
     <hr class="wp-header-end">
 
     <div class="workflow-statistics">
         <div class="postbox">
-            <h2 class="hndle">{{ __('Workflow Statistics', 'polytrans')|esc_html }}</h2>
+            <h2 class="hndle">{{ __('Workflow Statistics', 'treetank-trans')|esc_html }}</h2>
             <div class="inside">
                 <div class="workflow-stats-grid">
                     <div>
-                        <strong>{{ __('Total Workflows:', 'polytrans')|esc_html }}</strong>
+                        <strong>{{ __('Total Workflows:', 'treetank-trans')|esc_html }}</strong>
                         {{ statistics.total_workflows|esc_html }}
                     </div>
                     <div>
-                        <strong>{{ __('Enabled:', 'polytrans')|esc_html }}</strong>
+                        <strong>{{ __('Enabled:', 'treetank-trans')|esc_html }}</strong>
                         {{ statistics.enabled_workflows|esc_html }}
                     </div>
                     <div>
-                        <strong>{{ __('Disabled:', 'polytrans')|esc_html }}</strong>
+                        <strong>{{ __('Disabled:', 'treetank-trans')|esc_html }}</strong>
                         {{ statistics.disabled_workflows|esc_html }}
                     </div>
                 </div>
 
                 {% if statistics.languages|length > 0 %}
                     <div class="workflow-stats-languages">
-                        <strong>{{ __('By Language:', 'polytrans')|esc_html }}</strong>
+                        <strong>{{ __('By Language:', 'treetank-trans')|esc_html }}</strong>
                         {% for lang, count in statistics.languages %}
                             <span class="workflow-lang-stat">
                                 {{ lang|upper|esc_html }}: {{ count|esc_html }}
@@ -41,9 +41,9 @@
     {% if workflows|length == 0 %}
         <div class="notice notice-info inline">
             <p>
-                {{ __('No workflows found.', 'polytrans')|esc_html }}
+                {{ __('No workflows found.', 'treetank-trans')|esc_html }}
                 <a href="{{ admin_url('admin.php?page=polytrans-workflows&action=new')|esc_url }}">
-                    {{ __('Create your first workflow', 'polytrans')|esc_html }}
+                    {{ __('Create your first workflow', 'treetank-trans')|esc_html }}
                 </a>
             </p>
         </div>
@@ -51,13 +51,13 @@
         <table class="widefat fixed striped">
             <thead>
                 <tr>
-                    <th class="workflow-col-name">{{ __('Name', 'polytrans')|esc_html }}</th>
-                    <th class="workflow-col-priority">{{ __('Priority', 'polytrans')|esc_html }}</th>
-                    <th class="workflow-col-language">{{ __('Language', 'polytrans')|esc_html }}</th>
-                    <th class="workflow-col-steps">{{ __('Steps', 'polytrans')|esc_html }}</th>
-                    <th class="workflow-col-status">{{ __('Status', 'polytrans')|esc_html }}</th>
-                    <th class="workflow-col-description">{{ __('Description', 'polytrans')|esc_html }}</th>
-                    <th class="workflow-col-actions">{{ __('Actions', 'polytrans')|esc_html }}</th>
+                    <th class="workflow-col-name">{{ __('Name', 'treetank-trans')|esc_html }}</th>
+                    <th class="workflow-col-priority">{{ __('Priority', 'treetank-trans')|esc_html }}</th>
+                    <th class="workflow-col-language">{{ __('Language', 'treetank-trans')|esc_html }}</th>
+                    <th class="workflow-col-steps">{{ __('Steps', 'treetank-trans')|esc_html }}</th>
+                    <th class="workflow-col-status">{{ __('Status', 'treetank-trans')|esc_html }}</th>
+                    <th class="workflow-col-description">{{ __('Description', 'treetank-trans')|esc_html }}</th>
+                    <th class="workflow-col-actions">{{ __('Actions', 'treetank-trans')|esc_html }}</th>
                 </tr>
             </thead>
             <tbody>
@@ -71,7 +71,7 @@
                         </td>
                         <td>
                             {% if workflow.language is not defined or workflow.language is null or workflow.language == '' %}
-                                <em>{{ __('All languages', 'polytrans')|esc_html }}</em>
+                                <em>{{ __('All languages', 'treetank-trans')|esc_html }}</em>
                             {% else %}
                                 {% set lang_index = null %}
                                 {% for i, lang in langs %}
@@ -91,9 +91,9 @@
                         </td>
                         <td>
                             {% if workflow.enabled|default(false) %}
-                                <span class="workflow-status enabled">{{ __('Enabled', 'polytrans')|esc_html }}</span>
+                                <span class="workflow-status enabled">{{ __('Enabled', 'treetank-trans')|esc_html }}</span>
                             {% else %}
-                                <span class="workflow-status disabled">{{ __('Disabled', 'polytrans')|esc_html }}</span>
+                                <span class="workflow-status disabled">{{ __('Disabled', 'treetank-trans')|esc_html }}</span>
                             {% endif %}
                         </td>
                         <td>
@@ -104,7 +104,7 @@
                                 class="button button-small workflow-toggle-status"
                                 data-workflow-id="{{ workflow.id|esc_attr }}"
                                 data-enabled="{{ workflow.enabled|default(false) ? '1' : '0' }}"
-                                title="{{ (workflow.enabled|default(false) ? __('Disable workflow', 'polytrans') : __('Enable workflow', 'polytrans'))|esc_html }}">
+                                title="{{ (workflow.enabled|default(false) ? __('Disable workflow', 'treetank-trans') : __('Enable workflow', 'treetank-trans'))|esc_html }}">
                                 {% if workflow.enabled|default(false) %}
                                     <span class="dashicons dashicons-yes-alt" style="color: #00a32a;"></span>
                                 {% else %}
@@ -112,22 +112,22 @@
                                 {% endif %}
                             </button>
                             <a href="{{ admin_url('admin.php?page=polytrans-workflows&action=edit&workflow_id=' ~ workflow.id|url_encode)|esc_url }}" class="button button-small">
-                                {{ __('Edit', 'polytrans')|esc_html }}
+                                {{ __('Edit', 'treetank-trans')|esc_html }}
                             </a>
                             <a href="{{ admin_url('admin.php?page=polytrans-workflows&action=test&workflow_id=' ~ workflow.id|url_encode)|esc_url }}" class="button button-small">
-                                {{ __('Test', 'polytrans')|esc_html }}
+                                {{ __('Test', 'treetank-trans')|esc_html }}
                             </a>
                             {% set is_enabled = workflow.enabled|default(false) %}
                             <a href="{{ admin_url('admin.php?page=polytrans-execute-workflow&workflow_id=' ~ workflow.id|url_encode)|esc_url }}"
                                 class="button button-small button-primary workflow-execute-btn"
                                 {% if not is_enabled %}disabled aria-disabled="true"{% endif %}>
-                                {{ __('Execute', 'polytrans')|esc_html }}
+                                {{ __('Execute', 'treetank-trans')|esc_html }}
                             </a>
                             <button type="button" class="button button-small workflow-duplicate" data-workflow-id="{{ workflow.id|esc_attr }}">
-                                {{ __('Duplicate', 'polytrans')|esc_html }}
+                                {{ __('Duplicate', 'treetank-trans')|esc_html }}
                             </button>
                             <button type="button" class="button button-small button-link-delete workflow-delete" data-workflow-id="{{ workflow.id|esc_attr }}">
-                                {{ __('Delete', 'polytrans')|esc_html }}
+                                {{ __('Delete', 'treetank-trans')|esc_html }}
                             </button>
                         </td>
                     </tr>

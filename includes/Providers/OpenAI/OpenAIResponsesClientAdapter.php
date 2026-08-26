@@ -57,7 +57,7 @@ class OpenAIResponsesClientAdapter implements ChatClientInterface
             return [
                 'success' => false,
                 'data' => null,
-                'error' => __('OpenAI model is not selected. Please select a model in settings.', 'polytrans'),
+                'error' => __('OpenAI model is not selected. Please select a model in settings.', 'treetank-trans'),
                 'error_code' => 'model_not_selected',
             ];
         }
@@ -159,7 +159,7 @@ class OpenAIResponsesClientAdapter implements ChatClientInterface
                 'data' => $body_data,
                 'error' => sprintf(
                     // translators: %s: reason reported by the API, e.g. max_output_tokens
-                    __('OpenAI returned an incomplete response (%s). Try a lower reasoning effort or a higher token limit.', 'polytrans'),
+                    __('OpenAI returned an incomplete response (%s). Try a lower reasoning effort or a higher token limit.', 'treetank-trans'),
                     $reason
                 ),
                 'error_code' => 'incomplete_response',

@@ -2,10 +2,10 @@
     <table class="widefat fixed" id="path-rules-table">
         <thead>
             <tr>
-                <th style="width: 25%;">{{ __('Source Language', 'polytrans') }}</th>
-                <th style="width: 25%;">{{ __('Target Language', 'polytrans') }}</th>
-                <th style="width: 35%;">{{ __('Intermediate Language', 'polytrans') }}</th>
-                <th style="width: 15%;">{{ __('Actions', 'polytrans') }}</th>
+                <th style="width: 25%;">{{ __('Source Language', 'treetank-trans') }}</th>
+                <th style="width: 25%;">{{ __('Target Language', 'treetank-trans') }}</th>
+                <th style="width: 35%;">{{ __('Intermediate Language', 'treetank-trans') }}</th>
+                <th style="width: 15%;">{{ __('Actions', 'treetank-trans') }}</th>
             </tr>
         </thead>
         <tbody>
@@ -17,13 +17,13 @@
                     {% set source_index = source_val == 'all' ? -1 : (langs|keys|filter(v => langs[v] == source_val)|first) %}
                     {% set target_index = target_val == 'all' ? -1 : (langs|keys|filter(v => langs[v] == target_val)|first) %}
                     {% set intermediate_index = intermediate_val == '' ? -1 : (langs|keys|filter(v => langs[v] == intermediate_val)|first) %}
-                    {% set source_name = source_val == 'all' ? __('All', 'polytrans') : (lang_names[source_index] ?? source_val|upper) %}
-                    {% set target_name = target_val == 'all' ? __('All', 'polytrans') : (lang_names[target_index] ?? target_val|upper) %}
-                    {% set intermediate_name = intermediate_val == '' ? __('None (Direct)', 'polytrans') : (lang_names[intermediate_index] ?? intermediate_val|upper) %}
+                    {% set source_name = source_val == 'all' ? __('All', 'treetank-trans') : (lang_names[source_index] ?? source_val|upper) %}
+                    {% set target_name = target_val == 'all' ? __('All', 'treetank-trans') : (lang_names[target_index] ?? target_val|upper) %}
+                    {% set intermediate_name = intermediate_val == '' ? __('None (Direct)', 'treetank-trans') : (lang_names[intermediate_index] ?? intermediate_val|upper) %}
                     <tr class="path-rule-row">
                         <td>
                             <select name="openai_path_rules[{{ index|esc_attr }}][source]" class="path-rule-source path-rule-select" required>
-                                <option value="all" {{ selected(source_val, 'all') }}>{{ __('All', 'polytrans') }}</option>
+                                <option value="all" {{ selected(source_val, 'all') }}>{{ __('All', 'treetank-trans') }}</option>
                                 {% for i, lang in langs %}
                                     <option value="{{ lang|esc_attr }}" {{ selected(source_val, lang) }}>
                                         {{ (lang_names[i] ?? lang|upper)|esc_html }}
@@ -33,7 +33,7 @@
                         </td>
                         <td>
                             <select name="openai_path_rules[{{ index|esc_attr }}][target]" class="path-rule-target path-rule-select" required>
-                                <option value="all" {{ selected(target_val, 'all') }}>{{ __('All', 'polytrans') }}</option>
+                                <option value="all" {{ selected(target_val, 'all') }}>{{ __('All', 'treetank-trans') }}</option>
                                 {% for i, lang in langs %}
                                     <option value="{{ lang|esc_attr }}" {{ selected(target_val, lang) }}>
                                         {{ (lang_names[i] ?? lang|upper)|esc_html }}
@@ -43,7 +43,7 @@
                         </td>
                         <td>
                             <select name="openai_path_rules[{{ index|esc_attr }}][intermediate]" class="path-rule-intermediate path-rule-select">
-                                <option value="" {{ selected(intermediate_val == '', true) }}>{{ __('None (Direct)', 'polytrans') }}</option>
+                                <option value="" {{ selected(intermediate_val == '', true) }}>{{ __('None (Direct)', 'treetank-trans') }}</option>
                                 {% for i, lang in langs %}
                                     <option value="{{ lang|esc_attr }}" {{ selected(intermediate_val, lang) }}>
                                         {{ (lang_names[i] ?? lang|upper)|esc_html }}
@@ -63,14 +63,14 @@
                             </div>
                         </td>
                         <td>
-                            <button type="button" class="button remove-rule">{{ __('Remove', 'polytrans') }}</button>
+                            <button type="button" class="button remove-rule">{{ __('Remove', 'treetank-trans') }}</button>
                         </td>
                     </tr>
                 {% endfor %}
             {% else %}
                 <tr>
                     <td colspan="4" style="text-align: center; padding: 30px; color: #646970;">
-                        <em>{{ __('No path rules defined. Click "Add Rule" to create one.', 'polytrans') }}</em>
+                        <em>{{ __('No path rules defined. Click "Add Rule" to create one.', 'treetank-trans') }}</em>
                     </td>
                 </tr>
             {% endif %}

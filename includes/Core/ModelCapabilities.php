@@ -936,7 +936,7 @@ class ModelCapabilities
             if (!empty($spec['supported']) && !empty($spec['requires_effort_none'])) {
                 return sprintf(
                     // translators: 1: API parameter name, 2: comma separated list of accepted values
-                    __('Reasoning model: uses %1$s (%2$s); a temperature only applies with effort "none".', 'polytrans'),
+                    __('Reasoning model: uses %1$s (%2$s); a temperature only applies with effort "none".', 'treetank-trans'),
                     $capabilities['reasoning']['param'],
                     implode(', ', $natives)
                 );
@@ -945,7 +945,7 @@ class ModelCapabilities
             if (!empty($spec['supported'])) {
                 return sprintf(
                     // translators: 1: API parameter name, 2: comma separated list of accepted values, 3: minimum temperature, 4: maximum temperature
-                    __('Reasoning model: accepts %1$s (%2$s) and a temperature (%3$s-%4$s).', 'polytrans'),
+                    __('Reasoning model: accepts %1$s (%2$s) and a temperature (%3$s-%4$s).', 'treetank-trans'),
                     $capabilities['reasoning']['param'],
                     implode(', ', $natives),
                     self::format_number($spec['min']),
@@ -955,7 +955,7 @@ class ModelCapabilities
 
             return sprintf(
                 // translators: 1: API parameter name, 2: comma separated list of accepted values
-                __('Reasoning model: uses %1$s (%2$s) instead of temperature.', 'polytrans'),
+                __('Reasoning model: uses %1$s (%2$s) instead of temperature.', 'treetank-trans'),
                 $capabilities['reasoning']['param'],
                 implode(', ', $natives)
             );
@@ -964,13 +964,13 @@ class ModelCapabilities
         if (!empty($spec['supported'])) {
             return sprintf(
                 // translators: 1: minimum temperature, 2: maximum temperature
-                __('Classic model: uses temperature (%1$s-%2$s).', 'polytrans'),
+                __('Classic model: uses temperature (%1$s-%2$s).', 'treetank-trans'),
                 self::format_number($spec['min']),
                 self::format_number($spec['max'])
             );
         }
 
-        return __('This model exposes neither temperature nor reasoning effort.', 'polytrans');
+        return __('This model exposes neither temperature nor reasoning effort.', 'treetank-trans');
     }
 
     /**
@@ -1197,7 +1197,7 @@ class ModelCapabilities
             'max' => 2.0,
             'default' => 1.0,
             'requires_effort_none' => true,
-            'note' => __('This model only accepts a temperature while reasoning is turned off; PolyTrans then sends reasoning_effort "none" alongside it.', 'polytrans'),
+            'note' => __('This model only accepts a temperature while reasoning is turned off; PolyTrans then sends reasoning_effort "none" alongside it.', 'treetank-trans'),
         ];
 
         $rules = [
@@ -1232,7 +1232,7 @@ class ModelCapabilities
                             'high' => 'high',
                             'xhigh' => 'xhigh',
                         ],
-                        'note' => __('Chat Completions accepts none, low, medium, high, xhigh. The "max" level exists only on the /responses endpoint, which PolyTrans switches to automatically when you select it.', 'polytrans'),
+                        'note' => __('Chat Completions accepts none, low, medium, high, xhigh. The "max" level exists only on the /responses endpoint, which PolyTrans switches to automatically when you select it.', 'treetank-trans'),
                     ],
                     'surfaces' => [
                         self::SURFACE_RESPONSES => [
@@ -1249,7 +1249,7 @@ class ModelCapabilities
                                     'xhigh' => 'xhigh',
                                     'max' => 'max',
                                 ],
-                                'note' => __('Sent through /responses, which is the only endpoint offering the "max" level for this model.', 'polytrans'),
+                                'note' => __('Sent through /responses, which is the only endpoint offering the "max" level for this model.', 'treetank-trans'),
                             ],
                         ],
                     ],
@@ -1268,7 +1268,7 @@ class ModelCapabilities
                         'levels' => [
                             'high' => 'high',
                         ],
-                        'note' => __('Served only through /responses and only at effort "high".', 'polytrans'),
+                        'note' => __('Served only through /responses and only at effort "high".', 'treetank-trans'),
                     ],
                 ],
                 [
@@ -1285,7 +1285,7 @@ class ModelCapabilities
                             'high' => 'high',
                             'xhigh' => 'xhigh',
                         ],
-                        'note' => __('Served only through /responses. Accepts medium, high and xhigh - the cheaper levels are rejected.', 'polytrans'),
+                        'note' => __('Served only through /responses. Accepts medium, high and xhigh - the cheaper levels are rejected.', 'treetank-trans'),
                     ],
                 ],
                 [
@@ -1306,7 +1306,7 @@ class ModelCapabilities
                             'high' => 'high',
                             'xhigh' => 'xhigh',
                         ],
-                        'note' => __('Accepts reasoning_effort: none, low, medium, high, xhigh. Temperature only works together with effort "none".', 'polytrans'),
+                        'note' => __('Accepts reasoning_effort: none, low, medium, high, xhigh. Temperature only works together with effort "none".', 'treetank-trans'),
                     ],
                     'surfaces' => [
                         self::SURFACE_RESPONSES => [
@@ -1322,7 +1322,7 @@ class ModelCapabilities
                                     'high' => 'high',
                                     'xhigh' => 'xhigh',
                                 ],
-                                'note' => __('Sent through /responses as reasoning.effort: none, low, medium, high, xhigh.', 'polytrans'),
+                                'note' => __('Sent through /responses as reasoning.effort: none, low, medium, high, xhigh.', 'treetank-trans'),
                             ],
                         ],
                     ],
@@ -1344,7 +1344,7 @@ class ModelCapabilities
                             'medium' => 'medium',
                             'high' => 'high',
                         ],
-                        'note' => __('Accepts reasoning_effort: none, low, medium, high. Temperature only works together with effort "none".', 'polytrans'),
+                        'note' => __('Accepts reasoning_effort: none, low, medium, high. Temperature only works together with effort "none".', 'treetank-trans'),
                     ],
                     'surfaces' => [
                         self::SURFACE_RESPONSES => [
@@ -1359,7 +1359,7 @@ class ModelCapabilities
                                     'medium' => 'medium',
                                     'high' => 'high',
                                 ],
-                                'note' => __('Sent through /responses as reasoning.effort: none, low, medium, high.', 'polytrans'),
+                                'note' => __('Sent through /responses as reasoning.effort: none, low, medium, high.', 'treetank-trans'),
                             ],
                         ],
                     ],
@@ -1379,7 +1379,7 @@ class ModelCapabilities
                             'medium' => 'medium',
                             'high' => 'high',
                         ],
-                        'note' => __('GPT-5 rejects temperature and accepts reasoning_effort: minimal, low, medium, high.', 'polytrans'),
+                        'note' => __('GPT-5 rejects temperature and accepts reasoning_effort: minimal, low, medium, high.', 'treetank-trans'),
                     ],
                     'surfaces' => [
                         self::SURFACE_RESPONSES => [
@@ -1394,7 +1394,7 @@ class ModelCapabilities
                                     'medium' => 'medium',
                                     'high' => 'high',
                                 ],
-                                'note' => __('Sent through /responses as reasoning.effort: minimal, low, medium, high.', 'polytrans'),
+                                'note' => __('Sent through /responses as reasoning.effort: minimal, low, medium, high.', 'treetank-trans'),
                             ],
                         ],
                     ],
@@ -1414,7 +1414,7 @@ class ModelCapabilities
                             'high' => 'high',
                             'xhigh' => 'xhigh',
                         ],
-                        'note' => __('o-series reasoning models reject temperature and accept reasoning_effort: low, medium, high, xhigh.', 'polytrans'),
+                        'note' => __('o-series reasoning models reject temperature and accept reasoning_effort: low, medium, high, xhigh.', 'treetank-trans'),
                     ],
                     'surfaces' => [
                         self::SURFACE_RESPONSES => [
@@ -1428,7 +1428,7 @@ class ModelCapabilities
                                     'medium' => 'medium',
                                     'high' => 'high',
                                 ],
-                                'note' => __('Sent through /responses, which for the o-series accepts only low, medium and high - xhigh exists on Chat Completions.', 'polytrans'),
+                                'note' => __('Sent through /responses, which for the o-series accepts only low, medium and high - xhigh exists on Chat Completions.', 'treetank-trans'),
                             ],
                         ],
                     ],
@@ -1457,7 +1457,7 @@ class ModelCapabilities
                     'label' => 'Claude (adaptive thinking, effort)',
                     'temperature' => [
                         'supported' => false,
-                        'note' => __('Temperature is deprecated on this model - use effort instead.', 'polytrans'),
+                        'note' => __('Temperature is deprecated on this model - use effort instead.', 'treetank-trans'),
                     ],
                     'reasoning' => [
                         'mode' => self::MODE_EFFORT,
@@ -1470,7 +1470,7 @@ class ModelCapabilities
                             'xhigh' => 'xhigh',
                             'max' => 'max',
                         ],
-                        'note' => __('Claude accepts output_config.effort: low, medium, high, xhigh, max. The API default is high.', 'polytrans'),
+                        'note' => __('Claude accepts output_config.effort: low, medium, high, xhigh, max. The API default is high.', 'treetank-trans'),
                     ],
                 ],
                 [
@@ -1496,7 +1496,7 @@ class ModelCapabilities
                             'high' => 'high',
                             'max' => 'max',
                         ],
-                        'note' => __('Claude 4.6 accepts output_config.effort: low, medium, high, max, and still accepts a temperature.', 'polytrans'),
+                        'note' => __('Claude 4.6 accepts output_config.effort: low, medium, high, max, and still accepts a temperature.', 'treetank-trans'),
                     ],
                 ],
                 [
@@ -1521,7 +1521,7 @@ class ModelCapabilities
                             'medium' => 'medium',
                             'high' => 'high',
                         ],
-                        'note' => __('Claude Opus 4.5 accepts output_config.effort: low, medium, high, and still accepts a temperature.', 'polytrans'),
+                        'note' => __('Claude Opus 4.5 accepts output_config.effort: low, medium, high, and still accepts a temperature.', 'treetank-trans'),
                     ],
                 ],
                 [
@@ -1551,7 +1551,7 @@ class ModelCapabilities
                             'medium' => 8192,
                             'high' => 16384,
                         ],
-                        'note' => __('This model has no effort parameter - effort maps to thinking.budget_tokens (minimum 1024). Temperature may only be 1 while thinking, so PolyTrans omits it.', 'polytrans'),
+                        'note' => __('This model has no effort parameter - effort maps to thinking.budget_tokens (minimum 1024). Temperature may only be 1 while thinking, so PolyTrans omits it.', 'treetank-trans'),
                     ],
                 ],
                 [
@@ -1582,7 +1582,7 @@ class ModelCapabilities
                         'min' => 0.0,
                         'max' => 2.0,
                         'default' => 1.0,
-                        'note' => __('Google recommends leaving temperature at 1.0 for Gemini 3 models.', 'polytrans'),
+                        'note' => __('Google recommends leaving temperature at 1.0 for Gemini 3 models.', 'treetank-trans'),
                     ],
                     'reasoning' => [
                         'mode' => self::MODE_THINKING_LEVEL,
@@ -1594,7 +1594,7 @@ class ModelCapabilities
                             'medium' => 'medium',
                             'high' => 'high',
                         ],
-                        'note' => __('Accepts thinkingConfig.thinkingLevel: minimal, low, medium, high. Thinking cannot be disabled on Gemini 3.', 'polytrans'),
+                        'note' => __('Accepts thinkingConfig.thinkingLevel: minimal, low, medium, high. Thinking cannot be disabled on Gemini 3.', 'treetank-trans'),
                     ],
                 ],
                 [
@@ -1606,7 +1606,7 @@ class ModelCapabilities
                         'min' => 0.0,
                         'max' => 2.0,
                         'default' => 1.0,
-                        'note' => __('Google recommends leaving temperature at 1.0 for Gemini 3 models.', 'polytrans'),
+                        'note' => __('Google recommends leaving temperature at 1.0 for Gemini 3 models.', 'treetank-trans'),
                     ],
                     'reasoning' => [
                         'mode' => self::MODE_THINKING_LEVEL,
@@ -1617,7 +1617,7 @@ class ModelCapabilities
                             'medium' => 'medium',
                             'high' => 'high',
                         ],
-                        'note' => __('Gemini Pro accepts thinkingConfig.thinkingLevel: low, medium, high. Thinking cannot be disabled on Gemini 3.', 'polytrans'),
+                        'note' => __('Gemini Pro accepts thinkingConfig.thinkingLevel: low, medium, high. Thinking cannot be disabled on Gemini 3.', 'treetank-trans'),
                     ],
                 ],
                 [
@@ -1640,7 +1640,7 @@ class ModelCapabilities
                             'medium' => 8192,
                             'high' => 32768,
                         ],
-                        'note' => __('Gemini 2.5 rejects thinkingLevel and uses thinkingConfig.thinkingBudget. Pro always thinks, so the budget cannot be 0.', 'polytrans'),
+                        'note' => __('Gemini 2.5 rejects thinkingLevel and uses thinkingConfig.thinkingBudget. Pro always thinks, so the budget cannot be 0.', 'treetank-trans'),
                     ],
                 ],
                 [
@@ -1663,7 +1663,7 @@ class ModelCapabilities
                             'medium' => 8192,
                             'high' => 24576,
                         ],
-                        'note' => __('Gemini 2.5 rejects thinkingLevel and uses thinkingConfig.thinkingBudget (0 disables thinking on Flash).', 'polytrans'),
+                        'note' => __('Gemini 2.5 rejects thinkingLevel and uses thinkingConfig.thinkingBudget (0 disables thinking on Flash).', 'treetank-trans'),
                     ],
                 ],
                 [
@@ -1704,7 +1704,7 @@ class ModelCapabilities
     {
         return [
             'id' => $provider_id . '-generic',
-            'label' => __('Unknown model (assuming temperature support)', 'polytrans'),
+            'label' => __('Unknown model (assuming temperature support)', 'treetank-trans'),
             'temperature' => [
                 'supported' => true,
                 'min' => 0.0,
@@ -1817,13 +1817,13 @@ class ModelCapabilities
     private static function build_level_label($canonical, $native, $mode)
     {
         $names = [
-            'none' => __('None', 'polytrans'),
-            'minimal' => __('Minimal', 'polytrans'),
-            'low' => __('Low', 'polytrans'),
-            'medium' => __('Medium', 'polytrans'),
-            'high' => __('High', 'polytrans'),
-            'xhigh' => __('Extra high', 'polytrans'),
-            'max' => __('Maximum', 'polytrans'),
+            'none' => __('None', 'treetank-trans'),
+            'minimal' => __('Minimal', 'treetank-trans'),
+            'low' => __('Low', 'treetank-trans'),
+            'medium' => __('Medium', 'treetank-trans'),
+            'high' => __('High', 'treetank-trans'),
+            'xhigh' => __('Extra high', 'treetank-trans'),
+            'max' => __('Maximum', 'treetank-trans'),
         ];
 
         $name = $names[$canonical] ?? ucfirst((string) $canonical);
@@ -1832,14 +1832,14 @@ class ModelCapabilities
             if ((int) $native === 0) {
                 return sprintf(
                     // translators: %s is the canonical level name
-                    __('%s (thinking disabled)', 'polytrans'),
+                    __('%s (thinking disabled)', 'treetank-trans'),
                     $name
                 );
             }
 
             return sprintf(
                 // translators: 1: canonical level name, 2: number of thinking tokens
-                __('%1$s (%2$s thinking tokens)', 'polytrans'),
+                __('%1$s (%2$s thinking tokens)', 'treetank-trans'),
                 $name,
                 self::format_token_count((int) $native)
             );

@@ -59,13 +59,13 @@ class ReasoningEffortField
              data-provider="<?php echo esc_attr($provider_id); ?>"
              data-field="reasoning-effort-row"
              style="margin-top:2em;<?php echo empty($levels) ? 'display:none;' : ''; ?>">
-            <h3><?php esc_html_e('Reasoning Effort', 'polytrans'); ?></h3>
+            <h3><?php esc_html_e('Reasoning Effort', 'treetank-trans'); ?></h3>
             <select name="<?php echo esc_attr($provider_id); ?>_reasoning_effort"
                     id="<?php echo esc_attr($provider_id); ?>-reasoning-effort"
                     data-provider="<?php echo esc_attr($provider_id); ?>"
                     data-field="reasoning-effort"
                     style="max-width:300px;">
-                <option value=""><?php esc_html_e('Provider default', 'polytrans'); ?></option>
+                <option value=""><?php esc_html_e('Provider default', 'treetank-trans'); ?></option>
                 <?php foreach ($levels as $level) : ?>
                     <option value="<?php echo esc_attr($level['value']); ?>"
                         <?php selected($current, $level['value']); ?>>
@@ -77,7 +77,7 @@ class ReasoningEffortField
             <?php
             $base_description = __(
                 'How hard reasoning models should think by default. Translated to the provider-native parameter. Overridden per assistant and per workflow step.',
-                'polytrans'
+                'treetank-trans'
             );
             ?>
             <small data-provider="<?php echo esc_attr($provider_id); ?>"

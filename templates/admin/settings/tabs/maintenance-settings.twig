@@ -1,79 +1,79 @@
-<h1>{{ __('Maintenance', 'polytrans') }}</h1>
+<h1>{{ __('Maintenance', 'treetank-trans') }}</h1>
 
-<h2>{{ __('Log Storage', 'polytrans') }}</h2>
+<h2>{{ __('Log Storage', 'treetank-trans') }}</h2>
 <p>
     <small>
-        {{ __('Database logs can grow quickly on busy sites. Keep a short retention window on production and use manual cleanup if the table becomes large.', 'polytrans') }}
+        {{ __('Database logs can grow quickly on busy sites. Keep a short retention window on production and use manual cleanup if the table becomes large.', 'treetank-trans') }}
     </small>
 </p>
 
 {% set logs_retention_days = settings.logs_retention_days|default(30) %}
 <p>
-    <label for="logs-retention-days"><strong>{{ __('Keep logs for', 'polytrans') }}</strong></label><br>
+    <label for="logs-retention-days"><strong>{{ __('Keep logs for', 'treetank-trans') }}</strong></label><br>
     <input type="number" id="logs-retention-days" name="logs_retention_days" value="{{ logs_retention_days|esc_attr }}" min="1" max="365" step="1" style="width:100px;">
-    {{ __('days', 'polytrans') }}
+    {{ __('days', 'treetank-trans') }}
 </p>
 <p>
     <small>
-        {{ __('Expired logs are cleaned automatically at most once per day when PolyTrans runs in admin. Manual cleanup uses the same retention value.', 'polytrans') }}
+        {{ __('Expired logs are cleaned automatically at most once per day when PolyTrans runs in admin. Manual cleanup uses the same retention value.', 'treetank-trans') }}
     </small>
 </p>
 
 <div id="polytrans-maintenance-status" class="notice inline" style="display:none;max-width:900px;margin:0 0 12px;padding:8px 12px;"></div>
 
 <p>
-    <button type="button" class="button" id="refresh-polytrans-maintenance-stats">{{ __('Refresh Stats', 'polytrans') }}</button>
-    <button type="button" class="button" id="cleanup-old-polytrans-logs">{{ __('Clean Logs Older Than Retention', 'polytrans') }}</button>
-    <button type="button" class="button button-secondary" id="truncate-polytrans-logs">{{ __('Truncate Logs', 'polytrans') }}</button>
+    <button type="button" class="button" id="refresh-polytrans-maintenance-stats">{{ __('Refresh Stats', 'treetank-trans') }}</button>
+    <button type="button" class="button" id="cleanup-old-polytrans-logs">{{ __('Clean Logs Older Than Retention', 'treetank-trans') }}</button>
+    <button type="button" class="button button-secondary" id="truncate-polytrans-logs">{{ __('Truncate Logs', 'treetank-trans') }}</button>
 </p>
 
 <table class="widefat striped" style="max-width:900px;">
     <tbody>
         <tr>
-            <th scope="row">{{ __('Stored logs', 'polytrans') }}</th>
+            <th scope="row">{{ __('Stored logs', 'treetank-trans') }}</th>
             <td id="polytrans-log-storage-total">-</td>
         </tr>
         <tr>
-            <th scope="row">{{ __('Old logs', 'polytrans') }}</th>
+            <th scope="row">{{ __('Old logs', 'treetank-trans') }}</th>
             <td id="polytrans-log-storage-old">-</td>
         </tr>
         <tr>
-            <th scope="row">{{ __('Payload size', 'polytrans') }}</th>
+            <th scope="row">{{ __('Payload size', 'treetank-trans') }}</th>
             <td id="polytrans-log-storage-size">-</td>
         </tr>
         <tr>
-            <th scope="row">{{ __('Last automatic cleanup', 'polytrans') }}</th>
+            <th scope="row">{{ __('Last automatic cleanup', 'treetank-trans') }}</th>
             <td id="polytrans-log-storage-last-cleanup">-</td>
         </tr>
     </tbody>
 </table>
 
-<h2>{{ __('Refinement Run Storage', 'polytrans') }}</h2>
+<h2>{{ __('Refinement Run Storage', 'treetank-trans') }}</h2>
 <p>
     <small>
-        {{ __('Prompt refinement run payloads are stored in a temporary database table for about 2 hours. Expired runs are cleaned automatically at most once per hour when PolyTrans runs in admin, and can be cleaned manually here.', 'polytrans') }}
+        {{ __('Prompt refinement run payloads are stored in a temporary database table for about 2 hours. Expired runs are cleaned automatically at most once per hour when PolyTrans runs in admin, and can be cleaned manually here.', 'treetank-trans') }}
     </small>
 </p>
 <p>
-    <button type="button" class="button" id="cleanup-expired-refinement-runs">{{ __('Clean Expired Refinement Runs', 'polytrans') }}</button>
-    <button type="button" class="button button-secondary" id="cleanup-all-refinement-runs">{{ __('Truncate Refinement Runs', 'polytrans') }}</button>
+    <button type="button" class="button" id="cleanup-expired-refinement-runs">{{ __('Clean Expired Refinement Runs', 'treetank-trans') }}</button>
+    <button type="button" class="button button-secondary" id="cleanup-all-refinement-runs">{{ __('Truncate Refinement Runs', 'treetank-trans') }}</button>
 </p>
 <table class="widefat striped" style="max-width:900px;">
     <tbody>
         <tr>
-            <th scope="row">{{ __('Stored runs', 'polytrans') }}</th>
+            <th scope="row">{{ __('Stored runs', 'treetank-trans') }}</th>
             <td id="refinement-run-storage-total">-</td>
         </tr>
         <tr>
-            <th scope="row">{{ __('Expired runs', 'polytrans') }}</th>
+            <th scope="row">{{ __('Expired runs', 'treetank-trans') }}</th>
             <td id="refinement-run-storage-expired">-</td>
         </tr>
         <tr>
-            <th scope="row">{{ __('Payload size', 'polytrans') }}</th>
+            <th scope="row">{{ __('Payload size', 'treetank-trans') }}</th>
             <td id="refinement-run-storage-size">-</td>
         </tr>
         <tr>
-            <th scope="row">{{ __('Last automatic cleanup', 'polytrans') }}</th>
+            <th scope="row">{{ __('Last automatic cleanup', 'treetank-trans') }}</th>
             <td id="refinement-run-storage-last-cleanup">-</td>
         </tr>
     </tbody>

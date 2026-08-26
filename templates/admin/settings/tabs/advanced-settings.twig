@@ -1,24 +1,24 @@
 {% set transport_mode = settings.translation_transport_mode|default('external') %}
 {% set method = settings.translation_receiver_secret_method|default('header_bearer') %}
 
-<h1>{{ __('Advanced Integration Settings', 'polytrans') }}</h1>
+<h1>{{ __('Advanced Integration Settings', 'treetank-trans') }}</h1>
 
-<h2>{{ __('Transport Mode', 'polytrans') }}</h2>
+<h2>{{ __('Transport Mode', 'treetank-trans') }}</h2>
 <select name="translation_transport_mode" id="translation-transport-mode" style="width:100%;max-width:400px;">
-    <option value="external" {{ selected(transport_mode, 'external') }}>{{ __('External Server (Default)', 'polytrans') }}</option>
-    <option value="internal" {{ selected(transport_mode, 'internal') }}>{{ __('Internal (Local Endpoint)', 'polytrans') }}</option>
+    <option value="external" {{ selected(transport_mode, 'external') }}>{{ __('External Server (Default)', 'treetank-trans') }}</option>
+    <option value="internal" {{ selected(transport_mode, 'internal') }}>{{ __('Internal (Local Endpoint)', 'treetank-trans') }}</option>
 </select>
 <div style="margin-top:8px;">
     <small>
-        {{ __('Choose how to handle translation transport:', 'polytrans') }}<br>
-        <strong>{{ __('External Server:', 'polytrans') }}</strong> {{ __('Sends data to the external endpoints specified below and expects the server to send data back to the specified receiver endpoint.', 'polytrans') }}<br>
-        <strong>{{ __('Internal:', 'polytrans') }}</strong> {{ __('Uses spawned processes to stay in the same server and achieve asynchronity.', 'polytrans') }}
+        {{ __('Choose how to handle translation transport:', 'treetank-trans') }}<br>
+        <strong>{{ __('External Server:', 'treetank-trans') }}</strong> {{ __('Sends data to the external endpoints specified below and expects the server to send data back to the specified receiver endpoint.', 'treetank-trans') }}<br>
+        <strong>{{ __('Internal:', 'treetank-trans') }}</strong> {{ __('Uses spawned processes to stay in the same server and achieve asynchronity.', 'treetank-trans') }}
     </small>
 </div>
 
 <div id="internal-mode-warning" class="notice notice-info inline" style="padding:10px;margin:16px 0 0 0;border-left-color:#72aee6;{{ transport_mode != 'internal' ? 'display:none;' : '' }}">
-    <strong>{{ __('Note:', 'polytrans') }}</strong>
-    {{ __('Internal mode uses non-blocking HTTP requests to trigger background processing. This may not work on all hosting environments (e.g., some shared hosts, environments without loopback connections, or servers with strict firewall rules). If translations are not processing, try switching to External mode with endpoints pointing to the same server.', 'polytrans') }}
+    <strong>{{ __('Note:', 'treetank-trans') }}</strong>
+    {{ __('Internal mode uses non-blocking HTTP requests to trigger background processing. This may not work on all hosting environments (e.g., some shared hosts, environments without loopback connections, or servers with strict firewall rules). If translations are not processing, try switching to External mode with endpoints pointing to the same server.', 'treetank-trans') }}
 </div>
 <br><br>
 
@@ -26,30 +26,30 @@
 {% set server_role = settings.translation_server_role|default('full') %}
 
 <fieldset style="border:1px solid #c3c4c7;padding:16px 20px;margin-bottom:24px;">
-<legend style="font-weight:600;padding:0 8px;">{{ __('Translation Server Role', 'polytrans') }}</legend>
+<legend style="font-weight:600;padding:0 8px;">{{ __('Translation Server Role', 'treetank-trans') }}</legend>
 
 <p style="margin-top:0;">
-    <small>{{ __('Configure how this server handles incoming translation requests (when acting as a translation service for other sites).', 'polytrans') }}</small>
+    <small>{{ __('Configure how this server handles incoming translation requests (when acting as a translation service for other sites).', 'treetank-trans') }}</small>
 </p>
 
 <select name="translation_server_role" id="translation-server-role" style="width:100%;max-width:400px;">
-    <option value="full" {{ selected(server_role, 'full') }}>{{ __('Full Storage (Default)', 'polytrans') }}</option>
-    <option value="translation_only" {{ selected(server_role, 'translation_only') }}>{{ __('Translation Only (Stateless)', 'polytrans') }}</option>
+    <option value="full" {{ selected(server_role, 'full') }}>{{ __('Full Storage (Default)', 'treetank-trans') }}</option>
+    <option value="translation_only" {{ selected(server_role, 'translation_only') }}>{{ __('Translation Only (Stateless)', 'treetank-trans') }}</option>
 </select>
 <div style="margin-top:8px;">
     <small>
-        {{ __('Choose how this server processes incoming translation requests:', 'polytrans') }}<br>
-        <strong>{{ __('Full Storage:', 'polytrans') }}</strong> {{ __('Creates posts locally, runs workflows, full processing. Use when this server also stores content.', 'polytrans') }}<br>
-        <strong>{{ __('Translation Only:', 'polytrans') }}</strong> {{ __('Translates content and forwards to receiver without storing locally. No posts created, no workflows run. Ideal for dedicated translation servers.', 'polytrans') }}
+        {{ __('Choose how this server processes incoming translation requests:', 'treetank-trans') }}<br>
+        <strong>{{ __('Full Storage:', 'treetank-trans') }}</strong> {{ __('Creates posts locally, runs workflows, full processing. Use when this server also stores content.', 'treetank-trans') }}<br>
+        <strong>{{ __('Translation Only:', 'treetank-trans') }}</strong> {{ __('Translates content and forwards to receiver without storing locally. No posts created, no workflows run. Ideal for dedicated translation servers.', 'treetank-trans') }}
     </small>
 </div>
 
 <div id="translation-only-warning" class="notice notice-info inline" style="padding:10px;margin:16px 0 0 0;border-left-color:#72aee6;{{ server_role != 'translation_only' ? 'display:none;' : '' }}">
-    <strong>⚡ {{ __('Translation Only Mode:', 'polytrans') }}</strong>
+    <strong>⚡ {{ __('Translation Only Mode:', 'treetank-trans') }}</strong>
     <ul style="margin:8px 0 0 16px;padding:0;list-style:disc;">
-        <li>{{ __('No posts are created locally - server acts as stateless translator', 'polytrans') }}</li>
-        <li>{{ __('Translations are sent immediately after completion (dispatch mode ignored)', 'polytrans') }}</li>
-        <li>{{ __('Use for dedicated translation servers that only process and forward content', 'polytrans') }}</li>
+        <li>{{ __('No posts are created locally - server acts as stateless translator', 'treetank-trans') }}</li>
+        <li>{{ __('Translations are sent immediately after completion (dispatch mode ignored)', 'treetank-trans') }}</li>
+        <li>{{ __('Use for dedicated translation servers that only process and forward content', 'treetank-trans') }}</li>
     </ul>
 </div>
 
@@ -57,11 +57,11 @@
     {% set enable_virtual_workflows = settings.enable_virtual_workflows|default(false) %}
     <label style="display:flex;align-items:center;gap:8px;">
         <input type="checkbox" name="enable_virtual_workflows" value="1" {{ checked(enable_virtual_workflows) }} />
-        <strong>{{ __('Enable Virtual Workflows', 'polytrans') }}</strong>
+        <strong>{{ __('Enable Virtual Workflows', 'treetank-trans') }}</strong>
     </label>
     <p style="margin:4px 0 0 26px;">
         <small>
-            {{ __('Run compatible workflows on the translation payload before sending to receiver. Only steps that work without database access will execute. Taxonomy resolution, AI post-processing, and other stateless operations can still run.', 'polytrans') }}
+            {{ __('Run compatible workflows on the translation payload before sending to receiver. Only steps that work without database access will execute. Taxonomy resolution, AI post-processing, and other stateless operations can still run.', 'treetank-trans') }}
         </small>
     </p>
 </div>
@@ -72,68 +72,68 @@
 <div id="external-mode-settings" style="{{ transport_mode != 'external' ? 'display:none;' : '' }}">
 
 <fieldset style="border:1px solid #c3c4c7;padding:16px 20px;margin-bottom:24px;">
-<legend style="font-weight:600;padding:0 8px;">{{ __('External Server Configuration', 'polytrans') }}</legend>
+<legend style="font-weight:600;padding:0 8px;">{{ __('External Server Configuration', 'treetank-trans') }}</legend>
 
 {% set received_workflow_mode = settings.received_translation_workflow_mode|default('run_workflows') %}
 {% set outgoing_dispatch_mode = settings.outgoing_translation_dispatch_mode|default('immediate') %}
 {% set after_workflows_cleanup = settings.after_workflows_cleanup_mode|default('delete') %}
 {% set external_same_database = settings.external_same_database|default('no') %}
 
-<h3>{{ __('Database Architecture', 'polytrans') }}</h3>
+<h3>{{ __('Database Architecture', 'treetank-trans') }}</h3>
 <select name="external_same_database" id="external-same-database" style="width:100%;max-width:400px;">
-    <option value="no" {{ selected(external_same_database, 'no') }}>{{ __('Separate database (Default)', 'polytrans') }}</option>
-    <option value="yes" {{ selected(external_same_database, 'yes') }}>{{ __('Same database as this site', 'polytrans') }}</option>
+    <option value="no" {{ selected(external_same_database, 'no') }}>{{ __('Separate database (Default)', 'treetank-trans') }}</option>
+    <option value="yes" {{ selected(external_same_database, 'yes') }}>{{ __('Same database as this site', 'treetank-trans') }}</option>
 </select>
 <div style="margin-top:8px;">
     <small>
-        {{ __('Specify whether the external translation server shares the same database as this site:', 'polytrans') }}<br>
-        <strong>{{ __('Separate database:', 'polytrans') }}</strong> {{ __('External server has its own database. Each server manages its own post status updates.', 'polytrans') }}<br>
-        <strong>{{ __('Same database:', 'polytrans') }}</strong> {{ __('External server connects to the same database (e.g., separate WordPress for async processing). Prevents duplicate status updates.', 'polytrans') }}
+        {{ __('Specify whether the external translation server shares the same database as this site:', 'treetank-trans') }}<br>
+        <strong>{{ __('Separate database:', 'treetank-trans') }}</strong> {{ __('External server has its own database. Each server manages its own post status updates.', 'treetank-trans') }}<br>
+        <strong>{{ __('Same database:', 'treetank-trans') }}</strong> {{ __('External server connects to the same database (e.g., separate WordPress for async processing). Prevents duplicate status updates.', 'treetank-trans') }}
     </small>
 </div><br>
 
 <div id="no-workflows-warning" class="notice notice-warning inline" style="display:none;padding:10px;margin:0 0 16px 0;">
-    <strong>{{ __('Warning:', 'polytrans') }}</strong>
-    {{ __('With current settings (Immediate dispatch + Trust external + Same database), post-processing workflows will NOT run anywhere. Consider using "After workflows complete" dispatch mode or enabling "Run workflows locally" on receiver.', 'polytrans') }}
+    <strong>{{ __('Warning:', 'treetank-trans') }}</strong>
+    {{ __('With current settings (Immediate dispatch + Trust external + Same database), post-processing workflows will NOT run anywhere. Consider using "After workflows complete" dispatch mode or enabling "Run workflows locally" on receiver.', 'treetank-trans') }}
 </div>
 
-<h3>{{ __('Received Translation Workflow Mode', 'polytrans') }}</h3>
+<h3>{{ __('Received Translation Workflow Mode', 'treetank-trans') }}</h3>
 <select name="received_translation_workflow_mode" id="received-workflow-mode" style="width:100%;max-width:400px;">
-    <option value="run_workflows" {{ selected(received_workflow_mode, 'run_workflows') }}>{{ __('Run workflows locally (Default)', 'polytrans') }}</option>
-    <option value="skip_workflows" {{ selected(received_workflow_mode, 'skip_workflows') }}>{{ __('Trust external server (skip local workflows)', 'polytrans') }}</option>
+    <option value="run_workflows" {{ selected(received_workflow_mode, 'run_workflows') }}>{{ __('Run workflows locally (Default)', 'treetank-trans') }}</option>
+    <option value="skip_workflows" {{ selected(received_workflow_mode, 'skip_workflows') }}>{{ __('Trust external server (skip local workflows)', 'treetank-trans') }}</option>
 </select>
 <div style="margin-top:8px;">
     <small>
-        {{ __('Control whether workflows should run when receiving translations:', 'polytrans') }}<br>
-        <strong>{{ __('Run workflows locally:', 'polytrans') }}</strong> {{ __('Execute configured post-processing workflows after receiving translation.', 'polytrans') }}<br>
-        <strong>{{ __('Trust external server:', 'polytrans') }}</strong> {{ __('Assume the external server already ran workflows. Use with "After workflows complete" dispatch mode on sender.', 'polytrans') }}
+        {{ __('Control whether workflows should run when receiving translations:', 'treetank-trans') }}<br>
+        <strong>{{ __('Run workflows locally:', 'treetank-trans') }}</strong> {{ __('Execute configured post-processing workflows after receiving translation.', 'treetank-trans') }}<br>
+        <strong>{{ __('Trust external server:', 'treetank-trans') }}</strong> {{ __('Assume the external server already ran workflows. Use with "After workflows complete" dispatch mode on sender.', 'treetank-trans') }}
     </small>
 </div><br>
 
-<h3>{{ __('Outgoing Translation Dispatch Mode', 'polytrans') }}</h3>
+<h3>{{ __('Outgoing Translation Dispatch Mode', 'treetank-trans') }}</h3>
 <select name="outgoing_translation_dispatch_mode" id="outgoing-dispatch-mode" style="width:100%;max-width:400px;">
-    <option value="immediate" {{ selected(outgoing_dispatch_mode, 'immediate') }}>{{ __('Immediate (Default)', 'polytrans') }}</option>
-    <option value="after_workflows" {{ selected(outgoing_dispatch_mode, 'after_workflows') }}>{{ __('After workflows complete', 'polytrans') }}</option>
+    <option value="immediate" {{ selected(outgoing_dispatch_mode, 'immediate') }}>{{ __('Immediate (Default)', 'treetank-trans') }}</option>
+    <option value="after_workflows" {{ selected(outgoing_dispatch_mode, 'after_workflows') }}>{{ __('After workflows complete', 'treetank-trans') }}</option>
 </select>
 <div style="margin-top:8px;">
     <small>
-        {{ __('Control when translated content is dispatched to the target endpoint:', 'polytrans') }}<br>
-        <strong>{{ __('Immediate:', 'polytrans') }}</strong> {{ __('Send translation to target endpoint immediately after translation completes.', 'polytrans') }}<br>
-        <strong>{{ __('After workflows:', 'polytrans') }}</strong> {{ __('Run post-processing workflows on translator, then send processed content to target endpoint.', 'polytrans') }}
+        {{ __('Control when translated content is dispatched to the target endpoint:', 'treetank-trans') }}<br>
+        <strong>{{ __('Immediate:', 'treetank-trans') }}</strong> {{ __('Send translation to target endpoint immediately after translation completes.', 'treetank-trans') }}<br>
+        <strong>{{ __('After workflows:', 'treetank-trans') }}</strong> {{ __('Run post-processing workflows on translator, then send processed content to target endpoint.', 'treetank-trans') }}
     </small>
 </div><br>
 
 <div id="after-workflows-cleanup-section" style="{{ outgoing_dispatch_mode != 'after_workflows' ? 'display:none;' : '' }}">
-    <h3>{{ __('After Workflows: Local Post Cleanup', 'polytrans') }}</h3>
+    <h3>{{ __('After Workflows: Local Post Cleanup', 'treetank-trans') }}</h3>
     <select name="after_workflows_cleanup_mode" style="width:100%;max-width:400px;">
-        <option value="delete" {{ selected(after_workflows_cleanup, 'delete') }}>{{ __('Delete after dispatch (Default)', 'polytrans') }}</option>
-        <option value="keep" {{ selected(after_workflows_cleanup, 'keep') }}>{{ __('Keep local post', 'polytrans') }}</option>
+        <option value="delete" {{ selected(after_workflows_cleanup, 'delete') }}>{{ __('Delete after dispatch (Default)', 'treetank-trans') }}</option>
+        <option value="keep" {{ selected(after_workflows_cleanup, 'keep') }}>{{ __('Keep local post', 'treetank-trans') }}</option>
     </select>
     <div style="margin-top:8px;">
         <small>
-            {{ __('Control what happens to the temporary local post after workflows complete and content is dispatched:', 'polytrans') }}<br>
-            <strong>{{ __('Delete:', 'polytrans') }}</strong> {{ __('Remove the temporary post after dispatch (recommended for clean database).', 'polytrans') }}<br>
-            <strong>{{ __('Keep:', 'polytrans') }}</strong> {{ __('Keep the local post. Useful for debugging or when external mode points to the same server.', 'polytrans') }}
+            {{ __('Control what happens to the temporary local post after workflows complete and content is dispatched:', 'treetank-trans') }}<br>
+            <strong>{{ __('Delete:', 'treetank-trans') }}</strong> {{ __('Remove the temporary post after dispatch (recommended for clean database).', 'treetank-trans') }}<br>
+            <strong>{{ __('Keep:', 'treetank-trans') }}</strong> {{ __('Keep the local post. Useful for debugging or when external mode points to the same server.', 'treetank-trans') }}
         </small>
     </div><br>
 </div>
@@ -141,77 +141,77 @@
 </fieldset>
 
 <fieldset style="border:1px solid #c3c4c7;padding:16px 20px;margin-bottom:24px;">
-<legend style="font-weight:600;padding:0 8px;">{{ __('Endpoint Credentials', 'polytrans') }}</legend>
+<legend style="font-weight:600;padding:0 8px;">{{ __('Endpoint Credentials', 'treetank-trans') }}</legend>
 
 {% set endpoint_method = settings.translation_endpoint_secret_method|default('') %}
 {% set receiver_method = settings.translation_receiver_secret_method|default('header_bearer') %}
 
-<h3>{{ __('Translation Endpoint (Source → Translator)', 'polytrans') }}</h3>
-<p><small>{{ __('Configure how this site connects to the external translation service.', 'polytrans') }}</small></p>
+<h3>{{ __('Translation Endpoint (Source → Translator)', 'treetank-trans') }}</h3>
+<p><small>{{ __('Configure how this site connects to the external translation service.', 'treetank-trans') }}</small></p>
 
-<h4>{{ __('Endpoint URL', 'polytrans') }}</h4>
+<h4>{{ __('Endpoint URL', 'treetank-trans') }}</h4>
 <input type="url" name="translation_endpoint" value="{{ translation_endpoint|esc_attr }}" style="width:100%" placeholder="https://example.com/wp-json/polytrans/v1/translation/translate" />
-<br><small>{{ __('URL of the external translation service endpoint.', 'polytrans') }}</small><br><br>
+<br><small>{{ __('URL of the external translation service endpoint.', 'treetank-trans') }}</small><br><br>
 
-<h4>{{ __('Endpoint Secret', 'polytrans') }}</h4>
+<h4>{{ __('Endpoint Secret', 'treetank-trans') }}</h4>
 <div style="display:flex;gap:0.5em;align-items:center;max-width:600px;">
-    <input type="password" id="translation-endpoint-secret" name="translation_endpoint_secret" value="{{ settings.translation_endpoint_secret|default('')|esc_attr }}" data-initial="{{ settings.translation_endpoint_secret|default('')|esc_attr }}" style="width:100%" placeholder="{{ __('Leave empty to use Receiver Secret', 'polytrans')|esc_attr }}" autocomplete="off" />
-    <button type="button" class="button toggle-secret-btn" data-target="translation-endpoint-secret" style="white-space:nowrap;">{{ __('Show', 'polytrans') }}</button>
-    <button type="button" class="button generate-secret-btn" data-target="translation-endpoint-secret" style="white-space:nowrap;">{{ __('Generate', 'polytrans') }}</button>
+    <input type="password" id="translation-endpoint-secret" name="translation_endpoint_secret" value="{{ settings.translation_endpoint_secret|default('')|esc_attr }}" data-initial="{{ settings.translation_endpoint_secret|default('')|esc_attr }}" style="width:100%" placeholder="{{ __('Leave empty to use Receiver Secret', 'treetank-trans')|esc_attr }}" autocomplete="off" />
+    <button type="button" class="button toggle-secret-btn" data-target="translation-endpoint-secret" style="white-space:nowrap;">{{ __('Show', 'treetank-trans') }}</button>
+    <button type="button" class="button generate-secret-btn" data-target="translation-endpoint-secret" style="white-space:nowrap;">{{ __('Generate', 'treetank-trans') }}</button>
 </div>
-<br><small>{{ __('Secret for authenticating to the translation endpoint. If empty, uses the Receiver Secret below.', 'polytrans') }}</small><br><br>
+<br><small>{{ __('Secret for authenticating to the translation endpoint. If empty, uses the Receiver Secret below.', 'treetank-trans') }}</small><br><br>
 
-<h4>{{ __('How to Pass Endpoint Secret', 'polytrans') }}</h4>
+<h4>{{ __('How to Pass Endpoint Secret', 'treetank-trans') }}</h4>
 <select name="translation_endpoint_secret_method" id="translation-endpoint-secret-method" style="width:100%;max-width:400px;">
-    <option value="" {{ selected(endpoint_method, '') }}>{{ __('Use Receiver method (default)', 'polytrans') }}</option>
-    <option value="none" {{ selected(endpoint_method, 'none') }}>{{ __('None (do not send secret)', 'polytrans') }}</option>
-    <option value="get_param" {{ selected(endpoint_method, 'get_param') }}>{{ __('GET parameter (?secret=...)', 'polytrans') }}</option>
-    <option value="header_bearer" {{ selected(endpoint_method, 'header_bearer') }}>{{ __('HTTP Header: Authorization: Bearer ...', 'polytrans') }}</option>
-    <option value="header_custom" {{ selected(endpoint_method, 'header_custom') }}>{{ __('HTTP Header: Custom Header Name', 'polytrans') }}</option>
-    <option value="post_param" {{ selected(endpoint_method, 'post_param') }}>{{ __('POST body field (JSON: secret)', 'polytrans') }}</option>
+    <option value="" {{ selected(endpoint_method, '') }}>{{ __('Use Receiver method (default)', 'treetank-trans') }}</option>
+    <option value="none" {{ selected(endpoint_method, 'none') }}>{{ __('None (do not send secret)', 'treetank-trans') }}</option>
+    <option value="get_param" {{ selected(endpoint_method, 'get_param') }}>{{ __('GET parameter (?secret=...)', 'treetank-trans') }}</option>
+    <option value="header_bearer" {{ selected(endpoint_method, 'header_bearer') }}>{{ __('HTTP Header: Authorization: Bearer ...', 'treetank-trans') }}</option>
+    <option value="header_custom" {{ selected(endpoint_method, 'header_custom') }}>{{ __('HTTP Header: Custom Header Name', 'treetank-trans') }}</option>
+    <option value="post_param" {{ selected(endpoint_method, 'post_param') }}>{{ __('POST body field (JSON: secret)', 'treetank-trans') }}</option>
 </select><br><br>
 
 <div id="endpoint-custom-header-section" style="{{ endpoint_method != 'header_custom' ? 'display:none;' : '' }}">
-    <h4>{{ __('Endpoint Custom Header Name', 'polytrans') }}</h4>
-    <input type="text" name="translation_endpoint_secret_custom_header" value="{{ settings.translation_endpoint_secret_custom_header|default('')|esc_attr }}" style="width:100%;max-width:400px;" placeholder="{{ __('Leave empty to use Receiver header', 'polytrans') }}" />
-    <br><small>{{ __('Custom header name for endpoint authentication.', 'polytrans') }}</small><br><br>
+    <h4>{{ __('Endpoint Custom Header Name', 'treetank-trans') }}</h4>
+    <input type="text" name="translation_endpoint_secret_custom_header" value="{{ settings.translation_endpoint_secret_custom_header|default('')|esc_attr }}" style="width:100%;max-width:400px;" placeholder="{{ __('Leave empty to use Receiver header', 'treetank-trans') }}" />
+    <br><small>{{ __('Custom header name for endpoint authentication.', 'treetank-trans') }}</small><br><br>
 </div>
 
 <hr style="margin: 20px 0;">
 
-<h3>{{ __('Receiver Endpoint (Translator → Target)', 'polytrans') }}</h3>
-<p><small>{{ __('Configure where the translated content should be sent. These credentials are passed to the translator in the request payload.', 'polytrans') }}</small></p>
+<h3>{{ __('Receiver Endpoint (Translator → Target)', 'treetank-trans') }}</h3>
+<p><small>{{ __('Configure where the translated content should be sent. These credentials are passed to the translator in the request payload.', 'treetank-trans') }}</small></p>
 
-<h4>{{ __('Receiver URL', 'polytrans') }}</h4>
+<h4>{{ __('Receiver URL', 'treetank-trans') }}</h4>
 <input type="url" name="translation_receiver_endpoint" value="{{ translation_receiver_endpoint|esc_attr }}" style="width:100%" placeholder="https://example.com/wp-json/polytrans/v1/translation/receive-post" />
-<br><small>{{ __('URL where translated content will be delivered. This is passed to the translator.', 'polytrans') }}</small><br><br>
+<br><small>{{ __('URL where translated content will be delivered. This is passed to the translator.', 'treetank-trans') }}</small><br><br>
 
-<h4>{{ __('Receiver Secret', 'polytrans') }}</h4>
+<h4>{{ __('Receiver Secret', 'treetank-trans') }}</h4>
 <div style="display:flex;gap:0.5em;align-items:center;max-width:600px;">
-    <input type="password" id="translation-receiver-secret" name="translation_receiver_secret" value="{{ settings.translation_receiver_secret|default('')|esc_attr }}" data-initial="{{ settings.translation_receiver_secret|default('')|esc_attr }}" style="width:100%" placeholder="{{ __('Enter secret for receiver authentication', 'polytrans')|esc_attr }}" autocomplete="off" />
-    <button type="button" class="button toggle-secret-btn" data-target="translation-receiver-secret" style="white-space:nowrap;">{{ __('Show', 'polytrans') }}</button>
-    <button type="button" class="button generate-secret-btn" data-target="translation-receiver-secret" style="white-space:nowrap;">{{ __('Generate', 'polytrans') }}</button>
+    <input type="password" id="translation-receiver-secret" name="translation_receiver_secret" value="{{ settings.translation_receiver_secret|default('')|esc_attr }}" data-initial="{{ settings.translation_receiver_secret|default('')|esc_attr }}" style="width:100%" placeholder="{{ __('Enter secret for receiver authentication', 'treetank-trans')|esc_attr }}" autocomplete="off" />
+    <button type="button" class="button toggle-secret-btn" data-target="translation-receiver-secret" style="white-space:nowrap;">{{ __('Show', 'treetank-trans') }}</button>
+    <button type="button" class="button generate-secret-btn" data-target="translation-receiver-secret" style="white-space:nowrap;">{{ __('Generate', 'treetank-trans') }}</button>
 </div>
-<br><small>{{ __('Secret for authenticating to the receiver. Passed to the translator in the payload.', 'polytrans') }}</small><br><br>
+<br><small>{{ __('Secret for authenticating to the receiver. Passed to the translator in the payload.', 'treetank-trans') }}</small><br><br>
 
-<h4>{{ __('How to Pass Receiver Secret', 'polytrans') }}</h4>
+<h4>{{ __('How to Pass Receiver Secret', 'treetank-trans') }}</h4>
 {% if unauthenticated_refused|default(false) %}
 <div class="notice notice-warning inline"><p>{{ unauthenticated_notice|default('')|esc_html }}</p></div>
 {% endif %}
 <select name="translation_receiver_secret_method" id="translation-receiver-secret-method" style="width:100%;max-width:400px;">
     {% if allow_unauthenticated|default(false) %}
-    <option value="none" {{ selected(receiver_method, 'none') }}>{{ __('None — accept unauthenticated requests (enabled in wp-config.php)', 'polytrans') }}</option>
+    <option value="none" {{ selected(receiver_method, 'none') }}>{{ __('None — accept unauthenticated requests (enabled in wp-config.php)', 'treetank-trans') }}</option>
     {% endif %}
-    <option value="get_param" {{ selected(receiver_method, 'get_param') }}>{{ __('GET parameter (?secret=...)', 'polytrans') }}</option>
-    <option value="header_bearer" {{ selected(receiver_method, 'header_bearer') }}>{{ __('HTTP Header: Authorization: Bearer ...', 'polytrans') }}</option>
-    <option value="header_custom" {{ selected(receiver_method, 'header_custom') }}>{{ __('HTTP Header: Custom Header Name', 'polytrans') }}</option>
-    <option value="post_param" {{ selected(receiver_method, 'post_param') }}>{{ __('POST body field (JSON: secret)', 'polytrans') }}</option>
+    <option value="get_param" {{ selected(receiver_method, 'get_param') }}>{{ __('GET parameter (?secret=...)', 'treetank-trans') }}</option>
+    <option value="header_bearer" {{ selected(receiver_method, 'header_bearer') }}>{{ __('HTTP Header: Authorization: Bearer ...', 'treetank-trans') }}</option>
+    <option value="header_custom" {{ selected(receiver_method, 'header_custom') }}>{{ __('HTTP Header: Custom Header Name', 'treetank-trans') }}</option>
+    <option value="post_param" {{ selected(receiver_method, 'post_param') }}>{{ __('POST body field (JSON: secret)', 'treetank-trans') }}</option>
 </select><br><br>
 
 <div id="receiver-custom-header-section" style="{{ receiver_method != 'header_custom' ? 'display:none;' : '' }}">
-    <h4>{{ __('Receiver Custom Header Name', 'polytrans') }}</h4>
+    <h4>{{ __('Receiver Custom Header Name', 'treetank-trans') }}</h4>
     <input type="text" name="translation_receiver_secret_custom_header" value="{{ settings.translation_receiver_secret_custom_header|default('x-polytrans-secret')|esc_attr }}" style="width:100%;max-width:400px;" placeholder="x-polytrans-secret" />
-    <br><small>{{ __('Specify the custom header name to use when sending the secret. Default is "x-polytrans-secret".', 'polytrans') }}</small><br><br>
+    <br><small>{{ __('Specify the custom header name to use when sending the secret. Default is "x-polytrans-secret".', 'treetank-trans') }}</small><br><br>
 </div>
 
 </fieldset>
@@ -219,44 +219,44 @@
 </div>
 {# ========== END EXTERNAL MODE SETTINGS ========== #}
 
-<h2>{{ __('Edit Link Base URL', 'polytrans') }}</h2>
+<h2>{{ __('Edit Link Base URL', 'treetank-trans') }}</h2>
 <input type="url" name="edit_link_base_url" value="{{ settings.edit_link_base_url|default('')|esc_attr }}" style="width:100%" placeholder="https://example.com/wp-admin" />
-<br><small>{{ __('Base URL for edit links in email notifications (e.g., https://example.com/wp-admin). If left empty, the system will attempt to use the default WordPress admin URL. This is useful when notifications are sent from background processes or external services that don\'t have proper WordPress context.', 'polytrans') }}</small><br><br>
+<br><small>{{ __('Base URL for edit links in email notifications (e.g., https://example.com/wp-admin). If left empty, the system will attempt to use the default WordPress admin URL. This is useful when notifications are sent from background processes or external services that don\'t have proper WordPress context.', 'treetank-trans') }}</small><br><br>
 
-<h2>{{ __('API Request Settings', 'polytrans') }}</h2>
+<h2>{{ __('API Request Settings', 'treetank-trans') }}</h2>
 <div class="translation-api-settings">
     {% set api_timeout = settings.api_timeout|default(180) %}
     <p>
-        <label for="api-timeout"><strong>{{ __('API Request Timeout (seconds)', 'polytrans') }}</strong></label><br>
+        <label for="api-timeout"><strong>{{ __('API Request Timeout (seconds)', 'treetank-trans') }}</strong></label><br>
         <input type="number" id="api-timeout" name="api_timeout" value="{{ api_timeout|esc_attr }}" min="30" max="600" step="10" style="width:200px;" />
     </p>
     <small>
-        {{ __('Timeout for AI provider API requests (OpenAI, Claude, Gemini). Default: 180 seconds (3 minutes). Increase this value if you experience timeout errors with long translations or complex workflows. The system will automatically retry once on timeout.', 'polytrans') }}
+        {{ __('Timeout for AI provider API requests (OpenAI, Claude, Gemini). Default: 180 seconds (3 minutes). Increase this value if you experience timeout errors with long translations or complex workflows. The system will automatically retry once on timeout.', 'treetank-trans') }}
     </small>
 </div><br>
 
-<h2>{{ __('Logging Options', 'polytrans') }}</h2>
+<h2>{{ __('Logging Options', 'treetank-trans') }}</h2>
 <div class="translation-logging-options">
     {% set enable_db_logging = settings.enable_db_logging|default(true) %}
     <p>
         <input type="checkbox" id="enable-db-logging" name="enable_db_logging" value="1" {{ checked(enable_db_logging) }}>
-        <label for="enable-db-logging"><strong>{{ __('Enable Database Logging', 'polytrans') }}</strong></label>
+        <label for="enable-db-logging"><strong>{{ __('Enable Database Logging', 'treetank-trans') }}</strong></label>
     </p>
     <small>
-        {{ __('When enabled, logs will be stored in the database table. When disabled, logs will only be written to the WordPress error log and post meta. Disabling database logging can improve performance and reduce database size, but makes viewing logs from the admin panel more limited. Warning: Logs from internal processes can only log to database, will never show up in stderr.', 'polytrans') }}
+        {{ __('When enabled, logs will be stored in the database table. When disabled, logs will only be written to the WordPress error log and post meta. Disabling database logging can improve performance and reduce database size, but makes viewing logs from the admin panel more limited. Warning: Logs from internal processes can only log to database, will never show up in stderr.', 'treetank-trans') }}
     </small>
 </div><br>
 
-<h2>{{ __('Dirty Check Field Whitelist', 'polytrans') }}</h2>
+<h2>{{ __('Dirty Check Field Whitelist', 'treetank-trans') }}</h2>
 <div class="dirty-check-whitelist-options">
     <p>
         <textarea name="dirty_check_field_whitelist" id="dirty-check-field-whitelist" rows="6" style="width:100%;max-width:600px;font-family:monospace;">{{ settings.dirty_check_field_whitelist|default('')|esc_textarea }}</textarea>
     </p>
     <small>
-        {{ __('Field name patterns to ignore when checking for unsaved changes (one pattern per line). Fields matching these patterns will not trigger the "Unsaved Changes" warning in the translation scheduler. This is useful for plugins that modify field values in the background.', 'polytrans') }}<br><br>
-        <strong>{{ __('Built-in patterns (always active):', 'polytrans') }}</strong><br>
+        {{ __('Field name patterns to ignore when checking for unsaved changes (one pattern per line). Fields matching these patterns will not trigger the "Unsaved Changes" warning in the translation scheduler. This is useful for plugins that modify field values in the background.', 'treetank-trans') }}<br><br>
+        <strong>{{ __('Built-in patterns (always active):', 'treetank-trans') }}</strong><br>
         <code>aioseo</code>, <code>yoast</code>, <code>wpseo</code>, <code>rank_math</code>, <code>seopress</code>, <code>tsf</code>, <code>acf-</code>, <code>woocommerce</code>, <code>elementor</code><br><br>
-        <strong>{{ __('Example custom patterns:', 'polytrans') }}</strong><br>
+        <strong>{{ __('Example custom patterns:', 'treetank-trans') }}</strong><br>
         <code>my-custom-plugin</code><br>
         <code>jetpack</code><br>
         <code>wpforms</code>

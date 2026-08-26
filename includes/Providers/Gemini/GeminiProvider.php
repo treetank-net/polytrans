@@ -23,12 +23,12 @@ class GeminiProvider implements TranslationProviderInterface
     
     public function get_name()
     {
-        return __('Gemini', 'polytrans');
+        return __('Gemini', 'treetank-trans');
     }
     
     public function get_description()
     {
-        return __('AI-powered translation with Google Gemini. Requires Gemini API key and configured assistants or agents.', 'polytrans');
+        return __('AI-powered translation with Google Gemini. Requires Gemini API key and configured assistants or agents.', 'treetank-trans');
     }
     
     public function get_settings_provider_class()

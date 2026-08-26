@@ -33,7 +33,7 @@ class PredefinedAssistantStep implements WorkflowStepInterface
      */
     public function get_name()
     {
-        return __('Predefined AI Assistant', 'polytrans');
+        return __('Predefined AI Assistant', 'treetank-trans');
     }
 
     /**
@@ -41,7 +41,7 @@ class PredefinedAssistantStep implements WorkflowStepInterface
      */
     public function get_description()
     {
-        return __('Use a predefined AI assistant from any enabled provider with pre-configured settings', 'polytrans');
+        return __('Use a predefined AI assistant from any enabled provider with pre-configured settings', 'treetank-trans');
     }
 
     /**
@@ -257,7 +257,7 @@ class PredefinedAssistantStep implements WorkflowStepInterface
                 'type' => 'select',
                 'label' => 'AI Assistant',
                 'required' => true,
-                'options' => ['' => __('Loading assistants...', 'polytrans')],
+                'options' => ['' => __('Loading assistants...', 'treetank-trans')],
                 'data_attributes' => [
                     'load-via-ajax' => 'true'
                 ]

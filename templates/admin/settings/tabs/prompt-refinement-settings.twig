@@ -1,185 +1,185 @@
-<h1>{{ __('Refinement Prompts', 'polytrans') }}</h1>
+<h1>{{ __('Refinement Prompts', 'treetank-trans') }}</h1>
 <div class="prompt-refinement-template-settings">
     <p>
         <small>
-            {{ __('These prompts are sent to the assistant and workflow refinement UIs as editable defaults. System prompts and prompt templates are rendered with the same Twig variables for their role. Leave a field empty to use the built-in prompt. Twig variables must be preserved exactly.', 'polytrans') }}
+            {{ __('These prompts are sent to the assistant and workflow refinement UIs as editable defaults. System prompts and prompt templates are rendered with the same Twig variables for their role. Leave a field empty to use the built-in prompt. Twig variables must be preserved exactly.', 'treetank-trans') }}
         </small>
     </p>
 
-    <h2>{{ __('AI Assistant Refiner', 'polytrans') }}</h2>
+    <h2>{{ __('AI Assistant Refiner', 'treetank-trans') }}</h2>
     <details style="max-width:900px;margin:0 0 16px;">
-        <summary>{{ __('Available assistant refiner variables', 'polytrans') }}</summary>
+        <summary>{{ __('Available assistant refiner variables', 'treetank-trans') }}</summary>
         <div style="display:grid;grid-template-columns:minmax(220px,1fr) 2fr;gap:6px 16px;margin-top:10px;">
-            <code>{{ '{{ criteria }}' }}</code><span>{{ __('Evaluation/refinement criteria entered by the user.', 'polytrans') }}</span>
-            <code>{{ '{{ prompt_objective }}' }}</code><span>{{ __('Original prompt purpose/alignment goal entered by the user or loaded from assistant description.', 'polytrans') }}</span>
-            <code>{{ '{{ source_language }}' }}</code><span>{{ __('Source language code.', 'polytrans') }}</span>
-            <code>{{ '{{ target_language }}' }}</code><span>{{ __('Target language code.', 'polytrans') }}</span>
-            <code>{{ '{{ include_expected_output_schema }}' }}</code><span>{{ __('Boolean flag telling whether schema should be included/adjusted.', 'polytrans') }}</span>
-            <code>{{ '{{ interpolated_system_prompt }}' }}</code><span>{{ __('Rendered system prompt used by the tested assistant.', 'polytrans') }}</span>
-            <code>{{ '{{ interpolated_user_message }}' }}</code><span>{{ __('Rendered user message used by the tested assistant.', 'polytrans') }}</span>
-            <code>{{ '{{ assistant_output }}' }}</code><span>{{ __('Assistant output being evaluated.', 'polytrans') }}</span>
-            <code>{{ '{{ expected_output_schema }}' }}</code><span>{{ __('Expected output schema for JSON-output assistants.', 'polytrans') }}</span>
-            <code>{{ '{{ non_interpolated_system_prompt }}' }}</code><span>{{ __('Current editable system prompt for the prompt adjuster.', 'polytrans') }}</span>
-            <code>{{ '{{ non_interpolated_user_message_template }}' }}</code><span>{{ __('Current editable user message template for the prompt adjuster.', 'polytrans') }}</span>
-            <code>{{ '{{ non_interpolated_expected_output_schema }}' }}</code><span>{{ __('Current expected output schema for JSON prompt adjustment.', 'polytrans') }}</span>
-            <code>{{ '{{ adjust_expected_output_schema }}' }}</code><span>{{ __('Boolean flag telling whether the adjuster may change output schema.', 'polytrans') }}</span>
-            <code>{{ '{{ evaluations }}' }}</code><span>{{ __('Array of normalized evaluation items.', 'polytrans') }}</span>
-            <code>{{ '{{ evaluations_json }}' }}</code><span>{{ __('Pretty JSON string with normalized evaluation items.', 'polytrans') }}</span>
+            <code>{{ '{{ criteria }}' }}</code><span>{{ __('Evaluation/refinement criteria entered by the user.', 'treetank-trans') }}</span>
+            <code>{{ '{{ prompt_objective }}' }}</code><span>{{ __('Original prompt purpose/alignment goal entered by the user or loaded from assistant description.', 'treetank-trans') }}</span>
+            <code>{{ '{{ source_language }}' }}</code><span>{{ __('Source language code.', 'treetank-trans') }}</span>
+            <code>{{ '{{ target_language }}' }}</code><span>{{ __('Target language code.', 'treetank-trans') }}</span>
+            <code>{{ '{{ include_expected_output_schema }}' }}</code><span>{{ __('Boolean flag telling whether schema should be included/adjusted.', 'treetank-trans') }}</span>
+            <code>{{ '{{ interpolated_system_prompt }}' }}</code><span>{{ __('Rendered system prompt used by the tested assistant.', 'treetank-trans') }}</span>
+            <code>{{ '{{ interpolated_user_message }}' }}</code><span>{{ __('Rendered user message used by the tested assistant.', 'treetank-trans') }}</span>
+            <code>{{ '{{ assistant_output }}' }}</code><span>{{ __('Assistant output being evaluated.', 'treetank-trans') }}</span>
+            <code>{{ '{{ expected_output_schema }}' }}</code><span>{{ __('Expected output schema for JSON-output assistants.', 'treetank-trans') }}</span>
+            <code>{{ '{{ non_interpolated_system_prompt }}' }}</code><span>{{ __('Current editable system prompt for the prompt adjuster.', 'treetank-trans') }}</span>
+            <code>{{ '{{ non_interpolated_user_message_template }}' }}</code><span>{{ __('Current editable user message template for the prompt adjuster.', 'treetank-trans') }}</span>
+            <code>{{ '{{ non_interpolated_expected_output_schema }}' }}</code><span>{{ __('Current expected output schema for JSON prompt adjustment.', 'treetank-trans') }}</span>
+            <code>{{ '{{ adjust_expected_output_schema }}' }}</code><span>{{ __('Boolean flag telling whether the adjuster may change output schema.', 'treetank-trans') }}</span>
+            <code>{{ '{{ evaluations }}' }}</code><span>{{ __('Array of normalized evaluation items.', 'treetank-trans') }}</span>
+            <code>{{ '{{ evaluations_json }}' }}</code><span>{{ __('Pretty JSON string with normalized evaluation items.', 'treetank-trans') }}</span>
         </div>
     </details>
     <p>
-        <label for="prompt-refinement-assistant-evaluator-system"><strong>{{ __('Evaluator System Prompt', 'polytrans') }}</strong></label><br>
+        <label for="prompt-refinement-assistant-evaluator-system"><strong>{{ __('Evaluator System Prompt', 'treetank-trans') }}</strong></label><br>
         <textarea name="prompt_refinement_assistant_evaluator_system_prompt" id="prompt-refinement-assistant-evaluator-system" rows="4" style="width:100%;max-width:900px;font-family:monospace;">{{ settings.prompt_refinement_assistant_evaluator_system_prompt|default('')|esc_textarea }}</textarea>
     </p>
     <details style="max-width:900px;margin:-8px 0 16px;">
-        <summary>{{ __('Show built-in fallback', 'polytrans') }}</summary>
+        <summary>{{ __('Show built-in fallback', 'treetank-trans') }}</summary>
         <pre style="white-space:pre-wrap;max-height:260px;overflow:auto;background:#f6f7f7;border:1px solid #dcdcde;padding:10px;">{{ prompt_refinement_default_templates.prompt_refinement_assistant_evaluator_system_prompt|default('')|esc_html }}</pre>
     </details>
     <p>
-        <label for="prompt-refinement-assistant-evaluator"><strong>{{ __('Evaluator Prompt Template', 'polytrans') }}</strong></label><br>
+        <label for="prompt-refinement-assistant-evaluator"><strong>{{ __('Evaluator Prompt Template', 'treetank-trans') }}</strong></label><br>
         <textarea name="prompt_refinement_assistant_evaluator_template" id="prompt-refinement-assistant-evaluator" rows="12" style="width:100%;max-width:900px;font-family:monospace;">{{ settings.prompt_refinement_assistant_evaluator_template|default('')|esc_textarea }}</textarea>
     </p>
     <details style="max-width:900px;margin:-8px 0 16px;">
-        <summary>{{ __('Show built-in fallback', 'polytrans') }}</summary>
+        <summary>{{ __('Show built-in fallback', 'treetank-trans') }}</summary>
         <pre style="white-space:pre-wrap;max-height:260px;overflow:auto;background:#f6f7f7;border:1px solid #dcdcde;padding:10px;">{{ prompt_refinement_default_templates.prompt_refinement_assistant_evaluator_template|default('')|esc_html }}</pre>
     </details>
     <p>
-        <label for="prompt-refinement-assistant-adjuster-system"><strong>{{ __('Adjuster System Prompt', 'polytrans') }}</strong></label><br>
+        <label for="prompt-refinement-assistant-adjuster-system"><strong>{{ __('Adjuster System Prompt', 'treetank-trans') }}</strong></label><br>
         <textarea name="prompt_refinement_assistant_adjuster_system_prompt" id="prompt-refinement-assistant-adjuster-system" rows="5" style="width:100%;max-width:900px;font-family:monospace;">{{ settings.prompt_refinement_assistant_adjuster_system_prompt|default('')|esc_textarea }}</textarea>
     </p>
     <details style="max-width:900px;margin:-8px 0 16px;">
-        <summary>{{ __('Show built-in fallback', 'polytrans') }}</summary>
+        <summary>{{ __('Show built-in fallback', 'treetank-trans') }}</summary>
         <pre style="white-space:pre-wrap;max-height:260px;overflow:auto;background:#f6f7f7;border:1px solid #dcdcde;padding:10px;">{{ prompt_refinement_default_templates.prompt_refinement_assistant_adjuster_system_prompt|default('')|esc_html }}</pre>
     </details>
     <p>
-        <label for="prompt-refinement-assistant-adjuster"><strong>{{ __('Adjuster Prompt Template', 'polytrans') }}</strong></label><br>
+        <label for="prompt-refinement-assistant-adjuster"><strong>{{ __('Adjuster Prompt Template', 'treetank-trans') }}</strong></label><br>
         <textarea name="prompt_refinement_assistant_adjuster_template" id="prompt-refinement-assistant-adjuster" rows="14" style="width:100%;max-width:900px;font-family:monospace;">{{ settings.prompt_refinement_assistant_adjuster_template|default('')|esc_textarea }}</textarea>
     </p>
     <details style="max-width:900px;margin:-8px 0 16px;">
-        <summary>{{ __('Show built-in fallback', 'polytrans') }}</summary>
+        <summary>{{ __('Show built-in fallback', 'treetank-trans') }}</summary>
         <pre style="white-space:pre-wrap;max-height:260px;overflow:auto;background:#f6f7f7;border:1px solid #dcdcde;padding:10px;">{{ prompt_refinement_default_templates.prompt_refinement_assistant_adjuster_template|default('')|esc_html }}</pre>
     </details>
 
-    <h2>{{ __('Workflow Refiner', 'polytrans') }}</h2>
+    <h2>{{ __('Workflow Refiner', 'treetank-trans') }}</h2>
     <details style="max-width:900px;margin:0 0 16px;">
-        <summary>{{ __('Available workflow refiner variables', 'polytrans') }}</summary>
+        <summary>{{ __('Available workflow refiner variables', 'treetank-trans') }}</summary>
         <div style="display:grid;grid-template-columns:minmax(260px,1fr) 2fr;gap:6px 16px;margin-top:10px;">
-            <code>{{ '{{ criteria }}' }}</code><span>{{ __('Evaluation/refinement criteria entered by the user.', 'polytrans') }}</span>
-            <code>{{ '{{ workflow_purpose }}' }}</code><span>{{ __('Whole-workflow purpose/alignment goal entered by the user or loaded from workflow description.', 'polytrans') }}</span>
-            <code>{{ '{{ prompt_objective }}' }}</code><span>{{ __('Original target-step purpose/alignment goal entered by the user or loaded from step/assistant description.', 'polytrans') }}</span>
-            <code>{{ '{{ workflow_name }}' }}</code><span>{{ __('Workflow name for evaluator prompts.', 'polytrans') }}</span>
-            <code>{{ '{{ workflow_id }}' }}</code><span>{{ __('Workflow ID for evaluator prompts.', 'polytrans') }}</span>
-            <code>{{ '{{ workflow_success }}' }}</code><span>{{ __('Whether the full workflow finished successfully.', 'polytrans') }}</span>
-            <code>{{ '{{ source_language }}' }}</code><span>{{ __('Source language code.', 'polytrans') }}</span>
-            <code>{{ '{{ target_language }}' }}</code><span>{{ __('Target language code.', 'polytrans') }}</span>
-            <code>{{ '{{ target_step_id }}' }}</code><span>{{ __('Selected workflow step ID.', 'polytrans') }}</span>
-            <code>{{ '{{ target_step_name }}' }}</code><span>{{ __('Selected workflow step name.', 'polytrans') }}</span>
-            <code>{{ '{{ target_interpolated_system_prompt }}' }}</code><span>{{ __('Rendered system prompt used by the selected target step.', 'polytrans') }}</span>
-            <code>{{ '{{ target_interpolated_user_message }}' }}</code><span>{{ __('Rendered user message used by the selected target step.', 'polytrans') }}</span>
-            <code>{{ '{{ target_assistant_output }}' }}</code><span>{{ __('Output produced by the selected target step.', 'polytrans') }}</span>
-            <code>{{ '{{ include_expected_output_schema }}' }}</code><span>{{ __('Boolean flag telling whether schema should be included/adjusted.', 'polytrans') }}</span>
-            <code>{{ '{{ expected_output_schema }}' }}</code><span>{{ __('Expected output schema for JSON-output target steps.', 'polytrans') }}</span>
-            <code>{{ '{{ workflow_context_json }}' }}</code><span>{{ __('Compact JSON with workflow, target step, previous steps and following steps.', 'polytrans') }}</span>
-            <code>{{ '{{ workflow_structure_json }}' }}</code><span>{{ __('Compact JSON with all workflow steps.', 'polytrans') }}</span>
-            <code>{{ '{{ target_step_context_json }}' }}</code><span>{{ __('Compact JSON with selected target step details.', 'polytrans') }}</span>
-            <code>{{ '{{ previous_steps_json }}' }}</code><span>{{ __('Compact JSON with steps before the selected target step.', 'polytrans') }}</span>
-            <code>{{ '{{ following_steps_json }}' }}</code><span>{{ __('Compact JSON with steps after the selected target step.', 'polytrans') }}</span>
-            <code>{{ '{{ final_output_json }}' }}</code><span>{{ __('Compact JSON with final workflow output.', 'polytrans') }}</span>
-            <code>{{ '{{ workflow_result_json }}' }}</code><span>{{ __('Compact JSON with workflow execution summary.', 'polytrans') }}</span>
-            <code>{{ '{{ non_interpolated_system_prompt }}' }}</code><span>{{ __('Current editable system prompt for the selected target assistant.', 'polytrans') }}</span>
-            <code>{{ '{{ non_interpolated_user_message_template }}' }}</code><span>{{ __('Current editable user message template for the selected target assistant.', 'polytrans') }}</span>
-            <code>{{ '{{ non_interpolated_expected_output_schema }}' }}</code><span>{{ __('Current expected output schema for JSON prompt adjustment.', 'polytrans') }}</span>
-            <code>{{ '{{ adjust_expected_output_schema }}' }}</code><span>{{ __('Boolean flag telling whether the adjuster may change output schema.', 'polytrans') }}</span>
-            <code>{{ '{{ evaluations }}' }}</code><span>{{ __('Array of normalized workflow evaluation items.', 'polytrans') }}</span>
-            <code>{{ '{{ evaluations_json }}' }}</code><span>{{ __('Pretty JSON string with normalized workflow evaluation items.', 'polytrans') }}</span>
+            <code>{{ '{{ criteria }}' }}</code><span>{{ __('Evaluation/refinement criteria entered by the user.', 'treetank-trans') }}</span>
+            <code>{{ '{{ workflow_purpose }}' }}</code><span>{{ __('Whole-workflow purpose/alignment goal entered by the user or loaded from workflow description.', 'treetank-trans') }}</span>
+            <code>{{ '{{ prompt_objective }}' }}</code><span>{{ __('Original target-step purpose/alignment goal entered by the user or loaded from step/assistant description.', 'treetank-trans') }}</span>
+            <code>{{ '{{ workflow_name }}' }}</code><span>{{ __('Workflow name for evaluator prompts.', 'treetank-trans') }}</span>
+            <code>{{ '{{ workflow_id }}' }}</code><span>{{ __('Workflow ID for evaluator prompts.', 'treetank-trans') }}</span>
+            <code>{{ '{{ workflow_success }}' }}</code><span>{{ __('Whether the full workflow finished successfully.', 'treetank-trans') }}</span>
+            <code>{{ '{{ source_language }}' }}</code><span>{{ __('Source language code.', 'treetank-trans') }}</span>
+            <code>{{ '{{ target_language }}' }}</code><span>{{ __('Target language code.', 'treetank-trans') }}</span>
+            <code>{{ '{{ target_step_id }}' }}</code><span>{{ __('Selected workflow step ID.', 'treetank-trans') }}</span>
+            <code>{{ '{{ target_step_name }}' }}</code><span>{{ __('Selected workflow step name.', 'treetank-trans') }}</span>
+            <code>{{ '{{ target_interpolated_system_prompt }}' }}</code><span>{{ __('Rendered system prompt used by the selected target step.', 'treetank-trans') }}</span>
+            <code>{{ '{{ target_interpolated_user_message }}' }}</code><span>{{ __('Rendered user message used by the selected target step.', 'treetank-trans') }}</span>
+            <code>{{ '{{ target_assistant_output }}' }}</code><span>{{ __('Output produced by the selected target step.', 'treetank-trans') }}</span>
+            <code>{{ '{{ include_expected_output_schema }}' }}</code><span>{{ __('Boolean flag telling whether schema should be included/adjusted.', 'treetank-trans') }}</span>
+            <code>{{ '{{ expected_output_schema }}' }}</code><span>{{ __('Expected output schema for JSON-output target steps.', 'treetank-trans') }}</span>
+            <code>{{ '{{ workflow_context_json }}' }}</code><span>{{ __('Compact JSON with workflow, target step, previous steps and following steps.', 'treetank-trans') }}</span>
+            <code>{{ '{{ workflow_structure_json }}' }}</code><span>{{ __('Compact JSON with all workflow steps.', 'treetank-trans') }}</span>
+            <code>{{ '{{ target_step_context_json }}' }}</code><span>{{ __('Compact JSON with selected target step details.', 'treetank-trans') }}</span>
+            <code>{{ '{{ previous_steps_json }}' }}</code><span>{{ __('Compact JSON with steps before the selected target step.', 'treetank-trans') }}</span>
+            <code>{{ '{{ following_steps_json }}' }}</code><span>{{ __('Compact JSON with steps after the selected target step.', 'treetank-trans') }}</span>
+            <code>{{ '{{ final_output_json }}' }}</code><span>{{ __('Compact JSON with final workflow output.', 'treetank-trans') }}</span>
+            <code>{{ '{{ workflow_result_json }}' }}</code><span>{{ __('Compact JSON with workflow execution summary.', 'treetank-trans') }}</span>
+            <code>{{ '{{ non_interpolated_system_prompt }}' }}</code><span>{{ __('Current editable system prompt for the selected target assistant.', 'treetank-trans') }}</span>
+            <code>{{ '{{ non_interpolated_user_message_template }}' }}</code><span>{{ __('Current editable user message template for the selected target assistant.', 'treetank-trans') }}</span>
+            <code>{{ '{{ non_interpolated_expected_output_schema }}' }}</code><span>{{ __('Current expected output schema for JSON prompt adjustment.', 'treetank-trans') }}</span>
+            <code>{{ '{{ adjust_expected_output_schema }}' }}</code><span>{{ __('Boolean flag telling whether the adjuster may change output schema.', 'treetank-trans') }}</span>
+            <code>{{ '{{ evaluations }}' }}</code><span>{{ __('Array of normalized workflow evaluation items.', 'treetank-trans') }}</span>
+            <code>{{ '{{ evaluations_json }}' }}</code><span>{{ __('Pretty JSON string with normalized workflow evaluation items.', 'treetank-trans') }}</span>
         </div>
     </details>
     <p>
-        <label for="prompt-refinement-workflow-evaluator-system"><strong>{{ __('Evaluator System Prompt', 'polytrans') }}</strong></label><br>
+        <label for="prompt-refinement-workflow-evaluator-system"><strong>{{ __('Evaluator System Prompt', 'treetank-trans') }}</strong></label><br>
         <textarea name="prompt_refinement_workflow_evaluator_system_prompt" id="prompt-refinement-workflow-evaluator-system" rows="4" style="width:100%;max-width:900px;font-family:monospace;">{{ settings.prompt_refinement_workflow_evaluator_system_prompt|default('')|esc_textarea }}</textarea>
     </p>
     <details style="max-width:900px;margin:-8px 0 16px;">
-        <summary>{{ __('Show built-in fallback', 'polytrans') }}</summary>
+        <summary>{{ __('Show built-in fallback', 'treetank-trans') }}</summary>
         <pre style="white-space:pre-wrap;max-height:260px;overflow:auto;background:#f6f7f7;border:1px solid #dcdcde;padding:10px;">{{ prompt_refinement_default_templates.prompt_refinement_workflow_evaluator_system_prompt|default('')|esc_html }}</pre>
     </details>
     <p>
-        <label for="prompt-refinement-workflow-evaluator"><strong>{{ __('Evaluator Prompt Template', 'polytrans') }}</strong></label><br>
+        <label for="prompt-refinement-workflow-evaluator"><strong>{{ __('Evaluator Prompt Template', 'treetank-trans') }}</strong></label><br>
         <textarea name="prompt_refinement_workflow_evaluator_template" id="prompt-refinement-workflow-evaluator" rows="16" style="width:100%;max-width:900px;font-family:monospace;">{{ settings.prompt_refinement_workflow_evaluator_template|default('')|esc_textarea }}</textarea>
     </p>
     <details style="max-width:900px;margin:-8px 0 16px;">
-        <summary>{{ __('Show built-in fallback', 'polytrans') }}</summary>
+        <summary>{{ __('Show built-in fallback', 'treetank-trans') }}</summary>
         <pre style="white-space:pre-wrap;max-height:260px;overflow:auto;background:#f6f7f7;border:1px solid #dcdcde;padding:10px;">{{ prompt_refinement_default_templates.prompt_refinement_workflow_evaluator_template|default('')|esc_html }}</pre>
     </details>
     <p>
-        <label for="prompt-refinement-workflow-adjuster-system"><strong>{{ __('Adjuster System Prompt', 'polytrans') }}</strong></label><br>
+        <label for="prompt-refinement-workflow-adjuster-system"><strong>{{ __('Adjuster System Prompt', 'treetank-trans') }}</strong></label><br>
         <textarea name="prompt_refinement_workflow_adjuster_system_prompt" id="prompt-refinement-workflow-adjuster-system" rows="5" style="width:100%;max-width:900px;font-family:monospace;">{{ settings.prompt_refinement_workflow_adjuster_system_prompt|default('')|esc_textarea }}</textarea>
     </p>
     <details style="max-width:900px;margin:-8px 0 16px;">
-        <summary>{{ __('Show built-in fallback', 'polytrans') }}</summary>
+        <summary>{{ __('Show built-in fallback', 'treetank-trans') }}</summary>
         <pre style="white-space:pre-wrap;max-height:260px;overflow:auto;background:#f6f7f7;border:1px solid #dcdcde;padding:10px;">{{ prompt_refinement_default_templates.prompt_refinement_workflow_adjuster_system_prompt|default('')|esc_html }}</pre>
     </details>
     <p>
-        <label for="prompt-refinement-workflow-adjuster"><strong>{{ __('Adjuster Prompt Template', 'polytrans') }}</strong></label><br>
+        <label for="prompt-refinement-workflow-adjuster"><strong>{{ __('Adjuster Prompt Template', 'treetank-trans') }}</strong></label><br>
         <textarea name="prompt_refinement_workflow_adjuster_template" id="prompt-refinement-workflow-adjuster" rows="16" style="width:100%;max-width:900px;font-family:monospace;">{{ settings.prompt_refinement_workflow_adjuster_template|default('')|esc_textarea }}</textarea>
     </p>
     <details style="max-width:900px;margin:-8px 0 16px;">
-        <summary>{{ __('Show built-in fallback', 'polytrans') }}</summary>
+        <summary>{{ __('Show built-in fallback', 'treetank-trans') }}</summary>
         <pre style="white-space:pre-wrap;max-height:260px;overflow:auto;background:#f6f7f7;border:1px solid #dcdcde;padding:10px;">{{ prompt_refinement_default_templates.prompt_refinement_workflow_adjuster_template|default('')|esc_html }}</pre>
     </details>
 
-    <h2>{{ __('Description Generators', 'polytrans') }}</h2>
+    <h2>{{ __('Description Generators', 'treetank-trans') }}</h2>
     <details style="max-width:900px;margin:0 0 16px;">
-        <summary>{{ __('Available description generator variables', 'polytrans') }}</summary>
+        <summary>{{ __('Available description generator variables', 'treetank-trans') }}</summary>
         <div style="display:grid;grid-template-columns:minmax(260px,1fr) 2fr;gap:6px 16px;margin-top:10px;">
-            <code>{{ '{{ assistant_name }}' }}</code><span>{{ __('Assistant name.', 'polytrans') }}</span>
-            <code>{{ '{{ assistant_description }}' }}</code><span>{{ __('Existing assistant description.', 'polytrans') }}</span>
-            <code>{{ '{{ assistant_provider }}' }}</code><span>{{ __('Assistant provider.', 'polytrans') }}</span>
-            <code>{{ '{{ assistant_model }}' }}</code><span>{{ __('Assistant model.', 'polytrans') }}</span>
-            <code>{{ '{{ response_format }}' }}</code><span>{{ __('Assistant or step response format.', 'polytrans') }}</span>
-            <code>{{ '{{ system_prompt }}' }}</code><span>{{ __('Assistant system prompt.', 'polytrans') }}</span>
-            <code>{{ '{{ user_message_template }}' }}</code><span>{{ __('Assistant user message template.', 'polytrans') }}</span>
-            <code>{{ '{{ expected_output_schema }}' }}</code><span>{{ __('Expected output schema when available.', 'polytrans') }}</span>
-            <code>{{ '{{ workflow_name }}' }}</code><span>{{ __('Workflow name.', 'polytrans') }}</span>
-            <code>{{ '{{ workflow_description }}' }}</code><span>{{ __('Existing workflow description.', 'polytrans') }}</span>
-            <code>{{ '{{ workflow_language }}' }}</code><span>{{ __('Workflow target language.', 'polytrans') }}</span>
-            <code>{{ '{{ workflow_steps_json }}' }}</code><span>{{ __('Compact JSON summary of all workflow steps.', 'polytrans') }}</span>
-            <code>{{ '{{ target_step_name }}' }}</code><span>{{ __('Selected workflow step name.', 'polytrans') }}</span>
-            <code>{{ '{{ target_step_description }}' }}</code><span>{{ __('Existing selected workflow step description.', 'polytrans') }}</span>
-            <code>{{ '{{ target_step_json }}' }}</code><span>{{ __('Compact JSON summary of the selected workflow step.', 'polytrans') }}</span>
-            <code>{{ '{{ previous_steps_json }}' }}</code><span>{{ __('Compact JSON summary of previous workflow steps.', 'polytrans') }}</span>
-            <code>{{ '{{ following_steps_json }}' }}</code><span>{{ __('Compact JSON summary of following workflow steps.', 'polytrans') }}</span>
+            <code>{{ '{{ assistant_name }}' }}</code><span>{{ __('Assistant name.', 'treetank-trans') }}</span>
+            <code>{{ '{{ assistant_description }}' }}</code><span>{{ __('Existing assistant description.', 'treetank-trans') }}</span>
+            <code>{{ '{{ assistant_provider }}' }}</code><span>{{ __('Assistant provider.', 'treetank-trans') }}</span>
+            <code>{{ '{{ assistant_model }}' }}</code><span>{{ __('Assistant model.', 'treetank-trans') }}</span>
+            <code>{{ '{{ response_format }}' }}</code><span>{{ __('Assistant or step response format.', 'treetank-trans') }}</span>
+            <code>{{ '{{ system_prompt }}' }}</code><span>{{ __('Assistant system prompt.', 'treetank-trans') }}</span>
+            <code>{{ '{{ user_message_template }}' }}</code><span>{{ __('Assistant user message template.', 'treetank-trans') }}</span>
+            <code>{{ '{{ expected_output_schema }}' }}</code><span>{{ __('Expected output schema when available.', 'treetank-trans') }}</span>
+            <code>{{ '{{ workflow_name }}' }}</code><span>{{ __('Workflow name.', 'treetank-trans') }}</span>
+            <code>{{ '{{ workflow_description }}' }}</code><span>{{ __('Existing workflow description.', 'treetank-trans') }}</span>
+            <code>{{ '{{ workflow_language }}' }}</code><span>{{ __('Workflow target language.', 'treetank-trans') }}</span>
+            <code>{{ '{{ workflow_steps_json }}' }}</code><span>{{ __('Compact JSON summary of all workflow steps.', 'treetank-trans') }}</span>
+            <code>{{ '{{ target_step_name }}' }}</code><span>{{ __('Selected workflow step name.', 'treetank-trans') }}</span>
+            <code>{{ '{{ target_step_description }}' }}</code><span>{{ __('Existing selected workflow step description.', 'treetank-trans') }}</span>
+            <code>{{ '{{ target_step_json }}' }}</code><span>{{ __('Compact JSON summary of the selected workflow step.', 'treetank-trans') }}</span>
+            <code>{{ '{{ previous_steps_json }}' }}</code><span>{{ __('Compact JSON summary of previous workflow steps.', 'treetank-trans') }}</span>
+            <code>{{ '{{ following_steps_json }}' }}</code><span>{{ __('Compact JSON summary of following workflow steps.', 'treetank-trans') }}</span>
         </div>
     </details>
     <p>
-        <label for="prompt-refinement-description-generator-system"><strong>{{ __('Description Generator System Prompt', 'polytrans') }}</strong></label><br>
+        <label for="prompt-refinement-description-generator-system"><strong>{{ __('Description Generator System Prompt', 'treetank-trans') }}</strong></label><br>
         <textarea name="prompt_refinement_description_generator_system_prompt" id="prompt-refinement-description-generator-system" rows="5" style="width:100%;max-width:900px;font-family:monospace;">{{ settings.prompt_refinement_description_generator_system_prompt|default('')|esc_textarea }}</textarea>
     </p>
     <details style="max-width:900px;margin:-8px 0 16px;">
-        <summary>{{ __('Show built-in fallback', 'polytrans') }}</summary>
+        <summary>{{ __('Show built-in fallback', 'treetank-trans') }}</summary>
         <pre style="white-space:pre-wrap;max-height:260px;overflow:auto;background:#f6f7f7;border:1px solid #dcdcde;padding:10px;">{{ prompt_refinement_default_templates.prompt_refinement_description_generator_system_prompt|default('')|esc_html }}</pre>
     </details>
     <p>
-        <label for="prompt-refinement-assistant-description-generator"><strong>{{ __('Assistant Description Prompt Template', 'polytrans') }}</strong></label><br>
+        <label for="prompt-refinement-assistant-description-generator"><strong>{{ __('Assistant Description Prompt Template', 'treetank-trans') }}</strong></label><br>
         <textarea name="prompt_refinement_assistant_description_generator_template" id="prompt-refinement-assistant-description-generator" rows="12" style="width:100%;max-width:900px;font-family:monospace;">{{ settings.prompt_refinement_assistant_description_generator_template|default('')|esc_textarea }}</textarea>
     </p>
     <details style="max-width:900px;margin:-8px 0 16px;">
-        <summary>{{ __('Show built-in fallback', 'polytrans') }}</summary>
+        <summary>{{ __('Show built-in fallback', 'treetank-trans') }}</summary>
         <pre style="white-space:pre-wrap;max-height:260px;overflow:auto;background:#f6f7f7;border:1px solid #dcdcde;padding:10px;">{{ prompt_refinement_default_templates.prompt_refinement_assistant_description_generator_template|default('')|esc_html }}</pre>
     </details>
     <p>
-        <label for="prompt-refinement-workflow-description-generator"><strong>{{ __('Workflow Description Prompt Template', 'polytrans') }}</strong></label><br>
+        <label for="prompt-refinement-workflow-description-generator"><strong>{{ __('Workflow Description Prompt Template', 'treetank-trans') }}</strong></label><br>
         <textarea name="prompt_refinement_workflow_description_generator_template" id="prompt-refinement-workflow-description-generator" rows="10" style="width:100%;max-width:900px;font-family:monospace;">{{ settings.prompt_refinement_workflow_description_generator_template|default('')|esc_textarea }}</textarea>
     </p>
     <details style="max-width:900px;margin:-8px 0 16px;">
-        <summary>{{ __('Show built-in fallback', 'polytrans') }}</summary>
+        <summary>{{ __('Show built-in fallback', 'treetank-trans') }}</summary>
         <pre style="white-space:pre-wrap;max-height:260px;overflow:auto;background:#f6f7f7;border:1px solid #dcdcde;padding:10px;">{{ prompt_refinement_default_templates.prompt_refinement_workflow_description_generator_template|default('')|esc_html }}</pre>
     </details>
     <p>
-        <label for="prompt-refinement-workflow-step-description-generator"><strong>{{ __('Workflow Step Description Prompt Template', 'polytrans') }}</strong></label><br>
+        <label for="prompt-refinement-workflow-step-description-generator"><strong>{{ __('Workflow Step Description Prompt Template', 'treetank-trans') }}</strong></label><br>
         <textarea name="prompt_refinement_workflow_step_description_generator_template" id="prompt-refinement-workflow-step-description-generator" rows="14" style="width:100%;max-width:900px;font-family:monospace;">{{ settings.prompt_refinement_workflow_step_description_generator_template|default('')|esc_textarea }}</textarea>
     </p>
     <details style="max-width:900px;margin:-8px 0 16px;">
-        <summary>{{ __('Show built-in fallback', 'polytrans') }}</summary>
+        <summary>{{ __('Show built-in fallback', 'treetank-trans') }}</summary>
         <pre style="white-space:pre-wrap;max-height:260px;overflow:auto;background:#f6f7f7;border:1px solid #dcdcde;padding:10px;">{{ prompt_refinement_default_templates.prompt_refinement_workflow_step_description_generator_template|default('')|esc_html }}</pre>
     </details>
 </div><br>

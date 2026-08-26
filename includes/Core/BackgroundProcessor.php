@@ -249,7 +249,7 @@ class BackgroundProcessor
                 $log[] = [
                     'timestamp' => time(),
                     /* translators: %s: error message */
-                    'msg' => sprintf(__('Background process failed: %s', 'polytrans'), $e->getMessage())
+                    'msg' => sprintf(__('Background process failed: %s', 'treetank-trans'), $e->getMessage())
                 ];
                 update_post_meta($post_id, $log_key, $log);
             }
@@ -412,7 +412,7 @@ class BackgroundProcessor
             update_post_meta($post_id, $status_key, 'failed');
             $log[] = [
                 'timestamp' => time(),
-                'msg' => __('Translation failed: Post not found.', 'polytrans')
+                'msg' => __('Translation failed: Post not found.', 'treetank-trans')
             ];
             update_post_meta($post_id, $log_key, $log);
             return;
@@ -431,7 +431,7 @@ class BackgroundProcessor
         $log[] = [
             'timestamp' => time(),
             /* translators: %s: translation provider name */
-            'msg' => sprintf(__('Starting translation with %s.', 'polytrans'), ucfirst($translation_provider))
+            'msg' => sprintf(__('Starting translation with %s.', 'treetank-trans'), ucfirst($translation_provider))
         ];
         update_post_meta($post_id, $log_key, $log);
 
@@ -510,7 +510,7 @@ class BackgroundProcessor
 
             if (!$provider) {
                 /* translators: %s: translation provider name */
-                throw new Exception(sprintf(__('Translation provider %s not found.', 'polytrans'), $translation_provider));
+                throw new Exception(sprintf(__('Translation provider %s not found.', 'treetank-trans'), $translation_provider));
             }
 
             // Use the provider to translate
@@ -533,7 +533,7 @@ class BackgroundProcessor
             }
 
             if (!$translation_result['success']) {
-                throw new Exception($translation_result['error'] ?? __('Unknown translation error.', 'polytrans'));
+                throw new Exception($translation_result['error'] ?? __('Unknown translation error.', 'treetank-trans'));
             }
 
             self::log("Translation received from provider, processing result", "info", [
@@ -570,7 +570,7 @@ class BackgroundProcessor
             $result = $coordinator->process_translation($request_data);
 
             if (!$result['success']) {
-                throw new Exception($result['error'] ?? __('Failed to process translation.', 'polytrans'));
+                throw new Exception($result['error'] ?? __('Failed to process translation.', 'treetank-trans'));
             }
 
             // Update success status and log
@@ -583,7 +583,7 @@ class BackgroundProcessor
                 'timestamp' => time(),
                 'msg' => sprintf(
                     /* translators: %1$s: edit post URL, %2$d: created post ID */
-                    __('Translation completed successfully. New post ID: <a href="%1$s">%2$d</a>', 'polytrans'),
+                    __('Translation completed successfully. New post ID: <a href="%1$s">%2$d</a>', 'treetank-trans'),
                     esc_url(admin_url('post.php?post=' . $result['created_post_id'] . '&action=edit')),
                     $result['created_post_id']
                 )
@@ -629,7 +629,7 @@ class BackgroundProcessor
             $log[] = [
                 'timestamp' => time(),
                 /* translators: %s: error message */
-                'msg' => sprintf(__('Translation failed: %s', 'polytrans'), $e->getMessage())
+                'msg' => sprintf(__('Translation failed: %s', 'treetank-trans'), $e->getMessage())
             ];
 
             self::log("Translation failed: " . $e->getMessage(), "error", [
@@ -646,7 +646,7 @@ class BackgroundProcessor
             'timestamp' => time(),
             'msg' => sprintf(
                 /* translators: %s: URL to system logs page */
-                __('Process complete. View detailed <a href="%s" target="_blank">system logs</a>.', 'polytrans'),
+                __('Process complete. View detailed <a href="%s" target="_blank">system logs</a>.', 'treetank-trans'),
                 esc_url($logs_url)
             )
         ];

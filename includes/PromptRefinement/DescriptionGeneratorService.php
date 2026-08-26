@@ -67,7 +67,7 @@ final class DescriptionGeneratorService
     ) {
         $target_step = $this->findStep($workflow, $targetStepId);
         if (!$target_step) {
-            return new \WP_Error('description_target_step_not_found', __('Selected workflow step was not found.', 'polytrans'));
+            return new \WP_Error('description_target_step_not_found', __('Selected workflow step was not found.', 'treetank-trans'));
         }
 
         $systemPromptTemplate = trim($systemPromptTemplate) !== ''
@@ -98,7 +98,7 @@ final class DescriptionGeneratorService
     ) {
         $target_step = $this->findStep($workflow, $targetStepId);
         if (!$target_step) {
-            return new \WP_Error('criteria_target_step_not_found', __('Selected workflow step was not found.', 'polytrans'));
+            return new \WP_Error('criteria_target_step_not_found', __('Selected workflow step was not found.', 'treetank-trans'));
         }
 
         $systemPromptTemplate = trim($systemPromptTemplate) !== ''
@@ -151,7 +151,7 @@ final class DescriptionGeneratorService
 
         $parsed = $this->parseDescription((string) ($response['content'] ?? ''));
         if ($parsed === '') {
-            return new \WP_Error($errorPrefix . '_empty_description', __('Description generator did not return a usable description.', 'polytrans'));
+            return new \WP_Error($errorPrefix . '_empty_description', __('Description generator did not return a usable description.', 'treetank-trans'));
         }
 
         return [

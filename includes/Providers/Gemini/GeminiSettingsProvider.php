@@ -26,12 +26,12 @@ class GeminiSettingsProvider implements SettingsProviderInterface
     
     public function get_tab_label()
     {
-        return __('Gemini Configuration', 'polytrans');
+        return __('Gemini Configuration', 'treetank-trans');
     }
     
     public function get_tab_description()
     {
-        return __('Configure your Gemini API key and settings for AI-powered translations.', 'polytrans');
+        return __('Configure your Gemini API key and settings for AI-powered translations.', 'treetank-trans');
     }
     
     public function get_required_js_files()

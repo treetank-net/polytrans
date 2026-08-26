@@ -1,14 +1,14 @@
 {% set language_pairs = get_language_pairs(langs) %}
 {% if langs is empty %}
-    <p><em>{{ __('No languages configured. Please configure languages in Basic Settings first.', 'polytrans') }}</em></p>
+    <p><em>{{ __('No languages configured. Please configure languages in Basic Settings first.', 'treetank-trans') }}</em></p>
 {% elseif language_pairs is empty %}
-    <p><em>{{ __('No language pairs available.', 'polytrans') }}</em></p>
+    <p><em>{{ __('No language pairs available.', 'treetank-trans') }}</em></p>
 {% else %}
     <table class="widefat fixed striped" style="margin-top: 10px;">
         <thead>
             <tr>
-                <th style="width: 30%;">{{ __('Language Pair', 'polytrans') }}</th>
-                <th style="width: 70%;">{{ __('Assistant', 'polytrans') }}</th>
+                <th style="width: 30%;">{{ __('Language Pair', 'treetank-trans') }}</th>
+                <th style="width: 70%;">{{ __('Assistant', 'treetank-trans') }}</th>
             </tr>
         </thead>
         <tbody>
@@ -37,12 +37,12 @@
                             data-pair="{{ assistant_key|esc_attr }}"
                             data-selected="{{ selected_assistant|esc_attr }}"
                             style="width: 100%; max-width: 500px;">
-                            <option value="">{{ __('Loading providers/assistants...', 'polytrans') }}</option>
+                            <option value="">{{ __('Loading providers/assistants...', 'treetank-trans') }}</option>
                         </select>
 
                         {% if selected_assistant is not empty %}
                             <div style="font-size: 12px; color: #666; margin-top: 4px;">
-                                {{ __('Current: %s', 'polytrans')|format(selected_assistant)|esc_html }}
+                                {{ __('Current: %s', 'treetank-trans')|format(selected_assistant)|esc_html }}
                             </div>
                         {% endif %}
                     </td>

@@ -39,18 +39,18 @@ final class WorkflowRefinementService
         $overrideExpectedOutputSchema = null
     ) {
         if (empty($workflow)) {
-            return new \WP_Error('workflow_refinement_missing_workflow', __('Workflow data is required.', 'polytrans'));
+            return new \WP_Error('workflow_refinement_missing_workflow', __('Workflow data is required.', 'treetank-trans'));
         }
         if ($targetStepId === '') {
-            return new \WP_Error('workflow_refinement_missing_target_step', __('Select a workflow step to refine.', 'polytrans'));
+            return new \WP_Error('workflow_refinement_missing_target_step', __('Select a workflow step to refine.', 'treetank-trans'));
         }
         if ($selectedPostId <= 0) {
-            return new \WP_Error('workflow_refinement_invalid_post', __('Select a valid post for refinement.', 'polytrans'));
+            return new \WP_Error('workflow_refinement_invalid_post', __('Select a valid post for refinement.', 'treetank-trans'));
         }
 
         $target_step = $this->findRefinableStep($workflow, $targetStepId);
         if (!$target_step) {
-            return new \WP_Error('workflow_refinement_invalid_target_step', __('Selected workflow step is not a refinable assistant step.', 'polytrans'));
+            return new \WP_Error('workflow_refinement_invalid_target_step', __('Selected workflow step is not a refinable assistant step.', 'treetank-trans'));
         }
 
         $target_type = (string) ($target_step['type'] ?? '');
@@ -61,7 +61,7 @@ final class WorkflowRefinementService
 
         $context = $this->buildContextFromPost($selectedPostId, $sourceLanguage, $targetLanguage);
         if (!is_array($context)) {
-            return new \WP_Error('workflow_refinement_post_not_found', __('Selected post was not found.', 'polytrans'));
+            return new \WP_Error('workflow_refinement_post_not_found', __('Selected post was not found.', 'treetank-trans'));
         }
 
         $prompt_overrides = [];
@@ -109,7 +109,7 @@ final class WorkflowRefinementService
         $run_payload = $this->buildRunPayload($run_id, $workflow, $target_step, $assistant, $context, $workflow_result, $used_prompt_pack);
 
         if (!$this->persistRunPayload($run_id, $run_payload)) {
-            return new \WP_Error('workflow_refinement_run_persist_failed', __('Failed to persist workflow run. Please retry.', 'polytrans'));
+            return new \WP_Error('workflow_refinement_run_persist_failed', __('Failed to persist workflow run. Please retry.', 'treetank-trans'));
         }
 
         return $this->buildRunResponse($run_payload);
@@ -131,10 +131,10 @@ final class WorkflowRefinementService
     )
     {
         if ($runId === '') {
-            return new \WP_Error('workflow_refinement_missing_run_id', __('Run ID is required.', 'polytrans'));
+            return new \WP_Error('workflow_refinement_missing_run_id', __('Run ID is required.', 'treetank-trans'));
         }
         if ($criteria === '') {
-            return new \WP_Error('workflow_refinement_missing_criteria', __('Refinement criteria is required.', 'polytrans'));
+            return new \WP_Error('workflow_refinement_missing_criteria', __('Refinement criteria is required.', 'treetank-trans'));
         }
         if (trim($evaluatorPromptTemplate) === '') {
             $evaluatorPromptTemplate = PromptRefinementSettings::workflowEvaluator();
@@ -145,10 +145,10 @@ final class WorkflowRefinementService
 
         $run_payload = $this->loadRunPayload($runId);
         if (!is_array($run_payload)) {
-            return new \WP_Error('workflow_refinement_run_not_found', __('Workflow run not found or expired. Run workflow again.', 'polytrans'));
+            return new \WP_Error('workflow_refinement_run_not_found', __('Workflow run not found or expired. Run workflow again.', 'treetank-trans'));
         }
         if ($targetStepId !== '' && (string) ($run_payload['target_step_id'] ?? '') !== $targetStepId) {
-            return new \WP_Error('workflow_refinement_run_mismatch', __('Run ID does not belong to the selected workflow step.', 'polytrans'));
+            return new \WP_Error('workflow_refinement_run_mismatch', __('Run ID does not belong to the selected workflow step.', 'treetank-trans'));
         }
 
         $evaluation = $this->evaluateWorkflowRun($run_payload, $criteria, $workflowPurpose, $promptObjective, $evaluatorPromptTemplate, $evaluatorSystemPromptTemplate);
@@ -200,7 +200,7 @@ final class WorkflowRefinementService
         $refinementHistoryPayload = '[]'
     ) {
         if ($criteria === '') {
-            return new \WP_Error('missing_refinement_criteria', __('Refinement criteria is required.', 'polytrans'));
+            return new \WP_Error('missing_refinement_criteria', __('Refinement criteria is required.', 'treetank-trans'));
         }
         if (trim($adjusterPromptTemplate) === '') {
             $adjusterPromptTemplate = PromptRefinementSettings::workflowAdjuster();
@@ -213,7 +213,7 @@ final class WorkflowRefinementService
         if ($targetStepId !== '' && !empty($workflow)) {
             $target_step = $this->findRefinableStep($workflow, $targetStepId);
             if (!$target_step) {
-                return new \WP_Error('workflow_refinement_invalid_target_step', __('Selected workflow step is not a refinable assistant step.', 'polytrans'));
+                return new \WP_Error('workflow_refinement_invalid_target_step', __('Selected workflow step is not a refinable assistant step.', 'treetank-trans'));
             }
         }
 
@@ -226,12 +226,12 @@ final class WorkflowRefinementService
             $should_adjust_expected_output_schema = $this->shouldAdjustTargetExpectedOutputSchema($target_step, $assistant);
         } else {
             if ($assistantId <= 0) {
-                return new \WP_Error('invalid_assistant_id', __('Invalid assistant ID.', 'polytrans'));
+                return new \WP_Error('invalid_assistant_id', __('Invalid assistant ID.', 'treetank-trans'));
             }
 
             $assistant = AssistantManager::get_assistant($assistantId);
             if (!$assistant) {
-                return new \WP_Error('assistant_not_found', __('Assistant not found.', 'polytrans'));
+                return new \WP_Error('assistant_not_found', __('Assistant not found.', 'treetank-trans'));
             }
             $current_prompt_pack = PromptPackNormalizer::fromAssistant($assistant);
             $should_adjust_expected_output_schema = PromptPackNormalizer::shouldAdjustExpectedOutputSchema($assistant);
@@ -241,7 +241,7 @@ final class WorkflowRefinementService
 
         $evaluations = $this->decodeEvaluations($evaluationsPayload);
         if (empty($evaluations)) {
-            return new \WP_Error('missing_evaluations', __('At least one evaluated workflow run is required.', 'polytrans'));
+            return new \WP_Error('missing_evaluations', __('At least one evaluated workflow run is required.', 'treetank-trans'));
         }
 
         if ($currentSystemPrompt !== null) {
@@ -374,7 +374,7 @@ final class WorkflowRefinementService
         }
 
         if ($targetStepType !== '' && $targetStepType !== 'managed_assistant') {
-            return new \WP_Error('workflow_refinement_unsupported_target', __('Selected workflow step type cannot be updated by prompt refinement.', 'polytrans'));
+            return new \WP_Error('workflow_refinement_unsupported_target', __('Selected workflow step type cannot be updated by prompt refinement.', 'treetank-trans'));
         }
 
         return (new AssistantRefinementService())->applyPromptPack(
@@ -398,29 +398,29 @@ final class WorkflowRefinementService
         $basePromptPack
     ) {
         if ($targetStepId === '') {
-            return new \WP_Error('workflow_refinement_missing_target_step', __('Select a workflow step to refine.', 'polytrans'));
+            return new \WP_Error('workflow_refinement_missing_target_step', __('Select a workflow step to refine.', 'treetank-trans'));
         }
         if (trim($systemPrompt) === '') {
-            return new \WP_Error('empty_system_prompt', __('System prompt cannot be empty.', 'polytrans'));
+            return new \WP_Error('empty_system_prompt', __('System prompt cannot be empty.', 'treetank-trans'));
         }
         if (trim($userMessageTemplate) === '') {
-            return new \WP_Error('empty_user_message_template', __('User message template cannot be empty.', 'polytrans'));
+            return new \WP_Error('empty_user_message_template', __('User message template cannot be empty.', 'treetank-trans'));
         }
 
         $workflow_id = (string) ($workflow['id'] ?? '');
         if ($workflow_id === '') {
-            return new \WP_Error('workflow_refinement_missing_workflow', __('Workflow data is required.', 'polytrans'));
+            return new \WP_Error('workflow_refinement_missing_workflow', __('Workflow data is required.', 'treetank-trans'));
         }
 
         $storage = new WorkflowStorageManager();
         $stored_workflow = $storage->get_workflow($workflow_id);
         if (!is_array($stored_workflow)) {
-            return new \WP_Error('workflow_refinement_workflow_not_found', __('Workflow was not found. Save the workflow before applying prompt changes.', 'polytrans'));
+            return new \WP_Error('workflow_refinement_workflow_not_found', __('Workflow was not found. Save the workflow before applying prompt changes.', 'treetank-trans'));
         }
 
         $step_index = $this->findStepIndexById($stored_workflow, $targetStepId);
         if ($step_index === null || (($stored_workflow['steps'][$step_index]['type'] ?? '') !== 'ai_assistant')) {
-            return new \WP_Error('workflow_refinement_invalid_target_step', __('Selected workflow step is not a custom AI assistant step.', 'polytrans'));
+            return new \WP_Error('workflow_refinement_invalid_target_step', __('Selected workflow step is not a custom AI assistant step.', 'treetank-trans'));
         }
 
         $current_prompt_pack = PromptPackNormalizer::fromWorkflowAiStep($stored_workflow['steps'][$step_index]);
@@ -428,7 +428,7 @@ final class WorkflowRefinementService
         if ($base_prompt_pack && !$this->promptPacksMatch($current_prompt_pack, $base_prompt_pack)) {
             return new \WP_Error(
                 'workflow_refinement_prompt_conflict',
-                __('The target workflow step changed since refinement started. Refresh the workflow and run refinement again before applying.', 'polytrans'),
+                __('The target workflow step changed since refinement started. Refresh the workflow and run refinement again before applying.', 'treetank-trans'),
                 [
                     'current_prompt_pack' => $current_prompt_pack,
                     'base_prompt_pack' => $base_prompt_pack,
@@ -444,7 +444,7 @@ final class WorkflowRefinementService
         if (empty($save_result['success'])) {
             return new \WP_Error(
                 'workflow_refinement_workflow_save_failed',
-                __('Failed to save workflow prompt changes.', 'polytrans'),
+                __('Failed to save workflow prompt changes.', 'treetank-trans'),
                 $save_result['errors'] ?? []
             );
         }
@@ -515,10 +515,10 @@ final class WorkflowRefinementService
             $assistant_id = (int) ($targetStep['assistant_id'] ?? 0);
             $assistant = AssistantManager::get_assistant($assistant_id);
             if (!$assistant) {
-                return new \WP_Error('workflow_refinement_assistant_not_found', __('Target assistant was not found.', 'polytrans'));
+                return new \WP_Error('workflow_refinement_assistant_not_found', __('Target assistant was not found.', 'treetank-trans'));
             }
             if (($assistant['status'] ?? 'active') !== 'active') {
-                return new \WP_Error('workflow_refinement_assistant_inactive', __('Target assistant is inactive.', 'polytrans'));
+                return new \WP_Error('workflow_refinement_assistant_inactive', __('Target assistant is inactive.', 'treetank-trans'));
             }
 
             return $assistant;
@@ -526,7 +526,7 @@ final class WorkflowRefinementService
 
         if ($target_type === 'ai_assistant') {
             if (trim((string) ($targetStep['system_prompt'] ?? '')) === '' || trim((string) ($targetStep['user_message'] ?? '')) === '') {
-                return new \WP_Error('workflow_refinement_invalid_custom_step', __('Custom AI assistant steps need both system prompt and user message to be refined.', 'polytrans'));
+                return new \WP_Error('workflow_refinement_invalid_custom_step', __('Custom AI assistant steps need both system prompt and user message to be refined.', 'treetank-trans'));
             }
 
             $api_parameters = [];
@@ -542,7 +542,7 @@ final class WorkflowRefinementService
 
             return [
                 'id' => 0,
-                'name' => (string) ($targetStep['name'] ?? __('Custom workflow AI step', 'polytrans')),
+                'name' => (string) ($targetStep['name'] ?? __('Custom workflow AI step', 'treetank-trans')),
                 'description' => (string) ($targetStep['description'] ?? ''),
                 'provider' => $this->resolvePromptRunnerProvider($targetStep),
                 'status' => 'active',
@@ -556,7 +556,7 @@ final class WorkflowRefinementService
             ];
         }
 
-        return new \WP_Error('workflow_refinement_unsupported_target', __('Selected workflow step type cannot be refined.', 'polytrans'));
+        return new \WP_Error('workflow_refinement_unsupported_target', __('Selected workflow step type cannot be refined.', 'treetank-trans'));
     }
 
     /**
@@ -636,7 +636,7 @@ final class WorkflowRefinementService
             return $assistant_description;
         }
 
-        return __('Preserve the selected workflow step original purpose and existing behavioral contract while applying the refinement criteria.', 'polytrans');
+        return __('Preserve the selected workflow step original purpose and existing behavioral contract while applying the refinement criteria.', 'treetank-trans');
     }
 
     /**
@@ -654,7 +654,7 @@ final class WorkflowRefinementService
             return $workflow_description;
         }
 
-        return __('Preserve the overall workflow purpose and final output quality while applying the selected step refinement criteria.', 'polytrans');
+        return __('Preserve the overall workflow purpose and final output quality while applying the selected step refinement criteria.', 'treetank-trans');
     }
 
     /**
@@ -856,7 +856,7 @@ final class WorkflowRefinementService
     {
         $assistant = is_array($runPayload['assistant_config'] ?? null) ? $runPayload['assistant_config'] : [];
         if (empty($assistant)) {
-            return new \WP_Error('workflow_refinement_missing_assistant', __('Stored workflow run is missing assistant configuration.', 'polytrans'));
+            return new \WP_Error('workflow_refinement_missing_assistant', __('Stored workflow run is missing assistant configuration.', 'treetank-trans'));
         }
 
         $target_step_result = is_array($runPayload['target_step_result'] ?? null) ? $runPayload['target_step_result'] : [];

@@ -46,7 +46,7 @@ class UsageMetaBox
 
         add_meta_box(
             'polytrans_usage',
-            __('AI Cost', 'polytrans'),
+            __('AI Cost', 'treetank-trans'),
             [$this, 'render'],
             $post_type,
             'side',
@@ -85,7 +85,7 @@ class UsageMetaBox
         $summary = UsageRecorder::get_post_summary($post->ID);
 
         if (!$summary) {
-            echo '<p>' . esc_html__('No AI calls recorded for this post.', 'polytrans') . '</p>';
+            echo '<p>' . esc_html__('No AI calls recorded for this post.', 'treetank-trans') . '</p>';
             return;
         }
 
