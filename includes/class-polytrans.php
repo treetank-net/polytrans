@@ -51,6 +51,7 @@ class PolyTrans
             \PolyTrans\Core\UsageMetaBox::get_instance()->register($post_type, $post);
         }, 10, 2);
         add_action('save_post', [$this, 'save_post_meta']);
+        \PolyTrans\Core\SettingsAuditLog::register();
 
         // AJAX handlers
         add_action('wp_ajax_polytrans_schedule_translation', [$this, 'ajax_schedule_translation']);
