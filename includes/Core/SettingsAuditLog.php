@@ -69,6 +69,11 @@ class SettingsAuditLog
             return;
         }
 
+        // The message is deliberately complete: whole old and new values, option name,
+        // user ID, change count. It reads a bit verbose (a list shows both full arrays,
+        // not just "+lt"); accepted as is for now. If it gets in the way, shorten it
+        // here — e.g. show lists as added/removed items — and keep the full values in
+        // the context below, which is what a reader should dig into.
         $actor = self::describe_actor();
         $lines = array_map(
             static fn(array $c) => sprintf('%s: %s → %s', $c['key'], $c['old'], $c['new']),
