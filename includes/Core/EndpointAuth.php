@@ -23,7 +23,7 @@ if (!defined('ABSPATH')) {
  *
  * in `wp-config.php`. Without the constant a stored "none" is treated as an
  * unfinished configuration and the endpoint stays closed — never as consent.
- * Pair it with the IP allow-list under TreeTank → Settings → Advanced.
+ * Pair it with the IP allow-list under Translations → Settings → Advanced.
  *
  * The plugin was renamed after that constant shipped, and it lives in the site
  * owner's `wp-config.php`, where nothing we do can update it. So the old name
@@ -93,7 +93,7 @@ class EndpointAuth
         return sprintf(
             /* translators: %s: name of the PHP constant that enables unauthenticated endpoints. */
             __(
-                'TreeTank: the receiver authentication method is set to "none", so the translation endpoints are closed. Set a secret under TreeTank → Settings → Advanced, or define %s as true in wp-config.php if this site really should accept unauthenticated requests.',
+                'The receiver authentication method is set to "none", so the translation endpoints are closed. Set a secret under Translations → Settings → Advanced, or define %s as true in wp-config.php if this site really should accept unauthenticated requests.',
                 'treetank-trans'
             ),
             self::CONSTANT

@@ -768,7 +768,7 @@
 
         function cleanupLogs(mode) {
             var truncate = mode === 'all';
-            if (truncate && !confirm('Truncate all TreeTank database logs? This cannot be undone.')) {
+            if (truncate && !confirm('Truncate all translation logs in the database? This cannot be undone.')) {
                 return;
             }
 

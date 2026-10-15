@@ -38,6 +38,11 @@ It is for our own sites, which have `polytrans/polytrans.php` active — a diffe
 directory or main file would deactivate the plugin on update. Nothing at runtime may
 depend on the main file's name.
 
+The second name lives only in the `INTERNAL_PACKAGE_NAME` variable of that job. Code
+never spells a product name: it calls `Core\PluginInfo::name()`, which reads the
+`Plugin Name:` header the build rewrites. The admin menu is a neutral "Translations",
+and help texts point to "Translations → …", so neither needs to know the brand.
+
 **Never run a bare `sed s/polytrans/treetank-trans/g`.** It would rewrite table names,
 option keys and meta keys. The text domain pattern needs its context: `'polytrans')`.
 `AjaxRegistrationTest` passing unchanged is the evidence that a sed stayed in scope.

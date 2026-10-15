@@ -57,8 +57,8 @@ class SettingsMenu
         // in a spot nobody chose. ACF (80) and others crowd the same slot, so the
         // resulting order changed with whatever else the site had installed.
         add_menu_page(
-            __('TreeTank Translation Workflows', 'treetank-trans'),
-            __('TreeTank', 'treetank-trans'),
+            \PolyTrans\Core\PluginInfo::name(),
+            __('Translations', 'treetank-trans'),
             'edit_posts',
             'polytrans',
             [$this, 'render_overview'],
@@ -162,6 +162,7 @@ class SettingsMenu
         // phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped -- Twig templates handle escaping
         echo TemplateRenderer::render('admin/settings/overview.twig', [
             'can_manage_options' => current_user_can('manage_options'),
+            'product_name' => \PolyTrans\Core\PluginInfo::name(),
         ]);
         // phpcs:enable WordPress.Security.EscapeOutput.OutputNotEscaped
     }

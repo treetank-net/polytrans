@@ -44,7 +44,7 @@ class SecurityManager
         if (!$secret) {
             \PolyTrans_Logs_Manager::log(
                 'Translation receiver request rejected: no receiver secret is configured. '
-                    . 'Set one under TreeTank → Settings → Advanced.',
+                    . 'Set one under Translations → Settings → Advanced.',
                 'warning'
             );
             return false;

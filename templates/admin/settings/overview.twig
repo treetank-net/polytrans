@@ -1,8 +1,9 @@
 <div class="wrap">
-    <h1>{{ __('TreeTank Translation Workflows', 'treetank-trans')|esc_html }}</h1>
+    <h1>{{ product_name|esc_html }}</h1>
 
     <div class="card">
-        <h2>{{ __('Welcome to TreeTank Translation Workflows', 'treetank-trans')|esc_html }}</h2>
+        {# translators: %s: product name. #}
+        <h2>{{ __('Welcome to %s', 'treetank-trans')|format(product_name)|esc_html }}</h2>
         <p>{{ __('This plugin is a translation automation tool that helps you manage multilingual content.', 'treetank-trans')|esc_html }}</p>
 
         <h3>{{ __('Quick Links', 'treetank-trans')|esc_html }}</h3>

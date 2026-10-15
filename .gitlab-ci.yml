@@ -162,6 +162,10 @@ build:
   stage: build
   tags:
     - vps
+  variables:
+    # Display name of the internal package. The code reads the product name from the
+    # `Plugin Name:` header, so this is the only place the second name exists.
+    INTERNAL_PACKAGE_NAME: "PolyTrans"
   # A tag must be built only after the same tagged commit passes every blocking gate.
   needs:
     - job: unit-tests
@@ -229,13 +233,14 @@ build:
     # Internal PolyTrans package for our own (Trans) sites. Same files, but in the
     # directory and main file those installations already have active
     # (`polytrans/polytrans.php`), so updating it does not deactivate the plugin.
-    # Only the display name changes; the text domain stays `treetank-trans`,
-    # because that is what the code and the files in languages/ use.
+    # Only the `Plugin Name:` header changes, and every screen showing the product
+    # name reads it from there. The text domain stays `treetank-trans`, because
+    # that is what the code and the files in languages/ use.
     - cp -a release/treetank-trans release/polytrans
     - mv release/polytrans/treetank-trans.php release/polytrans/polytrans.php
     - |
-      sed -i '0,/^ \* Plugin Name:.*/s// * Plugin Name: PolyTrans/' release/polytrans/polytrans.php
-      if ! grep -q '^ \* Plugin Name: PolyTrans$' release/polytrans/polytrans.php || [ -e release/polytrans/treetank-trans.php ]; then
+      sed -i "0,/^ \* Plugin Name:.*/s// * Plugin Name: ${INTERNAL_PACKAGE_NAME}/" release/polytrans/polytrans.php
+      if ! grep -qx " \* Plugin Name: ${INTERNAL_PACKAGE_NAME}" release/polytrans/polytrans.php || [ -e release/polytrans/treetank-trans.php ]; then
         echo "❌ PolyTrans package: main file or plugin name not rewritten"; exit 1
       fi
       echo "✅ PolyTrans package prepared"
