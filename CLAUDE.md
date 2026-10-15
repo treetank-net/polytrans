@@ -32,6 +32,12 @@ installations' data or break integrations:
 | `polytrans-dev` compose service, `polytrans-*` script/style handles | Local labels |
 | GitHub mirror URLs in `.gitlab-ci.yml` | Repository not renamed yet |
 
+The `build` job also produces `polytrans.zip` (registry package `polytrans`): the same
+tree with the main file renamed to `polytrans/polytrans.php` and `Plugin Name: PolyTrans`.
+It is for our own sites, which have `polytrans/polytrans.php` active — a different
+directory or main file would deactivate the plugin on update. Nothing at runtime may
+depend on the main file's name.
+
 **Never run a bare `sed s/polytrans/treetank-trans/g`.** It would rewrite table names,
 option keys and meta keys. The text domain pattern needs its context: `'polytrans')`.
 `AjaxRegistrationTest` passing unchanged is the evidence that a sed stayed in scope.

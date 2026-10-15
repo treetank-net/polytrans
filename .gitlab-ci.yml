@@ -226,16 +226,34 @@ build:
       fi
       echo "✅ Version metadata consistent"
 
+    # Internal PolyTrans package for our own (Trans) sites. Same files, but in the
+    # directory and main file those installations already have active
+    # (`polytrans/polytrans.php`), so updating it does not deactivate the plugin.
+    # Only the display name changes; the text domain stays `treetank-trans`,
+    # because that is what the code and the files in languages/ use.
+    - cp -a release/treetank-trans release/polytrans
+    - mv release/polytrans/treetank-trans.php release/polytrans/polytrans.php
+    - |
+      sed -i '0,/^ \* Plugin Name:.*/s// * Plugin Name: PolyTrans/' release/polytrans/polytrans.php
+      if ! grep -q '^ \* Plugin Name: PolyTrans$' release/polytrans/polytrans.php || [ -e release/polytrans/treetank-trans.php ]; then
+        echo "❌ PolyTrans package: main file or plugin name not rewritten"; exit 1
+      fi
+      echo "✅ PolyTrans package prepared"
+
     # Create ZIP archives
     - cd release
     - zip -r treetank-trans-${VERSION}.zip treetank-trans/
     - zip -r treetank-trans.zip treetank-trans/
+    - zip -r polytrans-${VERSION}.zip polytrans/
+    - zip -r polytrans.zip polytrans/
     - cd ..
 
     # Generate checksums
     - cd release
     - sha256sum treetank-trans-${VERSION}.zip > treetank-trans-${VERSION}.zip.sha256
     - sha256sum treetank-trans.zip > treetank-trans.zip.sha256
+    - sha256sum polytrans-${VERSION}.zip > polytrans-${VERSION}.zip.sha256
+    - sha256sum polytrans.zip > polytrans.zip.sha256
     - cd ..
 
     - echo "✅ Build complete! Archives created:"
@@ -253,6 +271,18 @@ build:
         curl --fail --header "JOB-TOKEN: ${CI_JOB_TOKEN}" \
              --upload-file "release/${FILE}" \
              "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/treetank-trans/latest/${FILE}"
+      done
+    - |
+      for FILE in polytrans.zip polytrans.zip.sha256 polytrans-${VERSION}.zip polytrans-${VERSION}.zip.sha256; do
+        curl --fail --header "JOB-TOKEN: ${CI_JOB_TOKEN}" \
+             --upload-file "release/${FILE}" \
+             "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/polytrans/${VERSION}/${FILE}"
+      done
+    - |
+      for FILE in polytrans.zip polytrans.zip.sha256; do
+        curl --fail --header "JOB-TOKEN: ${CI_JOB_TOKEN}" \
+             --upload-file "release/${FILE}" \
+             "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/polytrans/latest/${FILE}"
       done
     - echo "✅ Uploaded to Package Registry"
   artifacts:
@@ -526,6 +556,7 @@ release:
     - |
       DESCRIPTION=$(cat /tmp/release_description.md)
       PKG_BASE="${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/treetank-trans"
+      PT_BASE="${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/polytrans"
       curl --fail --request POST \
         --header "JOB-TOKEN: ${CI_JOB_TOKEN}" \
         --header "Content-Type: application/json" \
@@ -553,6 +584,26 @@ release:
               {
                 \"name\": \"treetank-trans-${VERSION}.zip.sha256\",
                 \"url\": \"${PKG_BASE}/${VERSION}/treetank-trans-${VERSION}.zip.sha256\",
+                \"link_type\": \"other\"
+              },
+              {
+                \"name\": \"polytrans.zip (PolyTrans, internal sites)\",
+                \"url\": \"${PT_BASE}/latest/polytrans.zip\",
+                \"link_type\": \"package\"
+              },
+              {
+                \"name\": \"polytrans.zip.sha256\",
+                \"url\": \"${PT_BASE}/latest/polytrans.zip.sha256\",
+                \"link_type\": \"other\"
+              },
+              {
+                \"name\": \"polytrans-${VERSION}.zip (PolyTrans, versioned archive)\",
+                \"url\": \"${PT_BASE}/${VERSION}/polytrans-${VERSION}.zip\",
+                \"link_type\": \"package\"
+              },
+              {
+                \"name\": \"polytrans-${VERSION}.zip.sha256\",
+                \"url\": \"${PT_BASE}/${VERSION}/polytrans-${VERSION}.zip.sha256\",
                 \"link_type\": \"other\"
               }
             ]
