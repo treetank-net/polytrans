@@ -442,7 +442,8 @@ release-github:
     # Upload release assets
     - ls -la release/
     - |
-      for FILE in treetank-trans.zip treetank-trans-${VERSION}.zip treetank-trans.zip.sha256 treetank-trans-${VERSION}.zip.sha256; do
+      for FILE in treetank-trans.zip treetank-trans-${VERSION}.zip treetank-trans.zip.sha256 treetank-trans-${VERSION}.zip.sha256 \
+                  polytrans.zip polytrans-${VERSION}.zip polytrans.zip.sha256 polytrans-${VERSION}.zip.sha256; do
         if [ ! -f "release/${FILE}" ]; then
           echo "⚠️ Skipping ${FILE} (not found)"
           continue
