@@ -186,6 +186,11 @@ build:
 
     # Create release directory. The exclusion list lives in .distignore — one file,
     # so that this job and the package-lint job cannot disagree about it.
+    # Start from an empty release/: the shell runner reuses its checkout and
+    # GIT_CLEAN_FLAGS is "none", so a previous build's packages are still there.
+    # Left in place, `cp -a` nests the copy inside the old release/polytrans/ and
+    # rsync keeps files that were deleted since.
+    - rm -rf release
     - mkdir -p release
     - rsync -av --exclude-from=.distignore . release/treetank-trans/
 
