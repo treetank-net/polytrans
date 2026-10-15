@@ -5,6 +5,11 @@ All notable changes to this plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.23.1] - 2026-10-15
+
+### Fixed
+- The GitHub release now carries the `polytrans.zip` packages too, not only the GitLab release.
+
 ## [1.23.0] - 2026-10-15
 
 The tag `v1.22.0` exists but was never built: Plugin Check failed on it. Its changes ship here.
