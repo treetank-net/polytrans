@@ -7,8 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.23.3] - 2026-10-15
 
-Tags `v1.23.1` and `v1.23.2` exist but were never built: the release build failed on
-both. Their changes ship here.
+The tag `v1.23.1` exists but was never built: the release build failed on it. Its
+changes ship here and in 1.23.2, which was released with the same contents as this
+version apart from the build fix.
 
 ### Changed
 - The admin menu is called "Translations", and help texts point to "Translations → …".

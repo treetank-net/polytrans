@@ -47,6 +47,8 @@
 /tests
 /examples
 /release
+# Plugin Check report the plugin-check job leaves in the reused runner checkout
+/pcp-report.csv
 /cache
 /node_modules
 /Makefile

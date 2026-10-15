@@ -214,7 +214,7 @@ build:
       if [ ! -f release/treetank-trans/readme.txt ]; then
         echo "❌ readme.txt missing from package"; FAILED=1
       fi
-      for f in CLAUDE.md AGENTS.md CONTEXT.md Makefile phpcs.xml docker-compose.test.yml; do
+      for f in CLAUDE.md AGENTS.md CONTEXT.md Makefile phpcs.xml docker-compose.test.yml pcp-report.csv; do
         if [ -e "release/treetank-trans/$f" ]; then echo "❌ Development file in package: $f"; FAILED=1; fi
       done
       if [ "$FAILED" -ne 0 ]; then echo "Package contents rejected — fix .distignore"; exit 1; fi
