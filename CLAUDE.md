@@ -127,22 +127,26 @@ GitLab CI will automatically:
 - Create a GitLab Release with changelog
 - Attach download links
 
-### If You Forgot Something
+### If Something Went Wrong
 
-If you created a tag without updating version/changelog:
+**Never delete, move or re-push a tag.** `v*` tags are protected on GitLab, so a
+push that deletes one is refused anyway ("You can only delete protected tags using the
+web interface"), and a version number someone may already have seen must not change
+meaning. When a tagged release goes wrong — wrong version, missing changelog, a failed
+pipeline — fix it on `main` and cut the **next patch version**, even if the only change
+is in CI or the docs.
 
-```bash
-# Delete remote and local tag
-git push origin :refs/tags/vX.Y.Z
-git tag -d vX.Y.Z
+The changelog describes what was actually released. A tag whose pipeline produced no
+release has no section of its own: move its entries into the section of the version
+that ships them, with one line naming the tags that were skipped, e.g.
 
-# Fix the issues, commit, push
-git add -A && git commit -m "chore: Release version X.Y.Z" && git push origin main
+```markdown
+## [1.23.3] - 2026-10-15
 
-# Recreate tag
-git tag -a vX.Y.Z -m "Release version X.Y.Z"
-git push origin vX.Y.Z
+Tags `v1.23.1` and `v1.23.2` exist but were never built; their changes ship here.
 ```
+
+The `readme.txt` changelog follows the same rule.
 
 ## Git Remotes
 

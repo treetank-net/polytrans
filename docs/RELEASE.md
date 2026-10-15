@@ -175,26 +175,33 @@ POST-RELEASE VERIFICATION:
 
 ## Fixing a Bad Release
 
-If you created a tag without updating version/changelog:
+**Never delete, move or re-push a tag.** `v*` tags are protected on GitLab, so a
+push that deletes one is refused anyway ("You can only delete protected tags using the
+web interface"), and a version number someone may already have seen must not change
+meaning. When a tagged release goes wrong — wrong version, missing changelog, a failed
+pipeline — fix it on `main` and cut the **next patch version**, even if the only change
+is in CI or the docs.
+
+The changelog describes what was actually released. A tag whose pipeline produced no
+release has no section of its own: move its entries into the section of the version
+that ships them, with one line naming the tags that were skipped, e.g.
+
+```markdown
+## [1.23.3] - 2026-10-15
+
+Tags `v1.23.1` and `v1.23.2` exist but were never built; their changes ship here.
+```
+
+The `readme.txt` changelog follows the same rule.
 
 ```bash
-# Delete remote tag
-git push origin :refs/tags/v1.7.1
-
-# Delete local tag
-git tag -d v1.7.1
-
-# Fix version numbers and changelog
-# ... make your changes ...
-
-# Commit fixes
+# v1.7.1 failed: fix on main, then release 1.7.2
+# ... fix, bump version to 1.7.2, fold the 1.7.1 changelog section into 1.7.2 ...
 git add -A
-git commit -m "chore: Release version 1.7.1"
+git commit -m "chore: Release version 1.7.2"
 git push origin main
-
-# Recreate and push tag
-git tag -a v1.7.1 -m "Release version 1.7.1"
-git push origin v1.7.1
+git tag -a v1.7.2 -m "Release version 1.7.2"
+git push origin v1.7.2
 ```
 
 ## Troubleshooting
@@ -232,9 +239,8 @@ The release ZIP should be < 10 MB. If larger:
 
 The CI extracts changelog from CHANGELOG.md for the release notes. If the section is missing:
 
-1. Delete the release in GitLab UI
-2. Update CHANGELOG.md
-3. Delete and recreate the tag (see "Fixing a Bad Release")
+1. Update CHANGELOG.md on `main`
+2. Release the next patch version (see "Fixing a Bad Release") — never re-tag
 
 ---
 
