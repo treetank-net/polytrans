@@ -5,7 +5,10 @@ All notable changes to this plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.23.2] - 2026-10-15
+## [1.23.3] - 2026-10-15
+
+Tags `v1.23.1` and `v1.23.2` exist but were never built: the release build failed on
+both. Their changes ship here.
 
 ### Changed
 - The admin menu is called "Translations", and help texts point to "Translations → …".
@@ -13,10 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   package shows "PolyTrans" instead of "TreeTank Translation Workflows".
 - The approved-tag group in the tag autocomplete is labelled "Approved".
 
-## [1.23.1] - 2026-10-15
-
 ### Fixed
 - The GitHub release now carries the `polytrans.zip` packages too, not only the GitLab release.
+- The release build starts from an empty `release/` directory. The shell runner keeps its
+  checkout between jobs, and the previous build's packages broke the next one.
 
 ## [1.23.0] - 2026-10-15
 
