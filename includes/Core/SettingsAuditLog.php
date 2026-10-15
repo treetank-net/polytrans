@@ -160,7 +160,8 @@ class SettingsAuditLog
         foreach ($values as $key => $value) {
             $path = $prefix === '' ? (string) $key : $prefix . '.' . $key;
             // A list is one setting (e.g. allowed domains); compare it as a whole.
-            if (is_array($value) && $value !== [] && !array_is_list($value)) {
+            // Not array_is_list: Plugin Check ties it to WordPress 6.5, the plugin supports 6.0.
+            if (is_array($value) && $value !== [] && array_keys($value) !== range(0, count($value) - 1)) {
                 $flat += self::flatten($value, $path);
             } else {
                 $flat[$path] = $value;
