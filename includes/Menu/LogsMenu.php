@@ -49,7 +49,7 @@ class LogsMenu
     public function add_scripts($hook)
     {
         // Load on logs page
-        if ($hook === 'polytrans_page_polytrans-logs') {
+        if (\PolyTrans\Core\AdminPage::is($hook, 'polytrans-logs')) {
             // Enqueue logs admin assets
             wp_enqueue_script(
                 'polytrans-logs-admin',

@@ -58,7 +58,7 @@ class UsageMenu
      */
     public function add_scripts($hook)
     {
-        if ($hook !== 'polytrans_page_' . self::PAGE_SLUG) {
+        if (!\PolyTrans\Core\AdminPage::is($hook, self::PAGE_SLUG)) {
             return;
         }
 

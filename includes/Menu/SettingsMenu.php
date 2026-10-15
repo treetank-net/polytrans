@@ -90,7 +90,7 @@ class SettingsMenu
     public function add_scripts($hook)
     {
         // Load scripts for both overview and settings pages
-        if ($hook === 'toplevel_page_polytrans' || $hook === 'polytrans_page_polytrans-settings') {
+        if (\PolyTrans\Core\AdminPage::is($hook, 'polytrans') || \PolyTrans\Core\AdminPage::is($hook, 'polytrans-settings')) {
             $plugin_url = POLYTRANS_PLUGIN_URL;
             wp_enqueue_script('polytrans-settings', $plugin_url . 'assets/js/settings/translation-settings-admin.js', ['jquery'], POLYTRANS_VERSION, true);
             wp_enqueue_script('polytrans-provider-settings-universal', $plugin_url . 'assets/js/settings/provider-settings-universal.js', ['jquery'], POLYTRANS_VERSION, true);

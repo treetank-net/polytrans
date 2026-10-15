@@ -120,3 +120,22 @@ test('only Core\\Diagnostics writes to the PHP error log', function () {
     $diagnostics = file_get_contents($root . '/includes/Core/Diagnostics.php');
     expect($diagnostics)->toContain('WP_DEBUG');
 });
+
+test('admin screens are recognised by page slug, never by the menu-title prefix', function () {
+    // WordPress derives `{prefix}_page_{slug}` from the translated top-level menu
+    // title. A literal prefix broke every settings script when the menu was renamed.
+    $root = dirname(__DIR__, 2);
+    $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root . '/includes'));
+    $offenders = [];
+
+    foreach ($files as $file) {
+        if ($file->getExtension() !== 'php' || $file->getFilename() === 'AdminPage.php') {
+            continue;
+        }
+        if (preg_match('/[\'"][a-z]+_page_/', file_get_contents($file->getPathname()))) {
+            $offenders[] = substr($file->getPathname(), strlen($root) + 1);
+        }
+    }
+
+    expect($offenders)->toBe([]);
+});

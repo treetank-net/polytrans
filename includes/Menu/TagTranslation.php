@@ -63,7 +63,7 @@ class TagTranslation
     public function enqueue_admin_scripts($hook)
     {
         // Tag translation admin page
-        if ($hook === 'polytrans_page_polytrans-tag-translation') {
+        if (\PolyTrans\Core\AdminPage::is($hook, 'polytrans-tag-translation')) {
             $plugin_url = POLYTRANS_PLUGIN_URL;
             wp_enqueue_script('polytrans-tag-translation', $plugin_url . 'assets/js/core/tag-translation-admin.js', ['jquery'], POLYTRANS_VERSION, true);
             wp_enqueue_style('polytrans-tag-translation', $plugin_url . 'assets/css/core/tag-translation-admin.css', [], POLYTRANS_VERSION);

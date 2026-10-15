@@ -392,6 +392,11 @@ over string literals is what the gate recognises as safe.
 
 ### Gotchas
 
+- **Recognise admin screens with `Core\AdminPage::is($hook, '<page-slug>')`.** WordPress
+  names a submenu screen `{prefix}_page_{slug}`, and the prefix is sanitize_title() of the
+  *translated menu title* — it went `polytrans_` → `treetank_` → `translations_`/`tlumaczenia_`,
+  and each rename silently stopped the settings, logs, tags and costs screens loading their
+  scripts. `NamingConventionsTest` rejects a literal prefix.
 - **OpenAI settings are saved through an explicit key list**, not a merge
   (`Core\TranslationSettings`). A new `openai_*` setting is silently discarded
   until it is added to that list. Claude and Gemini use `array_merge`.
