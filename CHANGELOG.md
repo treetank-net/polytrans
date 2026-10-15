@@ -5,6 +5,15 @@ All notable changes to this plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.22.0] - 2026-10-15
+
+### Added
+- Every change to the plugin settings (`polytrans_settings`, `polytrans_postprocessing_settings`)
+  is recorded in the PolyTrans log: each changed key with its old and new value, and the user
+  who made the change. API keys and other secrets are logged only as changed, never by value.
+- Releases also ship a `polytrans.zip` package — same code, installed as `polytrans/polytrans.php`
+  under the name "PolyTrans" — for sites that already run the plugin under its old directory.
+
 ## [1.21.0] - 2026-08-26
 
 Renamed. The plugin is now **TreeTank Translation Workflows**, published under the
