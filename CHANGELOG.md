@@ -5,6 +5,32 @@ All notable changes to this plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.24.0] - 2026-10-16
+
+### Fixed
+- No "Undefined array key logs_retention_days" warning on the first admin screen after a
+  fresh activation with `WP_DEBUG` on.
+- Admin screens print their templates through `wp_kses()` with an explicit allow-list for
+  the plugin's forms, instead of echoing the rendered markup as-is.
+- Tab panels and other inline styles survive escaping on WordPress versions whose CSS
+  filter does not know `display` (before 6.1).
+- Background dispatch uses only the WordPress HTTP API; the `file_get_contents()` and cURL
+  fallbacks are gone.
+- The async worker loopback no longer forwards the visitor's cookies; it is authenticated
+  by its per-job token alone.
+- The workflows meta box and the OpenAI settings panel load their CSS from stylesheet
+  files, and the animation names are prefixed so they cannot clash with other CSS.
+- The assistant editor passes the edited assistant's provider and model to its script
+  again; it read the assistant from an `id` parameter the editor link never sets.
+
+### Added
+- CI job `activation-smoke` (and `./dev.sh activation`): a fresh WordPress with `WP_DEBUG`,
+  activation from the Plugins screen and every admin screen opened, on the current release
+  and on the declared minimums (WordPress 6.0, PHP 8.1). It also checks that prompts full of
+  `<prompt>`-style tags reach the editors unchanged.
+- Architecture test for the review findings an annotation hid from our own gates: cURL,
+  `$_COOKIE`, unescaped echoes, inline CSS.
+
 ## [1.23.4] - 2026-10-15
 
 ### Fixed

@@ -4,7 +4,7 @@ Tags: translation, multilingual, ai, openai, polylang
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 1.23.4
+Stable tag: 1.24.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -133,6 +133,9 @@ Only the content being translated: title, body, excerpt, and SEO metadata if you
 6. Translation log viewer
 
 == Changelog ==
+
+= 1.24.0 =
+* Activates cleanly on a fresh site with WP_DEBUG on; admin screens are escaped with wp_kses() at output; background requests use only the WordPress HTTP API and no longer forward cookies; plugin styles moved to stylesheet files.
 
 = 1.23.4 =
 * Fixed scripts not loading on the Settings, Logs, Tag Translations and AI Costs screens.
