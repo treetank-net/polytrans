@@ -45,6 +45,7 @@ arch('providers are in dedicated namespace')
         'wp_add_inline_style',
         'wp_die',
         'wp_json_encode',
+        'wp_kses',
         'wp_remote_get',
         'wp_remote_post',
         'wp_remote_retrieve_body',

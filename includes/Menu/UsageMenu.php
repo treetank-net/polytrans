@@ -138,8 +138,7 @@ class UsageMenu
         $context['series_max_display'] = UsageReport::format_usd($context['series_max']);
         $context['series_ticks'] = $this->series_ticks($context['series']);
 
-        // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Twig templates handle escaping
-        echo TemplateRenderer::render('admin/usage/page.twig', $context);
+        TemplateRenderer::display('admin/usage/page.twig', $context);
     }
 
     /**

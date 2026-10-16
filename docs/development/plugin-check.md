@@ -60,6 +60,32 @@ warnings**, all in the families listed at the bottom of this page — 33 `AIProv
 (`Bootstrap.php`). The count came down from 56 when the activation-time diagnostic that
 queried the posts table and wrote test post meta was removed.
 
+### Activation smoke: `./dev.sh activation`
+
+```bash
+./dev.sh activation            # current WordPress, PHP 8.2
+./dev.sh activation 6.0 8.1    # the declared minimums (Requires at least / Requires PHP)
+```
+
+Plugin Check never runs `admin_init`, so it cannot see what a reviewer sees after clicking
+"Activate" — the 2026-10-16 round was rejected over an `Undefined array key` warning on the
+first admin screen, with Plugin Check at 0 errors. `tests/Smoke/activation-smoke.sh` (CI job
+`activation-smoke`, both configurations above) does the reviewer's steps:
+
+1. fresh WordPress, `WP_DEBUG`, `WP_DEBUG_LOG`, `WP_DEBUG_DISPLAY`, table prefix `smk_`;
+2. log in, open the core screens with the plugin **inactive** — the baseline, because an
+   old core on a newer PHP logs deprecations of its own;
+3. activate from the link on `plugins.php` (WordPress reports activation output there);
+4. open the dashboard, the core screens and every `admin.php?page=…` in the menu;
+5. deactivate and reactivate.
+
+It fails on any PHP error that was not in the baseline (in the page or in `debug.log`),
+activation output, a missing `smk_polytrans_*` table, a plugin style/script on a screen that
+is not ours or the post editor, an external HTTP request made by the plugin (Guideline 7),
+or a `wp_kses stripped markup` line — `TemplateRenderer::display()` logs one under
+`WP_DEBUG` when escaping removed an element, attribute or CSS declaration, which would
+otherwise silently break a form. `SMOKE_KEEP=1` leaves the WordPress tree behind.
+
 ### The long way, step by step
 
 The official tool, requiring a WordPress install and a database.

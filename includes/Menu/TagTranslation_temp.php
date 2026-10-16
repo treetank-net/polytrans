@@ -63,7 +63,7 @@
             $source_lang_name = strtoupper($source_language);
         }
 
-        echo TemplateRenderer::render('admin/tag-translation/page.twig', [
+        TemplateRenderer::display('admin/tag-translation/page.twig', [
             'tags' => $tags_data,
             'langs' => $langs,
             'source_language' => $source_language,

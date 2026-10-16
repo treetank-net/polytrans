@@ -133,9 +133,10 @@ class AssistantsMenu
         $current_model = '';
         $current_provider = 'openai';
         // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Page rendering parameter, no state change
-        if (isset($_GET['action']) && sanitize_text_field(wp_unslash($_GET['action'])) === 'edit' && isset($_GET['id'])) {
+        // The editor is linked as action=edit&assistant_id=N (see render_assistants_page()).
+        if (isset($_GET['action']) && sanitize_text_field(wp_unslash($_GET['action'])) === 'edit' && isset($_GET['assistant_id'])) {
             // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Page rendering parameter, no state change
-            $assistant_id = intval($_GET['id']);
+            $assistant_id = intval($_GET['assistant_id']);
             $assistant = AssistantManager::get_assistant($assistant_id);
             if ($assistant) {
                 if (!empty($assistant['model'])) {
@@ -332,15 +333,13 @@ class AssistantsMenu
             'after'
         );
 
-        // phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped -- Twig templates handle escaping
-        echo TemplateRenderer::render('admin/assistants/tester.twig', [
+        TemplateRenderer::display('admin/assistants/tester.twig', [
             'assistant' => $assistant,
             'default_evaluator_system_prompt' => PromptRefinementSettings::assistantEvaluatorSystem(),
             'default_evaluator_prompt_template' => PromptRefinementSettings::assistantEvaluator(),
             'default_adjuster_system_prompt' => PromptRefinementSettings::assistantAdjusterSystem(),
             'default_adjuster_prompt_template' => PromptRefinementSettings::assistantAdjuster(),
         ]);
-        // phpcs:enable WordPress.Security.EscapeOutput.OutputNotEscaped
     }
 
     /**
@@ -374,13 +373,11 @@ class AssistantsMenu
         unset($assistant); // Break reference
 
         // Render using Twig template
-        // phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped -- Twig templates handle escaping
-        echo TemplateRenderer::render('admin/assistants/list.twig', [
+        TemplateRenderer::display('admin/assistants/list.twig', [
             'assistants' => $assistants,
             'migration_status' => $migration_status,
             'enabled_providers' => $enabled_providers,
         ]);
-        // phpcs:enable WordPress.Security.EscapeOutput.OutputNotEscaped
     }
 
     /**
@@ -529,8 +526,7 @@ class AssistantsMenu
         }
 
         // Render using Twig template
-        // phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped -- Twig templates handle escaping
-        echo TemplateRenderer::render('admin/assistants/editor.twig', [
+        TemplateRenderer::display('admin/assistants/editor.twig', [
             'assistant' => $assistant,
             'is_new' => $is_new,
             'available_assistant_providers' => $available_assistant_providers,
@@ -547,7 +543,6 @@ class AssistantsMenu
             'polytrans_plugin_url' => POLYTRANS_PLUGIN_URL,
             'polytrans_version' => POLYTRANS_VERSION,
         ]);
-        // phpcs:enable WordPress.Security.EscapeOutput.OutputNotEscaped
     }
 
     /**

@@ -7,6 +7,7 @@ use PolyTrans\Providers\ProviderRegistry;
 use PolyTrans\Providers\ReasoningEffortField;
 use PolyTrans\Assistants\AssistantManager;
 use PolyTrans\Core\Diagnostics;
+use PolyTrans\Core\AdminMarkup;
 
 /**
  * OpenAI Settings Provider
@@ -140,8 +141,9 @@ class OpenAISettingsProvider implements SettingsProviderInterface
             </div>
 
             <?php
-            // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- escaped in get_html()
-            echo ReasoningEffortField::get_html('openai', $openai_model, $openai_reasoning_effort);
+            AdminMarkup::begin();
+            echo wp_kses(ReasoningEffortField::get_html('openai', $openai_model, $openai_reasoning_effort), AdminMarkup::allowed_html());
+            AdminMarkup::end();
             ?>
 
             <div style="margin-top:2em; padding: 15px; background: #f0f6fc; border-left: 4px solid #0073aa;">
@@ -157,12 +159,6 @@ class OpenAISettingsProvider implements SettingsProviderInterface
         </div>
 
     <?php
-        // Add inline CSS via enqueued style
-        wp_add_inline_style(
-            'polytrans-settings',
-            '.language-pair-group h4 { margin-top: 0; margin-bottom: 0.5em; color: #333; } ' .
-            '.openai-assistant-input { font-family: monospace; font-size: 12px; }'
-        );
     }
 
     /**
@@ -764,9 +760,7 @@ class OpenAISettingsProvider implements SettingsProviderInterface
         foreach ($grouped_models as $group_name => $models) {
             echo '<optgroup label="' . esc_attr($group_name) . '">';
             foreach ($models as $model_value => $model_label) {
-                $selected = selected($selected_model, $model_value, false);
-                // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- selected() returns safe HTML attribute
-                echo '<option value="' . esc_attr($model_value) . '" ' . $selected . '>' . esc_html($model_label) . '</option>';
+                echo '<option value="' . esc_attr($model_value) . '"' . ((string) $selected_model === (string) $model_value ? ' selected="selected"' : '') . '>' . esc_html($model_label) . '</option>';
             }
             echo '</optgroup>';
         }

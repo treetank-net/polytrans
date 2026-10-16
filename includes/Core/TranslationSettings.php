@@ -452,8 +452,7 @@ class TranslationSettings
             'before'
         );
         
-        // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Twig templates handle escaping
-        echo TemplateRenderer::render('admin/settings/page.twig', $template_context);
+        TemplateRenderer::display('admin/settings/page.twig', $template_context);
     }
 
     /**
@@ -461,14 +460,12 @@ class TranslationSettings
      */
     private function render_language_config_table($settings)
     {
-        // phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped -- Twig templates handle escaping
-        echo TemplateRenderer::render('admin/settings/tabs/language-config-table.twig', [
+        TemplateRenderer::display('admin/settings/tabs/language-config-table.twig', [
             'settings' => $settings,
             'langs' => $this->langs,
             'lang_names' => $this->lang_names,
             'statuses' => $this->statuses,
         ], false);
-        // phpcs:enable WordPress.Security.EscapeOutput.OutputNotEscaped
     }
 
     /**
@@ -477,15 +474,13 @@ class TranslationSettings
     private function render_email_settings($reviewer_email, $reviewer_email_title, $author_email, $author_email_title)
     {
         $settings = get_option('polytrans_settings', []);
-        // phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped -- Twig templates handle escaping
-        echo TemplateRenderer::render('admin/settings/tabs/email-settings.twig', [
+        TemplateRenderer::display('admin/settings/tabs/email-settings.twig', [
             'reviewer_email' => $reviewer_email,
             'reviewer_email_title' => $reviewer_email_title,
             'author_email' => $author_email,
             'author_email_title' => $author_email_title,
             'settings' => $settings,
         ], false);
-        // phpcs:enable WordPress.Security.EscapeOutput.OutputNotEscaped
     }
 
     /**
@@ -493,8 +488,7 @@ class TranslationSettings
      */
     private function render_advanced_settings($translation_endpoint, $translation_receiver_endpoint, $settings)
     {
-        // phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped -- Twig templates handle escaping
-        echo TemplateRenderer::render('admin/settings/tabs/advanced-settings.twig', [
+        TemplateRenderer::display('admin/settings/tabs/advanced-settings.twig', [
             'translation_endpoint' => $translation_endpoint,
             'translation_receiver_endpoint' => $translation_receiver_endpoint,
             'settings' => $settings,
@@ -502,7 +496,6 @@ class TranslationSettings
             'unauthenticated_refused' => EndpointAuth::is_refused($settings),
             'unauthenticated_notice' => EndpointAuth::refusal_message(),
         ], false);
-        // phpcs:enable WordPress.Security.EscapeOutput.OutputNotEscaped
     }
 
     /**
@@ -510,16 +503,14 @@ class TranslationSettings
      */
     private function render_tag_settings($source_language, $base_tags)
     {
-        // phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped -- Twig templates handle escaping
         $settings = get_option('polytrans_settings', []);
-        echo TemplateRenderer::render('admin/settings/tabs/tag-settings.twig', [
+        TemplateRenderer::display('admin/settings/tabs/tag-settings.twig', [
             'source_language' => $source_language,
             'base_tags' => $base_tags,
             'enable_tag_grouping' => ($settings['enable_tag_grouping'] ?? '0') === '1',
             'langs' => $this->langs,
             'lang_names' => $this->lang_names,
         ], false);
-        // phpcs:enable WordPress.Security.EscapeOutput.OutputNotEscaped
     }
 
     /**
@@ -531,8 +522,7 @@ class TranslationSettings
         $path_rules = self::get_path_rules($settings);
         $language_pairs = $this->get_language_pairs();
         
-        // phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped -- Twig templates handle escaping
-        echo TemplateRenderer::render('admin/settings/tabs/language-paths.twig', [
+        TemplateRenderer::display('admin/settings/tabs/language-paths.twig', [
             'settings' => $settings,
             'assistants_mapping' => $assistants_mapping,
             'path_rules' => $path_rules,
@@ -540,7 +530,6 @@ class TranslationSettings
             'langs' => $this->langs,
             'lang_names' => $this->lang_names,
         ], false);
-        // phpcs:enable WordPress.Security.EscapeOutput.OutputNotEscaped
     }
 
     /**
@@ -560,14 +549,12 @@ class TranslationSettings
             return;
         }
 
-        // phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped -- Twig templates handle escaping
-        echo TemplateRenderer::render('admin/settings/tabs/assistant-mapping-table.twig', [
+        TemplateRenderer::display('admin/settings/tabs/assistant-mapping-table.twig', [
             'assistants_mapping' => $assistants_mapping,
             'language_pairs' => $language_pairs,
             'langs' => $this->langs,
             'lang_names' => $this->lang_names,
         ], false);
-        // phpcs:enable WordPress.Security.EscapeOutput.OutputNotEscaped
     }
 
     /**
@@ -575,13 +562,11 @@ class TranslationSettings
      */
     private function render_path_rules_table($rules)
     {
-        // phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped -- Twig templates handle escaping
-        echo TemplateRenderer::render('admin/settings/tabs/path-rules-table.twig', [
+        TemplateRenderer::display('admin/settings/tabs/path-rules-table.twig', [
             'rules' => $rules,
             'langs' => $this->langs,
             'lang_names' => $this->lang_names,
         ], false);
-        // phpcs:enable WordPress.Security.EscapeOutput.OutputNotEscaped
     }
 
     /**
@@ -642,8 +627,7 @@ class TranslationSettings
      */
     private function render_universal_provider_ui($provider_id, $settings_provider, $settings)
     {
-        // phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped -- Twig templates handle escaping
-        echo TemplateRenderer::render('admin/settings/tabs/universal-provider-ui.twig', [
+        TemplateRenderer::display('admin/settings/tabs/universal-provider-ui.twig', [
             'provider_id' => $provider_id,
             'settings_provider' => $settings_provider,
             'settings' => $settings,
@@ -653,6 +637,5 @@ class TranslationSettings
                 (string) ($settings[$provider_id . '_reasoning_effort'] ?? '')
             ),
         ], false);
-        // phpcs:enable WordPress.Security.EscapeOutput.OutputNotEscaped
     }
 }

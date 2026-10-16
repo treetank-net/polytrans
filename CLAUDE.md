@@ -188,9 +188,9 @@ Note: `AGENTS.md` is a symlink to `CLAUDE.md`; update either path and the shared
 
 ### Coding-standard gates
 
-CI has four blocking jobs: `unit-tests`, `php-syntax-check`, `phpcs` and
-`plugin-check`. They run on merge requests, `main` and version tags; the release
-build explicitly needs all four to pass. The last two exist because the WordPress.org reviewer runs them, and
+CI has five blocking jobs: `unit-tests`, `php-syntax-check`, `phpcs`,
+`plugin-check` and `activation-smoke`. They run on merge requests, `main` and version tags; the release
+build explicitly needs all five to pass. The last three exist because the WordPress.org reviewer runs them, and
 because fixes made for an earlier review silently regressed in code added later —
 nothing was checking. `docs/development/plugin-check.md` has both commands and the
 warnings that are expected.
@@ -367,6 +367,17 @@ Anything sanitised this way still needs its `phpcs:ignore` line, and the reason 
 the sanitiser. Plugin Check's ruleset is fixed and cannot be given custom sanitisers, so
 removing the annotation converts 0 findings into 56 warnings in the reviewer's report.
 
+### What the reviewer rejects despite an annotation
+
+`tests/Architecture/ReviewGuidelinesTest.php` holds the findings that a `phpcs:ignore` hid
+from our own gates but not from the reviewer: no `curl_*()`/stream HTTP, no `$_COOKIE`, no
+`echo $var;`, no `wp_add_inline_style()`, and `phpcs:ignore` may not name
+`EscapeOutput.OutputNotEscaped`, `curl_*` or `cache_constraints___COOKIE` at all.
+
+The `activation-smoke` CI job (`./dev.sh activation`, `docs/development/plugin-check.md`)
+is the reviewer's manual test — fresh WordPress, `WP_DEBUG`, activate, open every screen.
+Run it before every submission; `composer test` and Plugin Check cannot see `admin_init`.
+
 ### Background dispatch
 
 `Core\BackgroundProcessor::spawn()` always uses a loopback HTTP request. It used to shell
@@ -385,6 +396,15 @@ WordPress escaping filters registered on the environment (`|esc_html`, `|esc_att
 requires every `{{ }}` to carry an escaping filter, be a literal, or call a function that
 escapes itself. Turning `autoescape` on is a migration, not a flag flip — ~360 places
 already escape and would double-escape.
+
+Templates reach the screen only through `TemplateRenderer::display()`, which echoes
+`wp_kses($html, AdminMarkup::allowed_html())` — the reviewer wants escaping at the echo,
+not a `phpcs:ignore` saying the template escaped it. Never `echo TemplateRenderer::render()`
+(`ReviewGuidelinesTest` fails). A template needing an element or attribute that is not in
+`Core\AdminMarkup::allowed_html()`, or a CSS property not in `safe_style_css()`, loses it
+silently; under `WP_DEBUG` `display()` logs `wp_kses stripped markup`, and the activation
+smoke test fails on that line. No `<script>`, `<style>` or `on*=` in templates, and no CSS
+functions such as `minmax()` in `style=""` — WordPress before 6.1 strips them; use a class.
 
 Do not use `{{ selected(...) }}` / `{{ checked(...) }}` in new templates: the WordPress
 functions echo *and* return, so in a Twig expression the value can land twice. A ternary

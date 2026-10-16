@@ -9,7 +9,7 @@
     <h2>{{ __('AI Assistant Refiner', 'treetank-trans') }}</h2>
     <details style="max-width:900px;margin:0 0 16px;">
         <summary>{{ __('Available assistant refiner variables', 'treetank-trans') }}</summary>
-        <div style="display:grid;grid-template-columns:minmax(220px,1fr) 2fr;gap:6px 16px;margin-top:10px;">
+        <div class="polytrans-refinement-grid polytrans-refinement-grid--narrow">
             <code>{{ '{{ criteria }}' }}</code><span>{{ __('Evaluation/refinement criteria entered by the user.', 'treetank-trans') }}</span>
             <code>{{ '{{ prompt_objective }}' }}</code><span>{{ __('Original prompt purpose/alignment goal entered by the user or loaded from assistant description.', 'treetank-trans') }}</span>
             <code>{{ '{{ source_language }}' }}</code><span>{{ __('Source language code.', 'treetank-trans') }}</span>
@@ -63,7 +63,7 @@
     <h2>{{ __('Workflow Refiner', 'treetank-trans') }}</h2>
     <details style="max-width:900px;margin:0 0 16px;">
         <summary>{{ __('Available workflow refiner variables', 'treetank-trans') }}</summary>
-        <div style="display:grid;grid-template-columns:minmax(260px,1fr) 2fr;gap:6px 16px;margin-top:10px;">
+        <div class="polytrans-refinement-grid">
             <code>{{ '{{ criteria }}' }}</code><span>{{ __('Evaluation/refinement criteria entered by the user.', 'treetank-trans') }}</span>
             <code>{{ '{{ workflow_purpose }}' }}</code><span>{{ __('Whole-workflow purpose/alignment goal entered by the user or loaded from workflow description.', 'treetank-trans') }}</span>
             <code>{{ '{{ prompt_objective }}' }}</code><span>{{ __('Original target-step purpose/alignment goal entered by the user or loaded from step/assistant description.', 'treetank-trans') }}</span>
@@ -130,7 +130,7 @@
     <h2>{{ __('Description Generators', 'treetank-trans') }}</h2>
     <details style="max-width:900px;margin:0 0 16px;">
         <summary>{{ __('Available description generator variables', 'treetank-trans') }}</summary>
-        <div style="display:grid;grid-template-columns:minmax(260px,1fr) 2fr;gap:6px 16px;margin-top:10px;">
+        <div class="polytrans-refinement-grid">
             <code>{{ '{{ assistant_name }}' }}</code><span>{{ __('Assistant name.', 'treetank-trans') }}</span>
             <code>{{ '{{ assistant_description }}' }}</code><span>{{ __('Existing assistant description.', 'treetank-trans') }}</span>
             <code>{{ '{{ assistant_provider }}' }}</code><span>{{ __('Assistant provider.', 'treetank-trans') }}</span>

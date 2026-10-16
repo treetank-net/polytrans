@@ -426,3 +426,12 @@ select {
     background: #f9f9f9;
     border-left: 4px solid #2271b1;
 }
+
+/* OpenAI provider settings (formerly inline CSS in OpenAISettingsProvider) */
+.language-pair-group h4 { margin-top: 0; margin-bottom: 0.5em; color: #333; }
+.openai-assistant-input { font-family: monospace; font-size: 12px; }
+
+/* Prompt refinement settings: label/field grid. A class, not style="": WordPress before
+   6.1 strips minmax() from inline styles in wp_kses(). */
+.polytrans-refinement-grid { display: grid; grid-template-columns: minmax(260px, 1fr) 2fr; gap: 6px 16px; margin-top: 10px; }
+.polytrans-refinement-grid--narrow { grid-template-columns: minmax(220px, 1fr) 2fr; }

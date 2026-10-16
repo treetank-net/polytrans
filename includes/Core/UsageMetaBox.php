@@ -89,7 +89,7 @@ class UsageMetaBox
             return;
         }
 
-        $html = TemplateRenderer::render('admin/usage/metabox.twig', [
+        TemplateRenderer::display('admin/usage/metabox.twig', [
             'summary' => $summary,
             'total_display' => UsageReport::format_usd($summary['total_usd'] ?? null),
             'languages' => self::prepare_buckets($summary['by_language'] ?? []),
@@ -98,11 +98,6 @@ class UsageMetaBox
             'reasoning_share' => self::reasoning_share($summary),
             'dashboard_url' => admin_url('admin.php?page=polytrans-usage&days=0'),
         ]);
-
-        // A phpcs:ignore covers the next line only, so the echo has to be one line —
-        // annotating a multi-line statement silences nothing.
-        // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Markup from admin/usage/metabox.twig, where every value is escaped per output with esc_html()/esc_attr().
-        echo $html;
     }
 
     /**

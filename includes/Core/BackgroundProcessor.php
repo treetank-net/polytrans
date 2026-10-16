@@ -279,10 +279,9 @@ class BackgroundProcessor
         // Build the URL to our processing endpoint
         $url = self::dispatch_url($token, $action);
 
-        // Make a non-blocking request with multiple fallbacks
-        $success = false;
-
-        // Method 1: WordPress HTTP API
+        // Fire-and-forget loopback through the WordPress HTTP API — the only transport.
+        // Earlier versions fell back to file_get_contents() and raw cURL, which the
+        // plugin guidelines forbid; a failed wp_remote_post() is reported, not retried.
         $response = wp_remote_post($url, [
             'timeout' => 0.1, // Very short timeout for fire-and-forget
             'blocking' => false, // Non-blocking request
@@ -304,38 +303,6 @@ class BackgroundProcessor
         
         $success = !is_wp_error($response);
 
-        // Method 2: Try file_get_contents with stream context if Method 1 failed
-        if (!$success) {
-            $context = stream_context_create([
-                'http' => [
-                    'method' => 'POST',
-                    'header' => "X-Polytrans-BG: Processing\r\nUser-Agent: PolyTrans Background Process\r\n",
-                    'timeout' => 0.1
-                ]
-            ]);
-
-            @file_get_contents($url, false, $context);
-            $success = true; // Can't verify success with file_get_contents non-blocking
-        }
-
-        // Method 3: Try cURL if available
-        // phpcs:ignore WordPress.WP.AlternativeFunctions.curl_curl_init -- fallback when wp_remote_post fails
-        if (!$success && function_exists('curl_init')) {
-            $ch = curl_init(); // phpcs:ignore WordPress.WP.AlternativeFunctions.curl_curl_init
-            curl_setopt($ch, CURLOPT_URL, $url); // phpcs:ignore WordPress.WP.AlternativeFunctions.curl_curl_setopt
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, false); // phpcs:ignore WordPress.WP.AlternativeFunctions.curl_curl_setopt
-            curl_setopt($ch, CURLOPT_TIMEOUT, 1); // phpcs:ignore WordPress.WP.AlternativeFunctions.curl_curl_setopt
-            curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 1); // phpcs:ignore WordPress.WP.AlternativeFunctions.curl_curl_setopt
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // phpcs:ignore WordPress.WP.AlternativeFunctions.curl_curl_setopt
-            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0); // phpcs:ignore WordPress.WP.AlternativeFunctions.curl_curl_setopt
-            curl_setopt($ch, CURLOPT_USERAGENT, 'PolyTrans Background Process'); // phpcs:ignore WordPress.WP.AlternativeFunctions.curl_curl_setopt
-            curl_setopt($ch, CURLOPT_HTTPHEADER, ['X-Polytrans-BG: Processing']); // phpcs:ignore WordPress.WP.AlternativeFunctions.curl_curl_setopt
-            curl_setopt($ch, CURLOPT_NOBODY, true); // phpcs:ignore WordPress.WP.AlternativeFunctions.curl_curl_setopt
-            @curl_exec($ch); // phpcs:ignore WordPress.WP.AlternativeFunctions.curl_curl_exec
-            curl_close($ch); // phpcs:ignore WordPress.WP.AlternativeFunctions.curl_curl_close
-            $success = true; // Can't verify success with curl non-blocking
-        }
-
         if ($success) {
             self::log("Spawned background process with HTTP request", "info", [
                 'url' => $url,
@@ -348,14 +315,12 @@ class BackgroundProcessor
             // All errors are logged directly to LogsManager, so no file log check needed
             // The endpoint will handle all error logging via LogsManager
         } else {
-            self::log("Failed to spawn background process with HTTP request - all methods failed", "error", [
+            self::log("Failed to spawn background process: loopback request failed", "error", [
                 'url' => $url,
                 'token' => $token,
                 'action' => $action,
                 'post_id' => $args['post_id'] ?? null,
                 'wp_remote_post_available' => function_exists('wp_remote_post'),
-                'file_get_contents_available' => function_exists('file_get_contents'),
-                'curl_available' => function_exists('curl_init')
             ]);
         }
 

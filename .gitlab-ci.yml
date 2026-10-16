@@ -153,6 +153,40 @@ plugin-check:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_TAG =~ /^v/
 
+# What the WordPress.org reviewer does by hand: a fresh WordPress with WP_DEBUG on,
+# activate from plugins.php as the administrator, open every admin screen. Fails on any
+# PHP warning/notice/deprecation, activation output, missing table, plugin asset on a
+# screen that is not ours, external HTTP request, or markup wp_kses() removed from a
+# template. Plugin Check cannot see any of these: it never runs admin_init. The
+# 2026-10-16 review was rejected over an "Undefined array key" this job reproduces.
+activation-smoke:
+  stage: test
+  tags:
+    - vps
+  extends: .shell-checkout-cleanup
+  parallel:
+    matrix:
+      # The current release (what the reviewer runs) and the declared minimums
+      # (`Requires at least` / `Requires PHP`).
+      - WP_CORE_VERSION: ""
+        SMOKE_PHP: "8.2"
+      - WP_CORE_VERSION: "6.0"
+        SMOKE_PHP: "8.1"
+  script:
+    # Distribution shape, staged outside the checkout (see plugin-check).
+    - export SMOKE_SRC="/tmp/treetank-trans-smoke-src-${CI_JOB_ID}"
+    - mkdir -p "$SMOKE_SRC/source" "$SMOKE_SRC/dist"
+    - rsync -a --exclude='/vendor/' . "$SMOKE_SRC/source/"
+    - composer install --working-dir="$SMOKE_SRC/source" --no-dev --optimize-autoloader --no-interaction
+    - rsync -a --exclude-from="$SMOKE_SRC/source/.distignore" "$SMOKE_SRC/source/" "$SMOKE_SRC/dist/"
+    - bash tests/Smoke/activation-smoke.sh "$SMOKE_SRC/dist"
+  after_script:
+    - rm -rf "/tmp/treetank-trans-smoke-src-${CI_JOB_ID}" || true
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main" && $CI_COMMIT_MESSAGE !~ /\[skip ci\]/
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_TAG =~ /^v/
+
 # ==============================================================================
 # Build Stage - triggered only by version tags
 # ==============================================================================
@@ -172,6 +206,7 @@ build:
     - job: php-syntax-check
     - job: phpcs
     - job: plugin-check
+    - job: activation-smoke
   before_script:
     - echo "Building PolyTrans release..."
     - php --version

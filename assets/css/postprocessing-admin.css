@@ -1061,12 +1061,12 @@
     border: 2px solid #f3f3f3;
     border-top: 2px solid #2271b1;
     border-radius: 50%;
-    animation: spin 1s linear infinite;
+    animation: polytrans-spin-pp 1s linear infinite;
     vertical-align: middle;
     margin-left: 5px;
 }
 
-@keyframes spin {
+@keyframes polytrans-spin-pp {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
 }
@@ -1510,7 +1510,7 @@
 }
 
 /* Add some animation for the expandable sections */
-@keyframes fadeIn {
+@keyframes polytrans-fade-in {
     from {
         opacity: 0;
         transform: translateY(-10px);
@@ -1522,7 +1522,7 @@
 }
 
 .step-result-content {
-    animation: fadeIn 0.3s ease-out;
+    animation: polytrans-fade-in 0.3s ease-out;
 }
 
 /* OpenAI Assistant Settings Styling */
@@ -1551,7 +1551,7 @@
 }
 
 .assistants-loading-message {
-    animation: fadeIn 0.3s ease-out;
+    animation: polytrans-fade-in 0.3s ease-out;
 }
 
 .language-pair-group {
@@ -1657,10 +1657,10 @@ select[id*="assistant-id"] > option:first-child {
 }
 
 #selected-post-display {
-    animation: slideDown 0.3s ease-out;
+    animation: polytrans-slide-down 0.3s ease-out;
 }
 
-@keyframes slideDown {
+@keyframes polytrans-slide-down {
     from {
         opacity: 0;
         transform: translateY(-10px);
@@ -1829,10 +1829,10 @@ input:disabled {
 
 /* Animation for step transitions */
 .execute-step {
-    animation: slideDown 0.3s ease-out;
+    animation: polytrans-slide-down 0.3s ease-out;
 }
 
-@keyframes slideDown {
+@keyframes polytrans-slide-down {
     from {
         opacity: 0;
         transform: translateY(-10px);

@@ -18,6 +18,7 @@ use Twig\Loader\FilesystemLoader;
 use PolyTrans\Templating\TemplateAssets;
 use Twig\TwigFunction;
 use Twig\TwigFilter;
+use PolyTrans\Core\AdminMarkup;
 use PolyTrans\Core\Diagnostics;
 
 if (!defined('ABSPATH')) {
@@ -157,6 +158,113 @@ class TemplateRenderer
             }
             return '';
         }
+    }
+
+    /**
+     * Render a template and print it, escaped with wp_kses() against allowed_html().
+     *
+     * This is the only way a template reaches the screen. The Twig environment runs with
+     * autoescape off and every value is escaped inside the template, but WordPress.org
+     * asks for escaping at the echo as well — "escape late" — so the finished markup goes
+     * through wp_kses() here, not through a phpcs:ignore at each caller.
+     *
+     * @param string $template Template file path (relative to templates directory)
+     * @param array<string, mixed> $context Variables available in template
+     * @param bool $enqueue_assets Whether to enqueue assets registered by template
+     * @return void
+     */
+    public static function display(string $template, array $context = [], bool $enqueue_assets = true): void
+    {
+        $html = self::render($template, $context, $enqueue_assets);
+
+        AdminMarkup::begin();
+        if (self::$debug) {
+            self::report_stripped_markup($template, $html, wp_kses($html, self::allowed_html()));
+        }
+
+        echo wp_kses($html, self::allowed_html());
+        AdminMarkup::end();
+    }
+
+    /**
+     * Markup an admin template may contain; see Core\AdminMarkup::allowed_html().
+     *
+     * @return array<string, array<string, bool>>
+     */
+    public static function allowed_html(): array
+    {
+        return AdminMarkup::allowed_html();
+    }
+
+    /**
+     * Under WP_DEBUG, log when wp_kses() removed an element or attribute from a template.
+     *
+     * Stripping is silent by design, so a field missing from allowed_html() — or a style
+     * safecss_filter_attr() refuses — would quietly break a form. The activation smoke
+     * test fails on any of these lines in debug.log.
+     */
+    private static function report_stripped_markup(string $template, string $html, string $escaped): void
+    {
+        if ($html === $escaped) {
+            return;
+        }
+
+        if (!preg_match_all(self::OPENING_TAG, $html, $tags)) {
+            return;
+        }
+
+        $examples = [];
+        foreach (array_unique($tags[0]) as $tag) {
+            $kept = wp_kses($tag, self::allowed_html());
+            if (self::markup_fingerprint($tag) !== self::markup_fingerprint($kept)) {
+                $examples[] = substr($tag, 0, 200) . ' => ' . substr($kept, 0, 200);
+                if (count($examples) >= 10) {
+                    break;
+                }
+            }
+        }
+
+        if ($examples) {
+            Diagnostics::log(sprintf(
+                '[TreeTank] wp_kses stripped markup from %s: %s',
+                $template,
+                implode(' | ', $examples)
+            ));
+        }
+    }
+
+    /** An opening tag, with quoted attribute values that may contain ">". */
+    private const OPENING_TAG = '/<[a-zA-Z][a-zA-Z0-9-]*(?:[^>"\']|"[^"]*"|\'[^\']*\')*>/';
+
+    /**
+     * Element and attribute names of one opening tag, ignoring values.
+     *
+     * @return list<string>
+     */
+    private static function markup_fingerprint(string $tag): array
+    {
+        if (!preg_match('/^<([a-zA-Z][a-zA-Z0-9-]*)/', $tag, $element)) {
+            return [];
+        }
+        // An empty style="" is dropped by kses and means nothing; then drop quoted values,
+        // so "padding: 0" inside style= is not read as a name.
+        $attributes = preg_replace('/\sstyle\s*=\s*(""|\'\')/i', '', substr($tag, strlen($element[0])));
+        $attributes = preg_replace('/"[^"]*"|\'[^\']*\'/', '', (string) $attributes);
+        preg_match_all('/([a-zA-Z_:][a-zA-Z0-9_.:-]*)/', (string) $attributes, $names);
+        // Unique names: {{ selected() }} prints its attribute twice (it echoes and
+        // returns), and kses collapsing that duplicate loses nothing.
+        $fingerprint = array_values(array_unique(array_map('strtolower', $names[1])));
+        // safecss_filter_attr() drops single declarations and keeps the attribute.
+        if (preg_match('/\sstyle\s*=\s*("([^"]*)"|\'([^\']*)\')/i', $tag, $style)) {
+            $css = html_entity_decode($style[2] !== '' ? $style[2] : ($style[3] ?? ''));
+            foreach (array_filter(array_map('trim', explode(';', $css))) as $declaration) {
+                $fingerprint[] = 'style:' . strtolower(trim(strtok($declaration, ':')));
+            }
+        }
+        sort($fingerprint);
+        array_unshift($fingerprint, strtolower($element[1]));
+
+        return $fingerprint;
     }
 
     /**

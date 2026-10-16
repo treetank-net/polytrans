@@ -42,6 +42,9 @@ show_help() {
     echo "  all           Run all quality checks (phpcs, phpmd, test)"
     echo "  smoke [ver]   Install WordPress (default: current release) in Docker, activate the"
     echo "                distribution-shaped plugin, run Plugin Check and the smoke assertions"
+    echo "  activation [wp] [php]"
+    echo "                Fresh WordPress with WP_DEBUG: activate as admin, open every admin"
+    echo "                screen, fail on any warning/notice, output, missing table, stray asset"
     echo ""
     echo "Examples:"
     echo "  ./dev.sh setup"
@@ -172,6 +175,23 @@ run_smoke() {
     return $status
 }
 
+# Activation smoke test (the `activation-smoke` CI job): fresh WordPress with WP_DEBUG,
+# activation from plugins.php, every admin screen opened. See tests/Smoke/activation-smoke.sh.
+run_activation_smoke() {
+    local stage="${TMPDIR:-/tmp}/treetank-trans-smoke-src-$$"
+
+    print_status "Staging distribution tree (composer --no-dev) in ${stage}"
+    mkdir -p "$stage/source" "$stage/dist"
+    rsync -a --exclude='/vendor/' --exclude='/.git' ./ "$stage/source/"
+    composer install --working-dir="$stage/source" --no-dev --optimize-autoloader --no-interaction --quiet
+    rsync -a --exclude-from="$stage/source/.distignore" "$stage/source/" "$stage/dist/"
+
+    local status=0
+    WP_CORE_VERSION="${1:-}" SMOKE_PHP="${2:-8.2}" bash tests/Smoke/activation-smoke.sh "$stage/dist" || status=$?
+    rm -rf "$stage"
+    return $status
+}
+
 run_all() {
     print_status "Running all quality checks..."
     
@@ -236,6 +256,9 @@ case "${1:-}" in
         ;;
     smoke)
         run_smoke "$2"
+        ;;
+    activation)
+        run_activation_smoke "${2:-}" "${3:-}"
         ;;
     help|--help|-h)
         show_help

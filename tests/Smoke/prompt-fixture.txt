@@ -1,0 +1,4 @@
+<prompt>Translate {{ title }} into {{ target_language }} — zażółć gęślą jaźń.</prompt>
+<assistant role="editor">Keep <strong>inline markup</strong>, "double" & 'single' quotes, a < b > c, &amp; entities.</assistant>
+<schema>{"type": "object", "properties": {"title": {"type": "string"}}}</schema>
+<script>not code, just text in a prompt</script>

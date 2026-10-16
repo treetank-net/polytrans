@@ -51,7 +51,9 @@ final class AsyncJobRunner
                 'job_id'       => $job_id,
                 'worker_token' => self::workerToken($job_id),
             ],
-            'cookies' => $_COOKIE ?? [], // phpcs:ignore WordPressVIPMinimum.Variables.RestrictedVariables.cache_constraints___COOKIE -- Forward auth cookies when available; token also permits nopriv workers.
+            // No cookies are forwarded: the worker is authenticated by the per-job
+            // token alone (it is registered for wp_ajax_nopriv_), and no job type reads
+            // the current user. Forwarding $_COOKIE sent every visitor cookie onwards.
         ]);
 
         if (is_wp_error($response)) {

@@ -272,15 +272,13 @@ class TagTranslation
             $source_lang_name = strtoupper($source_language);
         }
 
-        // phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped -- Twig template handles escaping
-        echo TemplateRenderer::render('admin/tag-translation/page.twig', [
+        TemplateRenderer::display('admin/tag-translation/page.twig', [
             'tags' => $tags_data,
             'langs' => $langs,
             'source_language' => $source_language,
             'source_lang_name' => $source_lang_name,
             'can_manage_options' => current_user_can('manage_options'),
         ]);
-        // phpcs:enable WordPress.Security.EscapeOutput.OutputNotEscaped
     }
 
 

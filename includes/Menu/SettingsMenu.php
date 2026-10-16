@@ -159,12 +159,10 @@ class SettingsMenu
      */
     public function render_overview()
     {
-        // phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped -- Twig templates handle escaping
-        echo TemplateRenderer::render('admin/settings/overview.twig', [
+        TemplateRenderer::display('admin/settings/overview.twig', [
             'can_manage_options' => current_user_can('manage_options'),
             'product_name' => \PolyTrans\Core\PluginInfo::name(),
         ]);
-        // phpcs:enable WordPress.Security.EscapeOutput.OutputNotEscaped
     }
 
     /**

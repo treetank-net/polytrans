@@ -323,14 +323,12 @@ class PostprocessingMenu
         $langs = function_exists('pll_languages_list') ? pll_languages_list(['fields' => 'slug']) : ['pl', 'en', 'it'];
         $lang_names = function_exists('pll_languages_list') ? pll_languages_list(['fields' => 'name']) : ['Polish', 'English', 'Italian'];
 
-        // phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped -- Twig templates handle escaping
-        echo TemplateRenderer::render('admin/workflows/list.twig', [
+        TemplateRenderer::display('admin/workflows/list.twig', [
             'workflows' => $workflows,
             'statistics' => $statistics,
             'langs' => $langs,
             'lang_names' => $lang_names,
         ]);
-        // phpcs:enable WordPress.Security.EscapeOutput.OutputNotEscaped
     }
 
     /**
@@ -389,13 +387,11 @@ class PostprocessingMenu
             'before'
         );
 
-        // phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped -- Twig templates handle escaping
-        echo TemplateRenderer::render('admin/workflows/editor.twig', [
+        TemplateRenderer::display('admin/workflows/editor.twig', [
             'is_new' => $is_new,
             'workflow' => $workflow,
             'languages' => array_combine($langs, $lang_names),
         ]);
-        // phpcs:enable WordPress.Security.EscapeOutput.OutputNotEscaped
     }
 
     /**
@@ -437,11 +433,9 @@ class PostprocessingMenu
             'before'
         );
 
-        // phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped -- Twig templates handle escaping
-        echo TemplateRenderer::render('admin/workflows/tester.twig', [
+        TemplateRenderer::display('admin/workflows/tester.twig', [
             'workflow' => $workflow,
         ]);
-        // phpcs:enable WordPress.Security.EscapeOutput.OutputNotEscaped
     }
 
     /**
@@ -499,8 +493,7 @@ class PostprocessingMenu
         $langs = function_exists('pll_languages_list') ? pll_languages_list(['fields' => 'slug']) : ['pl', 'en', 'it'];
         $lang_names = function_exists('pll_languages_list') ? pll_languages_list(['fields' => 'name']) : ['Polish', 'English', 'Italian'];
 
-        // phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped -- Twig templates handle escaping
-        echo TemplateRenderer::render('admin/workflows/execute.twig', [
+        TemplateRenderer::display('admin/workflows/execute.twig', [
             'all_workflows' => $all_workflows,
             'workflow_id' => $workflow_id,
             'selected_workflow' => $selected_workflow,
@@ -511,7 +504,6 @@ class PostprocessingMenu
             'langs' => $langs,
             'lang_names' => $lang_names,
         ]);
-        // phpcs:enable WordPress.Security.EscapeOutput.OutputNotEscaped
 
         // Output JavaScript data via enqueued script
         wp_add_inline_script(

@@ -732,8 +732,8 @@ class LogsManager
     public static function maybe_cleanup_old_logs(): int
     {
         $settings = get_option('polytrans_settings', []);
-        // must be set explicitly
-        if (!is_numeric($settings['logs_retention_days'])) {
+        // Cleanup is opt-in: a fresh install has no retention setting until it is saved.
+        if (!is_array($settings) || !is_numeric($settings['logs_retention_days'] ?? null)) {
             return 0;
         }
         $retention_days = self::get_retention_days($settings['logs_retention_days']);
@@ -844,8 +844,7 @@ class LogsManager
         }
 
         // Render template
-        // phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped -- Twig templates handle escaping
-        echo TemplateRenderer::render('admin/logs/page.twig', [
+        TemplateRenderer::display('admin/logs/page.twig', [
             'warning_message' => $warning_message,
             'success_message' => $success_message,
             'current_page' => $current_page,
@@ -857,7 +856,6 @@ class LogsManager
             'top_pagination' => $top_pagination,
             'bottom_pagination' => $bottom_pagination,
         ]);
-        // phpcs:enable WordPress.Security.EscapeOutput.OutputNotEscaped
     }
 
     /**
