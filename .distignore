@@ -36,12 +36,9 @@
 /QUICK_START.md
 /REVIEW-ISSUES.md
 /TODO-CRITICAL.md
-/docs/planning
-/docs/development
-/docs/testing
-/docs/roadmap
-/docs/examples
-/docs/WPORG-SUBMISSION-PLAN.md
+# All of docs/: users get readme.txt, the rest lives in the repository. The developer
+# docs quote provider API endpoints, which the WordPress.org review counts as findings.
+/docs
 
 # Tests, tooling config, local environment
 /tests
@@ -78,7 +75,6 @@
 /includes/Providers/Google
 
 # Materiały do rundy review wp.org
-/docs/wordpress-org
 
 # Compiled translations. translate.wordpress.org generates and delivers these for
 # every locale, and load_plugin_textdomain() was removed in March, so a bundled
