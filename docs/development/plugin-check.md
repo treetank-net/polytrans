@@ -77,7 +77,22 @@ first admin screen, with Plugin Check at 0 errors. `tests/Smoke/activation-smoke
    old core on a newer PHP logs deprecations of its own;
 3. activate from the link on `plugins.php` (WordPress reports activation output there);
 4. open the dashboard, the core screens and every `admin.php?page=…` in the menu;
-5. deactivate and reactivate.
+5. deactivate and reactivate;
+6. a background translation the way trans.info runs one (`seed-translation.php`,
+   `translate.php`): Polylang with `en`/`de`, internal transport, a managed assistant,
+   and a workflow triggered on completion. The translation is scheduled through the
+   meta box's admin-ajax call and must end `completed`, assigned to `de`, with the
+   workflow's `smoke_workflow_marker` on the translated post, within 60 s.
+
+Step 6 exists because 1.24.2 and 1.24.3 each shipped a translation that silently never
+finished — the loopback could not reach the public URL, then the endpoint ran before
+the workflow hooks — while the dispatch reported success and every other check passed.
+OpenAI is answered by a stub in `smoke-observer.php` (`pre_http_request`), which only
+answers requests carrying the smoke's fake key, so the Guideline 7 check above still sees
+every unconfigured request. Polylang is pinned (3.7.3, which trans.info runs; 3.5.4 on
+WordPress before 6.2) and stays inactive until this step, and its own `debug.log` lines
+are ignored. `SMOKE_UNREACHABLE_HOME=1` without `SMOKE_LOOPBACK_URL` fails this step by
+design: it reproduces the 1.24.2 failure.
 
 It fails on any PHP error that was not in the baseline (in the page or in `debug.log`),
 activation output, a missing `smk_polytrans_*` table, a plugin style/script on a screen that
