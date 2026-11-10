@@ -102,6 +102,14 @@ test('requests from the site to itself go through Core\\Loopback', function () {
     expect(array_values($hits))->toBe([]);
 });
 
+test('the background endpoint runs after every other init callback', function () {
+    // handle_request() runs the task and exits. Registered early, it fired
+    // polytrans_translation_completed before WorkflowManager (init, 10) listened, and
+    // translations made in the background never started their workflows (1.24.3).
+    $main = file_get_contents(dirname(__DIR__, 2) . '/treetank-trans.php');
+    expect($main)->toMatch("/add_action\\('init', \\[\\\\PolyTrans\\\\Core\\\\BackgroundProcessor::class, 'handle_request'\\], PHP_INT_MAX\\);/");
+});
+
 test('$_COOKIE is never read or forwarded', function () {
     expect(review_guidelines_matches('/\$_COOKIE\b/'))->toBe([]);
 });

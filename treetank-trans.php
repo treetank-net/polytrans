@@ -4,7 +4,7 @@
  * Plugin Name: TreeTank Translation Workflows
  * Plugin URI: https://github.com/treetank-net/polytrans
  * Description: Advanced multilingual translation management system with AI-powered translation, scheduling, and review workflow
- * Version: 1.24.3
+ * Version: 1.24.4
  * Author: treetank
  * Author URI: https://treetank.net
  * Text Domain: treetank-trans
@@ -21,7 +21,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('POLYTRANS_VERSION', '1.24.3');
+define('POLYTRANS_VERSION', '1.24.4');
 define('POLYTRANS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('POLYTRANS_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('POLYTRANS_PLUGIN_FILE', __FILE__);
@@ -37,8 +37,11 @@ require_once POLYTRANS_PLUGIN_DIR . 'includes/class-polytrans.php';
 // (PolyTrans\Core\BackgroundProcessor)
 add_action('polytrans_bg_process_async_job', [\PolyTrans\Core\AsyncJobRunner::class, 'executeBackgroundJob']);
 
-// The loopback dispatch endpoint lives in the class that owns the route.
-add_action('init', [\PolyTrans\Core\BackgroundProcessor::class, 'handle_request'], 5);
+// The loopback dispatch endpoint lives in the class that owns the route. It runs the
+// task and exits, so it must come after every other init callback: at priority 5 it
+// ran before WorkflowManager (init, 10) had hooked polytrans_translation_completed,
+// and no post-processing workflow ever started after a background translation.
+add_action('init', [\PolyTrans\Core\BackgroundProcessor::class, 'handle_request'], PHP_INT_MAX);
 
 /**
  * Register default providers (Google, OpenAI, Claude)

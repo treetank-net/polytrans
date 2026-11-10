@@ -4,7 +4,7 @@ Tags: translation, multilingual, ai, openai, polylang
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 1.24.3
+Stable tag: 1.24.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -137,6 +137,9 @@ Only the content being translated: title, body, excerpt, and SEO metadata if you
 6. Translation log viewer
 
 == Changelog ==
+
+= 1.24.4 =
+* Post-processing workflows start again after a background translation.
 
 = 1.24.3 =
 * Background translations no longer stay queued on servers that cannot reach their own public URL. Set `TREETANK_TRANS_LOOPBACK_URL` (for example `http://127.0.0.1`) in wp-config.php on such hosts.
