@@ -162,13 +162,19 @@ GitLab CI mirrors successful `main` pipelines to GitHub using
 
 ### Syncing to WordPress
 
-After making changes, sync to WordPress instances:
+Our sites run the plugin as `polytrans/polytrans.php`, so they never get the raw source
+tree: a plain copy would bring `treetank-trans.php` instead and deactivate the plugin.
+The sync scripts install the `polytrans.zip` shape (see "Naming after the WordPress.org
+rename") into the targets listed in `trans-info/polytrans-sync-dirs.txt`:
 ```bash
 cd /home/jm/projects/trans-info
-./sync-polytrans-watch.sh  # Watch mode
-# or
-./sync-polytrans.sh        # One-time sync
+./sync-polytrans-manual.sh 1.24.1   # a released package from the registry (default: latest)
+./sync-polytrans-manual.sh --local  # built from this working tree, same shape
+./sync-polytrans-watch.sh           # local mode, re-synced on every change
 ```
+Add `--dry-run` to see what would change. Deploy repos (`transinfo-wp-docker`,
+`transinfo-wr-docker`) get release packages only; commit the plugin directory and tag
+the repo to deploy to DEV.
 
 ### Running Tests
 
