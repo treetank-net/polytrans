@@ -172,6 +172,11 @@ activation-smoke:
         SMOKE_PHP: "8.2"
       - WP_CORE_VERSION: "6.0"
         SMOKE_PHP: "8.1"
+      # SQLite, through the drop-in WordPress Playground runs on: the review email links
+      # "Test it on Playground", and its SQL translation rejects some MySQL-only syntax.
+      - WP_CORE_VERSION: ""
+        SMOKE_PHP: "8.2"
+        SMOKE_DB: "sqlite"
   script:
     # Distribution shape, staged outside the checkout (see plugin-check).
     - export SMOKE_SRC="/tmp/treetank-trans-smoke-src-${CI_JOB_ID}"

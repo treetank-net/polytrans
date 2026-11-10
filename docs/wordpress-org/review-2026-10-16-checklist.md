@@ -61,6 +61,6 @@ UsageMetaBox `echo $html`) oraz `wp_add_inline_style` w WorkflowMetabox.
 - [x] `composer test`, `phpcs`, Plugin Check: 0 errors (pipeline v1.24.1)
 - [x] `./dev.sh smoke` (z nowymi asercjami) na bieżącym WP i na „Requires at least” (`activation-smoke` w pipeline v1.24.1)
 - [x] Wydanie 1.24.2 (bez `docs/`), upload `treetank-trans-1.24.2.zip` w „Add your plugin” (2026-11-10, z notką w Additional Information)
-- [ ] Test na WordPress Playground (SQLite, loopback) — mail recenzenta linkuje „Test it on Playground”, nasz smoke chodzi tylko na MySQL
+- [x] Test na WordPress Playground (SQLite, loopback) — Playground CLI z ZIP-em 1.24.2: aktywacja, 22 ekrany, `debug.log` czysty, zapis asystenta przez AJAX, worker async przez loopback; w CI wariant `SMOKE_DB=sqlite` w `activation-smoke`
 - [ ] Po akceptacji: 1.25.0 — dostawca AI Client, tokenizacja embedów, walidatory (backlog)
 - [x] Odpowiedź na email (2026-11-10, treść jak w `reply-2026-10-16.md`)

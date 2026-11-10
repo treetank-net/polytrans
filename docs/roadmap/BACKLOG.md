@@ -59,3 +59,18 @@ klucze i model konfiguruje się centralnie w WordPressie, wtyczka nie trzyma wł
 - `usage`: zapisać to, co AI Client zwraca; jeśli brak liczników tokenów, wywołanie jest
   „unpriced”, nie zerowe.
 - Pakiet compat `wordpress/wp-ai-client` dla WP < 7.0 jest deprecated — nie dołączać.
+
+## Niezawodność
+
+### Atomowe przejęcie zadania w `AsyncJobRunner`
+
+`dispatch()` odpala trzy ścieżki naraz (worker admin-ajax, background worker,
+`BackgroundProcessor`), a `runJob()` przejmuje zadanie przez `get_transient` → sprawdzenie
+`pending` → `set_transient`. To nie jest atomowe: dwa workery w tym samym oknie (php-fpm,
+Playground z 6 workerami) mogą oba wykonać zadanie — czyli dwa razy zapłacić za wywołanie
+modelu. W teście na Playground (2026-11-10) wykonał się jeden, ale tylko dzięki czasowi.
+
+- Przejęcie przez operację, która może się nie udać: `INSERT` do własnej tabeli/wiersza z
+  unikalnym kluczem i sprawdzenie `rows_affected` (nie `add_option()` — od WP 4.x robi
+  `ON DUPLICATE KEY UPDATE`, więc zawsze „się udaje”). Musi działać też na SQLite.
+- Test: dwa równoległe wywołania `runJob()` na tym samym zadaniu → filtr wykonany raz.

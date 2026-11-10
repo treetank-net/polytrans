@@ -17,13 +17,19 @@ $WP config set WP_DEBUG true --raw --quiet
 $WP config set WP_DEBUG_LOG "$SMOKE/debug.log" --quiet
 $WP config set WP_DEBUG_DISPLAY true --raw --quiet
 $WP config set DISABLE_WP_CRON true --raw --quiet
+if [ "${SMOKE_DB:-mysql}" = sqlite ]; then
+    # The drop-in WordPress Playground uses (activation-smoke.sh unpacked the plugin).
+    sed -e "s#{SQLITE_IMPLEMENTATION_FOLDER_PATH}#$PWD/wp-content/plugins/sqlite-database-integration#" \
+        -e "s#{SQLITE_PLUGIN}#sqlite-database-integration/load.php#g" \
+        wp-content/plugins/sqlite-database-integration/db.copy > wp-content/db.php
+fi
 $WP core install --url=http://localhost:8080 --title=smoke --admin_user=a --admin_password=a --admin_email=a@example.test --skip-email --quiet
 
 mkdir -p "$SMOKE" wp-content/mu-plugins
 cp /smoke-tools/smoke-observer.php wp-content/mu-plugins/
 : > "$SMOKE/debug.log"
 
-echo "WordPress $($WP core version) · PHP $(php -r 'echo PHP_VERSION;') · table prefix $PREFIX"
+echo "WordPress $($WP core version) · PHP $(php -r 'echo PHP_VERSION;') · ${SMOKE_DB:-mysql} · table prefix $PREFIX"
 echo "Plugin $($WP plugin get treetank-trans --field=version) — inactive, about to be activated"
 
 PHP_CLI_SERVER_WORKERS=4 php -d memory_limit=512M -S 0.0.0.0:8080 -t /var/www/html > "$SMOKE/server.log" 2>&1 &
@@ -66,10 +72,11 @@ else
 fi
 
 echo "debug.log (WP_DEBUG)"
-# PHP errors, plus our own report of markup wp_kses() removed from a template. Only what
+# PHP errors, failed queries (wpdb logs every one; on SQLite also the ones the MySQL
+# translation layer cannot handle), plus our own report of markup wp_kses() removed from a template. Only what
 # was logged after activation, minus what core alone logged before it (crawl.php writes
 # the marker): a fresh core on its supported PHP logs nothing, an old one plenty.
-PATTERN="PHP (Fatal error|Parse error|Warning|Notice|Deprecated)|Uncaught|called <strong>incorrectly</strong>|is <strong>deprecated</strong>|wp_kses stripped markup"
+PATTERN="PHP (Fatal error|Parse error|Warning|Notice|Deprecated)|Uncaught|called <strong>incorrectly</strong>|is <strong>deprecated</strong>|wp_kses stripped markup|WordPress database error"
 normalize() { grep -E "$PATTERN" | sed 's/^\[[^]]*\] //' | sort -u; }
 sed '/=== TREETANK SMOKE: ACTIVATION ===/,$d' "$SMOKE/debug.log" | normalize > "$SMOKE/debug-baseline.log"
 sed -n '/=== TREETANK SMOKE: ACTIVATION ===/,$p' "$SMOKE/debug.log" | normalize > "$SMOKE/debug-after.log"

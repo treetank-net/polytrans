@@ -42,7 +42,7 @@ show_help() {
     echo "  all           Run all quality checks (phpcs, phpmd, test)"
     echo "  smoke [ver]   Install WordPress (default: current release) in Docker, activate the"
     echo "                distribution-shaped plugin, run Plugin Check and the smoke assertions"
-    echo "  activation [wp] [php]"
+    echo "  activation [wp] [php]   (SMOKE_DB=sqlite for the Playground database layer)"
     echo "                Fresh WordPress with WP_DEBUG: activate as admin, open every admin"
     echo "                screen, fail on any warning/notice, output, missing table, stray asset"
     echo ""
