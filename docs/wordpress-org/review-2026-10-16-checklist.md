@@ -25,9 +25,9 @@ bez `??` → `Undefined array key` (LogsManager.php:736) na pierwszym `admin_ini
 Zgłoszone: 38 wystąpień URL-i API (Anthropic, Gemini, OpenAI, DeepSeek w docs).
 
 - [x] Ustalić, co daje core AI Client w 7.0 i czy istnieje pakiet compat dla WP < 7.0 (research)
-- [ ] Decyzja: migracja / adapter „WordPress AI Client” jako dostawca + uzasadnienie dla zostawionych integracji
-- [ ] `docs/developer/` w ZIP-ie — czy dokumentacja deweloperska w ogóle ma trafiać do dystrybucji
-- [ ] Odpowiedź do recenzenta z uzasadnieniem (to „encouraged / consider”, ale oznaczone 🔴)
+- [x] Decyzja: bezpośrednie integracje zostają (Responses API i reasoning effort dla OpenAI 5.6+, zadania dłuższe niż 30 s, pełne `usage` do kosztów); opcjonalny dostawca „WordPress AI Client” w backlogu (`docs/roadmap/BACKLOG.md`), zapowiedziany w odpowiedzi
+- [x] `docs/` w ZIP-ie — cały katalog wyłączony w `.distignore` (18 z wystąpień URL-i API było w dokumentacji); od 1.24.2
+- [x] Odpowiedź do recenzenta z uzasadnieniem — szkic w `reply-2026-10-16.md`
 
 ## 3. 🔴 cURL zamiast HTTP API
 
@@ -58,7 +58,8 @@ UsageMetaBox `echo $html`) oraz `wp_add_inline_style` w WorkflowMetabox.
 
 ## Przed wysłaniem
 
-- [ ] `composer test`, `phpcs`, Plugin Check: 0 errors
-- [ ] `./dev.sh smoke` (z nowymi asercjami) na bieżącym WP i na „Requires at least”
-- [ ] Wydanie kolejnej wersji patch wg `docs/RELEASE.md`, upload ZIP-a w „Add your plugin”
+- [x] `composer test`, `phpcs`, Plugin Check: 0 errors (pipeline v1.24.1)
+- [x] `./dev.sh smoke` (z nowymi asercjami) na bieżącym WP i na „Requires at least” (`activation-smoke` w pipeline v1.24.1)
+- [ ] Wydanie 1.24.2 (bez `docs/`), upload `treetank-trans-1.24.2.zip` w „Add your plugin”
+- [ ] Po akceptacji: 1.25.0 — dostawca AI Client, tokenizacja embedów, walidatory (backlog)
 - [ ] Odpowiedź na email (krótko, z kontekstem do punktu 2)
