@@ -52,6 +52,7 @@ Core infrastructure improvements completed in v1.3.0-1.3.5:
 
 - [Version 1.7.0 Plan](roadmap/VERSION_1.7.0_PLAN.md) - Comprehensive refactoring & extensibility
 - [Version 1.7.0 Proposal](roadmap/VERSION_1.7.0_PROPOSAL.md) - Initial extensibility proposal
+- [Backlog](roadmap/BACKLOG.md) - Potential extensions without a target version
 
 
 ## 🧪 Testing Documentation
