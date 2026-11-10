@@ -5,6 +5,19 @@ All notable changes to this plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- Workflows run in the background no longer fail on WordPress before 6.x with
+  "Call to undefined function get_plugin_data()": the admin include it needs is loaded
+  on demand.
+- Log entries from sources with names longer than 20 characters (for example
+  `translation_post_creator`) are stored again instead of being rejected by the database.
+- The "Post-processing workflow executed" log entry has its level and message the right
+  way round.
+- The activation smoke test runs a real background translation with Polylang and checks
+  that the workflow triggered on completion ran.
+
 ## [1.24.4] - 2026-11-10
 
 ### Fixed

@@ -239,6 +239,9 @@ class ContextDataProvider implements VariableProviderInterface
      */
     private function get_active_plugin_names()
     {
+        if (!function_exists('get_plugin_data')) {
+            require_once ABSPATH . 'wp-admin/includes/plugin.php';
+        }
         $active_plugins = get_option('active_plugins', []);
         $plugin_names = [];
 

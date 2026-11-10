@@ -977,7 +977,7 @@ class LogsManager
 
             $source_column = self::find_first_match($existing_columns, $column_mappings['source']);
             if ($source_column) {
-                $data[$source_column] = $source;
+                $data[$source_column] = self::clean_varchar_value($source, 20);
             }
 
             $process_id_column = self::find_first_match($existing_columns, $column_mappings['process_id']);
