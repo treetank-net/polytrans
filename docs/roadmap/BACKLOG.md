@@ -41,3 +41,21 @@ Reguły w promptach zostały dodane, ale prompt nie daje gwarancji.
 - Liczba `<strong>` w tłumaczeniu nie większa niż w źródle.
 - Tytuł ≤ 100 znaków; dłuższy → ponowienie kroku albo oznaczenie do przeglądu.
 - Wspólny mechanizm „needs review” dla wszystkich walidatorów zamiast osobnych reakcji.
+
+## Dostawcy
+
+### Dostawca „WordPress AI Client” (WP 7.0+)
+
+Zapowiedziany recenzentowi WordPress.org w odpowiedzi na rundę 2026-10-16. Dodatkowy
+dostawca obok OpenAI/Claude/Gemini, widoczny tylko gdy istnieje `wp_ai_client_prompt()`:
+klucze i model konfiguruje się centralnie w WordPressie, wtyczka nie trzyma własnego klucza.
+
+- Nie zastępuje bezpośrednich integracji: AI Client nie ma reasoning effort, Responses API
+  (wymagane dla modeli OpenAI 5.6+), Assistants ani streamingu, a domyślny timeout 30 s
+  jest za krótki na długie artykuły — przez `Core\AsyncJobRunner` i ewentualnie z
+  podniesionym timeoutem, jeśli API na to pozwala.
+- `ModelCapabilities` musi zgłaszać dla niego brak reasoning effort, żeby UI nie oferował
+  ustawień, których nie da się przekazać.
+- `usage`: zapisać to, co AI Client zwraca; jeśli brak liczników tokenów, wywołanie jest
+  „unpriced”, nie zerowe.
+- Pakiet compat `wordpress/wp-ai-client` dla WP < 7.0 jest deprecated — nie dołączać.
