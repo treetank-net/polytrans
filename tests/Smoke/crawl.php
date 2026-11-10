@@ -30,6 +30,13 @@ function smoke_request(string $method, string $path, ?array $form = null): array
 
     $url = preg_match('#^https?://#', $path) ? $path : $base . '/' . ltrim($path, '/');
     $headers = ['User-Agent: treetank-smoke'];
+    // SMOKE_CONNECT: the site's public name is unreachable from here (see
+    // inside-container.sh), so connect to this address and name the site in Host.
+    $connect = (string) getenv('SMOKE_CONNECT');
+    if ($connect !== '' && preg_match('#^(https?://)([^/]+)(.*)$#', $url, $parts)) {
+        $headers[] = 'Host: ' . $parts[2];
+        $url = 'http://' . $connect . $parts[3];
+    }
     if ($jar) {
         $pairs = [];
         foreach ($jar as $name => $value) {
@@ -287,6 +294,56 @@ if (!preg_match('/^(\d+) (\S+)$/', $seed, $ids)) {
             } else {
                 echo "  ✓ assistant save ({$mode}): prompt stored byte for byte\n";
             }
+        }
+    }
+}
+
+// 5b. Background work actually runs. 1.24.2 passed everything above on trans.info
+// while every background translation stayed "queued": the loopback to the public URL
+// never reached the server, and a non-blocking request reports no error. Seeing the
+// dispatch succeed proves nothing; the worker has to have done the job.
+echo "Background worker\n";
+[, , $editor] = smoke_request('GET', 'wp-admin/admin.php?page=polytrans-assistants&action=new');
+if (!preg_match('/var polytransAssistants = \{.*?"nonce":"([a-f0-9]+)"/s', $editor, $nonce)) {
+    smoke_fail('no polytransAssistants nonce on the assistant editor', 'background worker');
+} else {
+    [$status, , $body] = smoke_request('POST', 'wp-admin/admin-ajax.php', [
+        'action' => 'polytrans_dispatch_assistant_job',
+        'nonce' => $nonce[1],
+        'job_type' => 'assistant_test',
+        'assistant_id' => (int) ($ids[1] ?? 0),
+        'source_language' => 'en',
+        'target_language' => 'pl',
+        'title' => 'Hello',
+        'content' => '<p>Hello</p>',
+    ]);
+    $job_id = (string) (json_decode($body, true)['data']['job_id'] ?? '');
+    if ($job_id === '') {
+        smoke_fail("dispatch failed (HTTP {$status}): " . substr($body, 0, 300), 'background worker');
+    } else {
+        $state = 'pending';
+        for ($i = 0; $i < 30 && in_array($state, ['pending', 'running'], true); $i++) {
+            sleep(1);
+            [, , $body] = smoke_request('POST', 'wp-admin/admin-ajax.php', [
+                'action' => 'polytrans_poll_assistant_job',
+                'nonce' => $nonce[1],
+                'job_id' => $job_id,
+            ]);
+            $state = (string) (json_decode($body, true)['data']['status'] ?? 'missing');
+        }
+        // No API key is configured, so the job is expected to end as failed — what
+        // matters is that a worker picked it up at all.
+        if (in_array($state, ['pending', 'running', 'missing'], true)) {
+            smoke_fail("job {$job_id} still {$state} after 30 s: no worker ran it", 'background worker');
+        } else {
+            echo "  ✓ async job picked up by a worker (final status: {$state})\n";
+        }
+        $ran = trim((string) shell_exec('php -d memory_limit=1G /usr/local/bin/wp --allow-root --path=/var/www/html eval '
+            . escapeshellarg('global $wpdb; echo (int) $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->prefix}polytrans_logs WHERE message LIKE \'Started background task processing: async_job%\'");') . ' 2>&1'));
+        if ($ran === '0' || !ctype_digit($ran)) {
+            smoke_fail("the background endpoint (?polytrans_bg=1) never ran a task: {$ran}", 'background worker');
+        } else {
+            echo "  ✓ background endpoint ran {$ran} task(s)\n";
         }
     }
 }

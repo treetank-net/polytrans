@@ -23,13 +23,25 @@ if [ "${SMOKE_DB:-mysql}" = sqlite ]; then
         -e "s#{SQLITE_PLUGIN}#sqlite-database-integration/load.php#g" \
         wp-content/plugins/sqlite-database-integration/db.copy > wp-content/db.php
 fi
-$WP core install --url=http://localhost:8080 --title=smoke --admin_user=a --admin_password=a --admin_email=a@example.test --skip-email --quiet
+# SMOKE_UNREACHABLE_HOME: the site's public name resolves, inside this container, to
+# an address nothing answers on (activation-smoke.sh adds the hosts entry) — a
+# container behind a gateway, like trans.info. The crawler connects to localhost and
+# names the site in Host; the plugin's own loopbacks have only TREETANK_TRANS_LOOPBACK_URL.
+SITE_URL=http://localhost:8080
+if [ -n "${SMOKE_UNREACHABLE_HOME:-}" ]; then
+    SITE_URL=http://smoke-public.test:8080
+    export SMOKE_CONNECT=127.0.0.1:8080
+fi
+if [ -n "${SMOKE_LOOPBACK_URL:-}" ]; then
+    $WP config set TREETANK_TRANS_LOOPBACK_URL "$SMOKE_LOOPBACK_URL" --quiet
+fi
+$WP core install --url="$SITE_URL" --title=smoke --admin_user=a --admin_password=a --admin_email=a@example.test --skip-email --quiet
 
 mkdir -p "$SMOKE" wp-content/mu-plugins
 cp /smoke-tools/smoke-observer.php wp-content/mu-plugins/
 : > "$SMOKE/debug.log"
 
-echo "WordPress $($WP core version) · PHP $(php -r 'echo PHP_VERSION;') · ${SMOKE_DB:-mysql} · table prefix $PREFIX"
+echo "WordPress $($WP core version) · PHP $(php -r 'echo PHP_VERSION;') · ${SMOKE_DB:-mysql} · table prefix $PREFIX · site $SITE_URL${SMOKE_LOOPBACK_URL:+ · loopback $SMOKE_LOOPBACK_URL}"
 echo "Plugin $($WP plugin get treetank-trans --field=version) — inactive, about to be activated"
 
 PHP_CLI_SERVER_WORKERS=4 php -d memory_limit=512M -S 0.0.0.0:8080 -t /var/www/html > "$SMOKE/server.log" 2>&1 &
@@ -39,7 +51,7 @@ for _ in $(seq 1 20); do
     sleep 1
 done
 
-php /smoke-tools/crawl.php http://localhost:8080 "$SMOKE" || FAIL=1
+php /smoke-tools/crawl.php "$SITE_URL" "$SMOKE" || FAIL=1
 
 # Deactivate and reactivate: activation on a site that already has our options.
 echo "Reactivation"

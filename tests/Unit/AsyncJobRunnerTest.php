@@ -140,7 +140,7 @@ it('dispatches async jobs into transient storage and starts loopback worker', fu
 
     expect($loopbacks[0]['url'])->toContain('admin-ajax.php');
     expect($loopbacks[0]['args']['blocking'])->toBeFalse();
-    expect((float) $loopbacks[0]['args']['timeout'])->toBe(0.1);
+    expect((float) $loopbacks[0]['args']['timeout'])->toBe(0.5);
     expect($loopbacks[0]['args']['body']['action'])->toBe('polytrans_async_worker');
     expect($loopbacks[0]['args']['body']['job_id'])->toBe($jobId);
 
@@ -152,7 +152,7 @@ it('dispatches async jobs into transient storage and starts loopback worker', fu
     expect($loopbacks[1]['url'])->toContain('signature=');
     expect($loopbacks[1]['url'])->not->toContain('nonce=');
     expect($loopbacks[1]['args']['blocking'])->toBeFalse();
-    expect((float) $loopbacks[1]['args']['timeout'])->toBe(0.1);
+    expect((float) $loopbacks[1]['args']['timeout'])->toBe(0.5);
 
     $backgroundJobs = array_filter(
         $GLOBALS['polytrans_async_job_store'],

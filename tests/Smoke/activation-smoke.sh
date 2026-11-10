@@ -15,6 +15,10 @@
 #   SMOKE_KEEP        non-empty: leave the WordPress tree behind for inspection
 #   SMOKE_DB          mysql (default) or sqlite: the SQLite Database Integration drop-in,
 #                     the same SQL translation layer WordPress Playground runs on
+#   SMOKE_UNREACHABLE_HOME  non-empty: the site's public name points, inside the
+#                     container, at an address nothing answers on (a site behind a
+#                     gateway, like trans.info); background work must still run
+#   SMOKE_LOOPBACK_URL  sets TREETANK_TRANS_LOOPBACK_URL, e.g. http://127.0.0.1:8080
 #
 # Everything is staged under /tmp, never in the checkout: the container runs as root.
 set -euo pipefail
@@ -70,7 +74,11 @@ sqlite)
     ;;
 esac
 
+# 10.255.255.1 is a non-routed address: connections to it hang until the timeout,
+# which is what a gateway-only host name looks like from inside a container.
 docker run --rm --network "$NET" --user root \
+    --add-host smoke-public.test:10.255.255.1 \
     -e DB_HOST="$DB" -e SMOKE_DB="$SMOKE_DB" -e WP_CORE_VERSION="${WP_CORE_VERSION:-}" \
+    -e SMOKE_UNREACHABLE_HOME="${SMOKE_UNREACHABLE_HOME:-}" -e SMOKE_LOOPBACK_URL="${SMOKE_LOOPBACK_URL:-}" \
     -v "$WORK/site:/var/www/html" -v "$WORK/tools:/smoke-tools:ro" \
     --entrypoint sh "$IMAGE" /smoke-tools/inside-container.sh

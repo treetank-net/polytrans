@@ -5,6 +5,18 @@ All notable changes to this plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.24.3] - 2026-11-10
+
+### Fixed
+- Background translations and async jobs no longer stay queued forever on sites that
+  cannot reach their own public URL from the server (a container behind a gateway or
+  load balancer). The loopback that starts the worker was dropped before WordPress saw
+  it, with nothing logged. Such a site sets the address the server answers on locally,
+  `define('TREETANK_TRANS_LOOPBACK_URL', 'http://127.0.0.1');`; the request keeps the
+  public host name in `Host`. The loopback timeout is now 0.5 s instead of 0.1 s.
+- The activation smoke test checks that a background job actually runs, including on a
+  site whose public name is unreachable from inside.
+
 ## [1.24.2] - 2026-11-10
 
 ### Changed

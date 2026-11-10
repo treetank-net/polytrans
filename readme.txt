@@ -4,7 +4,7 @@ Tags: translation, multilingual, ai, openai, polylang
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 1.24.2
+Stable tag: 1.24.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -119,6 +119,10 @@ An optional setup where translation work is distributed across several WordPress
 
 Only if the site owner deliberately enables it in `wp-config.php` with `define('TREETANK_TRANS_ALLOW_UNAUTHENTICATED_ENDPOINTS', true);`. This exists for multi-server setups on an internal network, where the translator and the receiver are only reachable from fixed addresses. Without that constant both endpoints require the shared secret configured under TreeTank → Settings → Advanced, and a request without a valid secret is rejected. Use the IP allow-list on the same screen as a second condition.
 
+= Translations stay queued and nothing happens =
+
+Background work starts with a request from your server to your own site. If the server cannot reach the site under its public address — common for containers behind a load balancer or gateway — that request is lost without an error. Tell the plugin the address the server answers on locally, in `wp-config.php`: `define('TREETANK_TRANS_LOOPBACK_URL', 'http://127.0.0.1');`. Tools → Site Health shows whether loopback requests work.
+
 = Which data is sent to the AI provider? =
 
 Only the content being translated: title, body, excerpt, and SEO metadata if you enable that. See the External services section above.
@@ -133,6 +137,9 @@ Only the content being translated: title, body, excerpt, and SEO metadata if you
 6. Translation log viewer
 
 == Changelog ==
+
+= 1.24.3 =
+* Background translations no longer stay queued on servers that cannot reach their own public URL. Set `TREETANK_TRANS_LOOPBACK_URL` (for example `http://127.0.0.1`) in wp-config.php on such hosts.
 
 = 1.24.2 =
 * The plugin package no longer includes the developer documentation.

@@ -392,6 +392,15 @@ the guidelines, and broken in every release anyway, because that script was excl
 the distribution ZIP, so any host with `exec()` enabled got a failed dispatch and no
 fallback. Do not reintroduce an exec path.
 
+Every request from the site to itself goes through `Core\Loopback::post()`
+(`ReviewGuidelinesTest` rejects a `'blocking' => false` anywhere else). On a host that
+cannot reach its public URL from inside — trans.info, a container behind a gateway —
+a non-blocking loopback is dropped with **no error**, and translations stay "queued"
+forever; 1.24.2 shipped that way because `exec()` had been hiding it. Such a site
+defines `TREETANK_TRANS_LOOPBACK_URL` (trans.info: `http://127.0.0.1` in both deploy
+repos' `wp-config.php`); the request keeps the public name in `Host`. The smoke variant
+`SMOKE_UNREACHABLE_HOME=1` reproduces the host and checks a job actually ran.
+
 Long-running admin work goes through `Core\AsyncJobRunner` instead (see below).
 
 ### Template escaping

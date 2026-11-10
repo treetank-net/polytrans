@@ -89,6 +89,19 @@ test('HTTP goes through the WordPress HTTP API, never cURL or PHP streams', func
     expect(review_guidelines_matches('/(?<![\w$>:])stream_context_create\s*\(/'))->toBe([]);
 });
 
+test('requests from the site to itself go through Core\\Loopback', function () {
+    // A fire-and-forget loopback that bypasses Loopback::post() ignores
+    // TREETANK_TRANS_LOOPBACK_URL, and on a host that cannot reach its public URL it
+    // is dropped with no error: background translations stayed queued on trans.info.
+    $hits = array_filter(
+        review_guidelines_matches("/['\"]blocking['\"]\\s*=>\\s*false/"),
+        // TranslationHandler posts to a separately configured external translator,
+        // not to this site.
+        static fn (string $hit): bool => !str_starts_with($hit, 'includes/Scheduler/TranslationHandler.php:')
+    );
+    expect(array_values($hits))->toBe([]);
+});
+
 test('$_COOKIE is never read or forwarded', function () {
     expect(review_guidelines_matches('/\$_COOKIE\b/'))->toBe([]);
 });

@@ -282,9 +282,7 @@ class BackgroundProcessor
         // Fire-and-forget loopback through the WordPress HTTP API — the only transport.
         // Earlier versions fell back to file_get_contents() and raw cURL, which the
         // plugin guidelines forbid; a failed wp_remote_post() is reported, not retried.
-        $response = wp_remote_post($url, [
-            'timeout' => 0.1, // Very short timeout for fire-and-forget
-            'blocking' => false, // Non-blocking request
+        $response = Loopback::post($url, [
             'sslverify' => false, // Don't verify SSL for local requests
             'headers' => [
                 'X-Polytrans-BG' => 'Processing',

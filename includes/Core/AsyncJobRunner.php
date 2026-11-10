@@ -41,9 +41,7 @@ final class AsyncJobRunner
         $dispatched = false;
 
         // Fire non-blocking loopback to the authenticated AJAX worker.
-        $response = wp_remote_post(admin_url('admin-ajax.php'), [
-            'timeout'   => 0.1,
-            'blocking'  => false,
+        $response = Loopback::post(admin_url('admin-ajax.php'), [
             // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Core's own filter, applied here exactly as WP_Http does; not a hook of ours to prefix.
             'sslverify' => apply_filters('https_local_ssl_verify', false),
             'body'      => [
@@ -310,9 +308,7 @@ final class AsyncJobRunner
 
         $url = BackgroundProcessor::dispatch_url($token, 'async_job');
 
-        return wp_remote_post($url, [
-            'timeout' => 0.1,
-            'blocking' => false,
+        return Loopback::post($url, [
             'sslverify' => false,
             'headers' => [
                 'X-Polytrans-BG' => 'AsyncJob',

@@ -177,6 +177,13 @@ activation-smoke:
       - WP_CORE_VERSION: ""
         SMOKE_PHP: "8.2"
         SMOKE_DB: "sqlite"
+      # A site whose public name is unreachable from inside its container (trans.info,
+      # 1.24.2: background translations stayed queued); TREETANK_TRANS_LOOPBACK_URL fixes it.
+      - WP_CORE_VERSION: ""
+        SMOKE_PHP: "8.2"
+        SMOKE_DB: "mysql"
+        SMOKE_UNREACHABLE_HOME: "1"
+        SMOKE_LOOPBACK_URL: "http://127.0.0.1:8080"
   script:
     # Distribution shape, staged outside the checkout (see plugin-check).
     - export SMOKE_SRC="/tmp/treetank-trans-smoke-src-${CI_JOB_ID}"
