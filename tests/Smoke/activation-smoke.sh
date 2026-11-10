@@ -7,7 +7,9 @@
 # vendor/). It is copied into a fresh WordPress with WP_DEBUG on, activated from
 # plugins.php as the administrator, and every admin screen is opened. The run fails on
 # any PHP warning/notice/deprecation, activation output, missing table, plugin asset
-# on a screen that is not ours, or external HTTP request. See inside-container.sh.
+# on a screen that is not ours, or external HTTP request. Last, with Polylang active, a
+# translation scheduled as an editor does must finish in the background and start its
+# workflow (OpenAI stubbed in smoke-observer.php). See inside-container.sh.
 #
 # Environment:
 #   WP_CORE_VERSION   WordPress version (default: current release)
@@ -33,6 +35,12 @@ IMAGE="wordpress:cli-php${SMOKE_PHP:-8.2}"
 SMOKE_DB="${SMOKE_DB:-mysql}"
 # Pinned: the drop-in is what turns our MySQL into SQLite, so a new release is a new test.
 SQLITE_PLUGIN_VERSION="3.1.3"
+# Pinned, for the background translation check: 3.7.3 is what trans.info runs; it needs
+# WordPress 6.2, so the 6.0 job gets the last release that supports it.
+case "${WP_CORE_VERSION:-}" in
+    5.*|6.0*|6.1*) POLYLANG_VERSION="3.5.4" ;;
+    *)             POLYLANG_VERSION="3.7.3" ;;
+esac
 
 cleanup() {
     docker rm -f "$DB" >/dev/null 2>&1 || true
@@ -50,8 +58,13 @@ trap cleanup EXIT
 
 mkdir -p "$WORK/site/wp-content/plugins/treetank-trans" "$WORK/tools"
 rsync -a "$PLUGIN_DIR/" "$WORK/site/wp-content/plugins/treetank-trans/"
-cp "$TOOLS/crawl.php" "$TOOLS/smoke-observer.php" "$TOOLS/inside-container.sh" \
-    "$TOOLS/seed-prompts.php" "$TOOLS/prompt-fixture.txt" "$WORK/tools/"
+cp "$TOOLS/crawl.php" "$TOOLS/smoke-lib.php" "$TOOLS/smoke-observer.php" "$TOOLS/inside-container.sh" \
+    "$TOOLS/seed-prompts.php" "$TOOLS/prompt-fixture.txt" \
+    "$TOOLS/seed-translation.php" "$TOOLS/translate.php" "$WORK/tools/"
+# Unpacked but inactive: the activation and crawl run on a site with only our plugin;
+# inside-container.sh activates Polylang for the background translation afterwards.
+curl -fsSL -o "$WORK/tools/polylang.zip" "https://downloads.wordpress.org/plugin/polylang.${POLYLANG_VERSION}.zip"
+unzip -q "$WORK/tools/polylang.zip" -d "$WORK/site/wp-content/plugins/"
 
 docker network create "$NET" >/dev/null
 case "$SMOKE_DB" in
@@ -79,6 +92,6 @@ esac
 docker run --rm --network "$NET" --user root \
     --add-host smoke-public.test:10.255.255.1 \
     -e DB_HOST="$DB" -e SMOKE_DB="$SMOKE_DB" -e WP_CORE_VERSION="${WP_CORE_VERSION:-}" \
-    -e SMOKE_UNREACHABLE_HOME="${SMOKE_UNREACHABLE_HOME:-}" -e SMOKE_LOOPBACK_URL="${SMOKE_LOOPBACK_URL:-}" \
+    -e POLYLANG_VERSION="$POLYLANG_VERSION" -e SMOKE_UNREACHABLE_HOME="${SMOKE_UNREACHABLE_HOME:-}" -e SMOKE_LOOPBACK_URL="${SMOKE_LOOPBACK_URL:-}" \
     -v "$WORK/site:/var/www/html" -v "$WORK/tools:/smoke-tools:ro" \
     --entrypoint sh "$IMAGE" /smoke-tools/inside-container.sh

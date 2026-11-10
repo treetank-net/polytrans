@@ -57,6 +57,21 @@ php /smoke-tools/crawl.php "$SITE_URL" "$SMOKE" || FAIL=1
 echo "Reactivation"
 $WP plugin deactivate treetank-trans --quiet || FAIL=1
 $WP plugin activate treetank-trans --quiet || FAIL=1
+
+# A translation the way trans.info runs one: Polylang, internal transport, a managed
+# assistant, and a workflow triggered on completion (OpenAI answered by the stub in
+# smoke-observer.php). The dispatch always reports success; only the result shows
+# whether the background endpoint ran and the workflow hooks were in place.
+echo "Background translation (Polylang ${POLYLANG_VERSION:-?})"
+if $WP plugin activate polylang --quiet; then
+    if SOURCE_POST=$($WP eval-file /smoke-tools/seed-translation.php); then
+        php /smoke-tools/translate.php "$SITE_URL" "$SMOKE" "$SOURCE_POST" || FAIL=1
+    else
+        echo "  ✗ could not seed the translation setup"; FAIL=1
+    fi
+else
+    echo "  ✗ Polylang ${POLYLANG_VERSION:-?} did not activate"; FAIL=1
+fi
 kill "$SERVER" 2>/dev/null || true
 
 echo "Tables (dbDelta, \$wpdb->prefix)"
@@ -89,7 +104,8 @@ echo "debug.log (WP_DEBUG)"
 # was logged after activation, minus what core alone logged before it (crawl.php writes
 # the marker): a fresh core on its supported PHP logs nothing, an old one plenty.
 PATTERN="PHP (Fatal error|Parse error|Warning|Notice|Deprecated)|Uncaught|called <strong>incorrectly</strong>|is <strong>deprecated</strong>|wp_kses stripped markup|WordPress database error"
-normalize() { grep -E "$PATTERN" | sed 's/^\[[^]]*\] //' | sort -u; }
+# Polylang's own messages are not ours to fix (it is active only for the last check).
+normalize() { grep -E "$PATTERN" | grep -v '/plugins/polylang/' | sed 's/^\[[^]]*\] //' | sort -u; }
 sed '/=== TREETANK SMOKE: ACTIVATION ===/,$d' "$SMOKE/debug.log" | normalize > "$SMOKE/debug-baseline.log"
 sed -n '/=== TREETANK SMOKE: ACTIVATION ===/,$p' "$SMOKE/debug.log" | normalize > "$SMOKE/debug-after.log"
 comm -13 "$SMOKE/debug-baseline.log" "$SMOKE/debug-after.log" > "$SMOKE/debug-errors.log"
