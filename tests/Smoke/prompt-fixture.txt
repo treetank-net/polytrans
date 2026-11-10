@@ -2,3 +2,4 @@
 <assistant role="editor">Keep <strong>inline markup</strong>, "double" & 'single' quotes, a < b > c, &amp; entities.</assistant>
 <schema>{"type": "object", "properties": {"title": {"type": "string"}}}</schema>
 <script>not code, just text in a prompt</script>
+Preserve all HTML tags (block-level: <p>, <h2>, <ul>, <iframe src="https://example.test/embed"></iframe>) and keep <!--more--> — it marks the boundary between lead and body.

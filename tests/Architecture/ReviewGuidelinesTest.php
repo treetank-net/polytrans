@@ -131,3 +131,14 @@ test('inline CSS is not built in PHP', function () {
     // Styles belong in assets/css/, enqueued on the screen that needs them.
     expect(review_guidelines_matches('/(?<![\w$>:])wp_add_inline_style\s*\(/'))->toBe([]);
 });
+
+test('prompt text from a request is never run through a tag-stripping sanitizer', function () {
+    // 1.24.0 saved assistants through sanitize_textarea_field(), which deleted every tag
+    // and <!--more--> from the system prompt: instructions such as "preserve <p> and
+    // <iframe>" never reached the model. Prompts take sanitize_prompt_template().
+    $hits = review_guidelines_matches(
+        '/(sanitize_textarea_field|sanitize_text_field|wp_strip_all_tags|strip_tags|wp_kses\w*)\s*\(\s*(wp_unslash\s*\(\s*)?\$_(POST|GET|REQUEST)\[[\'"]\w*(prompt|template|criteria|objective|purpose|schema|user_message|instruction)\w*[\'"]\]/'
+    );
+
+    expect($hits)->toBe([], "Use sanitize_prompt_template() for prompt fields:\n" . implode("\n", $hits));
+});

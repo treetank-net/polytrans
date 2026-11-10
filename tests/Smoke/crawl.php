@@ -252,6 +252,43 @@ if (!preg_match('/^(\d+) (\S+)$/', $seed, $ids)) {
             echo "  ✓ {$label}: prompt intact (" . implode(', ', array_unique($found)) . ")\n";
         }
     }
+    // The seed above writes through AssistantManager; the editor saves through admin-ajax.
+    // 1.24.0 passed every check above while that save path ran sanitize_textarea_field()
+    // over the prompt, deleting every tag and <!--more--> before it reached the database.
+    [, , $editor] = smoke_request('GET', "wp-admin/admin.php?page=polytrans-assistants&action=edit&assistant_id={$ids[1]}");
+    if (!preg_match('/var polytransAssistants = \{.*?"nonce":"([a-f0-9]+)"/s', $editor, $nonce)) {
+        smoke_fail('no polytransAssistants nonce on the assistant editor', 'assistant save');
+    } else {
+        foreach (['update' => (int) $ids[1], 'create' => 0] as $mode => $id) {
+            [$status, , $body] = smoke_request('POST', 'wp-admin/admin-ajax.php', [
+                'action' => 'polytrans_save_assistant',
+                'nonce' => $nonce[1],
+                'assistant_id' => $id,
+                'name' => 'Smoke prompt save (' . $mode . ')',
+                'provider' => 'openai',
+                'model' => 'gpt-4o-mini',
+                'system_prompt' => $prompt,
+                'user_message_template' => $prompt,
+                'response_format' => 'text',
+            ]);
+            $reply = json_decode($body, true);
+            $saved_id = $id ?: (int) ($reply['data']['assistant_id'] ?? $reply['data']['id'] ?? 0);
+            if ($status !== 200 || empty($reply['success']) || $saved_id <= 0) {
+                smoke_fail("admin-ajax save failed (HTTP {$status}): " . substr($body, 0, 300), "assistant save ({$mode})");
+                continue;
+            }
+            $stored = (string) shell_exec('php -d memory_limit=1G /usr/local/bin/wp --allow-root --path=/var/www/html eval '
+                . escapeshellarg('$a = \\PolyTrans\\Assistants\\AssistantManager::get_assistant(' . $saved_id . '); echo wp_json_encode([$a["system_prompt"] ?? null, $a["user_message_template"] ?? null]);') . ' 2>&1');
+            $fields = json_decode($stored, true);
+            if (!is_array($fields) || $fields[0] !== $prompt || $fields[1] !== $prompt) {
+                $dump = $smoke_dir . "/assistant-save-{$mode}.json";
+                file_put_contents($dump, $stored);
+                smoke_fail("prompt altered by the admin save (stored value in {$dump})", "assistant save ({$mode})");
+            } else {
+                echo "  ✓ assistant save ({$mode}): prompt stored byte for byte\n";
+            }
+        }
+    }
 }
 
 // 6. Assets only on the plugin's own screens and the post editor (its meta boxes).
