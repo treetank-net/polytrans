@@ -172,7 +172,10 @@ cd /home/jm/projects/trans-info
 ./sync-polytrans-manual.sh --local  # built from this working tree, same shape
 ./sync-polytrans-watch.sh           # local mode, re-synced on every change
 ```
-Add `--dry-run` to see what would change. Deploy repos (`transinfo-wp-docker`,
+Add `--dry-run` to see what would change. To build a package by hand (a hotfix that
+cannot wait for the pipeline), start from `git archive vX.Y.Z` and run
+`composer install --no-dev` against the archived `composer.lock`. Without the lock Composer
+resolves the newest versions instead, and the vendor differs from the tested release. Deploy repos (`transinfo-wp-docker`,
 `transinfo-wr-docker`) get release packages only; commit the plugin directory and tag
 the repo to deploy to DEV.
 

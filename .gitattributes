@@ -11,7 +11,8 @@
 .gitignore export-ignore
 .gitattributes export-ignore
 .gitlab-ci.yml export-ignore
-composer.lock export-ignore
+# composer.lock stays in archives: `git archive <tag>` + `composer install --no-dev`
+# must give the vendor the release pipeline built (.distignore drops the lock from the zip).
 phpunit.xml export-ignore
 phpunit.xml.dist export-ignore
 pest.php export-ignore
