@@ -238,6 +238,22 @@ The shell runner reuses its checkout between jobs. Docker jobs must mount
 staging directory; otherwise a root container can leave files that the next checkout
 cannot remove. `CiWorkspacePermissionsTest` guards this invariant.
 
+**The runners' disk is small and shared.** CI runs on two VPSes (74 GB each) that also host
+production (registry, k3s, mail, TimeProtect); a full disk takes production down. Every job
+must leave nothing behind:
+
+- `docker run --rm` for one-off containers. Remove a named service container with
+  `docker rm -fv` (the `-v` matters: `mysql:5.7` declares a volume, and plain `rm -f` left
+  an anonymous ~212 MB volume after every job, 70 of them / 15 GB by 11.2026). The same
+  goes for `dev.sh` and `tests/Smoke/activation-smoke.sh`.
+- Clean up in `after_script` / a `trap ... EXIT`, so failed and cancelled jobs clean up too.
+- No named volumes, no `docker build`/image tags or caches kept between jobs unless the
+  job deliberately reuses them; job-scoped `/tmp/...-${CI_JOB_ID}` directories are removed
+  at the end.
+- When adding a job, check afterwards on the runner with `docker volume ls -f dangling=true`
+  and `docker images` that it left nothing behind. A weekly/daily `docker-cleanup` timer (role
+  `docker_cleanup` in treetank-ansible) is a safety net, not a substitute.
+
 ### Checking Version
 
 ```bash
