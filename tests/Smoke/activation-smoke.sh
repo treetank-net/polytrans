@@ -43,7 +43,7 @@ case "${WP_CORE_VERSION:-}" in
 esac
 
 cleanup() {
-    docker rm -f "$DB" >/dev/null 2>&1 || true
+    docker rm -fv "$DB" >/dev/null 2>&1 || true
     docker network rm "$NET" >/dev/null 2>&1 || true
     if [ -z "${SMOKE_KEEP:-}" ]; then
         # Root-owned files: remove them from inside a container, as the CI jobs do.

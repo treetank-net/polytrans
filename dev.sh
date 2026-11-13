@@ -168,7 +168,7 @@ run_smoke() {
     local status=$?
 
     print_status "Tearing down"
-    docker rm -f "$db" >/dev/null 2>&1 || true
+    docker rm -fv "$db" >/dev/null 2>&1 || true
     docker network rm "$net" >/dev/null 2>&1 || true
     print_status "WordPress tree left in ${work_dir} for inspection"
 

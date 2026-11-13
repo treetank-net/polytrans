@@ -139,7 +139,7 @@ plugin-check:
       fi
       echo "✅ Plugin Check: 0 errors"
   after_script:
-    - docker rm -f "pcp-mysql-${CI_JOB_ID}" || true
+    - docker rm -fv "pcp-mysql-${CI_JOB_ID}" || true
     - docker network rm "pcp-${CI_JOB_ID}" || true
     - docker run --rm --user root --entrypoint sh -v "/tmp/treetank-trans-pcp-${CI_JOB_ID}:/cleanup" wordpress:cli-php8.2 -c "rm -rf /cleanup/* /cleanup/.[!.]* /cleanup/..?*" || true
     - rmdir "/tmp/treetank-trans-pcp-${CI_JOB_ID}" || true
