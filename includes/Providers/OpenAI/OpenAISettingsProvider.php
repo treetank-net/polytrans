@@ -6,6 +6,7 @@ use PolyTrans\Providers\SettingsProviderInterface;
 use PolyTrans\Providers\ProviderRegistry;
 use PolyTrans\Providers\ReasoningEffortField;
 use PolyTrans\Assistants\AssistantManager;
+use PolyTrans\Assistants\AssistantAvailability;
 use PolyTrans\Core\Diagnostics;
 use PolyTrans\Core\AdminMarkup;
 
@@ -864,7 +865,11 @@ class OpenAISettingsProvider implements SettingsProviderInterface
             'managed' => [],    // Managed Assistants (only if not excluded)
             'openai' => [],     // OpenAI API Assistants
             'claude' => [],     // Future: Claude Projects
-            'gemini' => []      // Future: Gemini Tuned Models
+            'gemini' => [],     // Future: Gemini Tuned Models
+            // Managed assistants that cannot be used right now, each with an
+            // 'unavailable_reason'. A separate key, so consumers that only read
+            // 'managed' never offer them as selectable.
+            'unavailable' => []
         ];
 
         // 0. Load Enabled Translation Providers (only those that can translate directly)
@@ -900,18 +905,13 @@ class OpenAISettingsProvider implements SettingsProviderInterface
             if (!empty($managed_assistants)) {
             foreach ($managed_assistants as $assistant) {
                 $assistant_provider = $assistant['provider'] ?? 'openai';
-                
-                // Filter managed assistants based on enabled providers
-                // Check if the assistant's provider is enabled in enabled_translation_providers
-                if (!in_array($assistant_provider, $enabled_providers)) {
-                    continue; // Skip assistants from disabled providers
-                }
-                
-                // Additional check for OpenAI: also require API key to be configured
-                if ($assistant_provider === 'openai' && empty($api_key)) {
-                    continue; // Skip OpenAI assistants if API key not configured
-                }
-                
+                $unavailable_reason = AssistantAvailability::unavailable_reason(
+                    $assistant,
+                    $enabled_providers,
+                    (string) $api_key,
+                    ProviderRegistry::get_instance()->get_provider_choices()
+                );
+
                 $model_display = 'No model';
                 
                 // Try to get model from api_parameters
@@ -930,13 +930,20 @@ class OpenAISettingsProvider implements SettingsProviderInterface
                     $model_display = 'Global Setting';
                 }
 
-                $grouped_assistants['managed'][] = [
+                $entry = [
                     'id' => 'managed_' . $assistant['id'], // Prefix to distinguish from OpenAI IDs
                     'name' => $assistant['name'],
                     'description' => $assistant['description'] ?? '',
                     'model' => $model_display,
                     'provider' => $assistant_provider
                 ];
+
+                if ($unavailable_reason !== null) {
+                    $entry['unavailable_reason'] = $unavailable_reason;
+                    $grouped_assistants['unavailable'][] = $entry;
+                } else {
+                    $grouped_assistants['managed'][] = $entry;
+                }
             }
             }
         }

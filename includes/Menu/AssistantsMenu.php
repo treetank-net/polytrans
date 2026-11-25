@@ -12,6 +12,8 @@ namespace PolyTrans\Menu;
 use PolyTrans\Assistants\AssistantManager;
 use PolyTrans\Assistants\AssistantExecutor;
 use PolyTrans\Assistants\AssistantMigration;
+use PolyTrans\Assistants\AssistantAvailability;
+use PolyTrans\Providers\ProviderRegistry;
 use PolyTrans\Core\AsyncJobRunner;
 use PolyTrans\Assistants\Testing\AssistantRefinementService;
 use PolyTrans\PromptRefinement\DescriptionGeneratorService;
@@ -354,6 +356,8 @@ class AssistantsMenu
         $settings = get_option('polytrans_settings', []);
         $enabled_providers = $settings['enabled_translation_providers'] ?? [];
 
+        $provider_names = ProviderRegistry::get_instance()->get_provider_choices();
+
         // Map assistant data for display
         foreach ($assistants as &$assistant) {
             // Extract model from api_parameters
@@ -369,6 +373,15 @@ class AssistantsMenu
                 $default_model = $settings[$model_setting_key] ?? '';
                 $assistant['has_default_model'] = !empty($default_model);
             }
+
+            // Same rule as the translation picker, so the list can say why an
+            // assistant is missing there instead of only colouring it red.
+            $assistant['unavailable_reason'] = AssistantAvailability::unavailable_reason(
+                $assistant,
+                is_array($enabled_providers) ? $enabled_providers : [],
+                (string) ($settings['openai_api_key'] ?? ''),
+                $provider_names
+            );
         }
         unset($assistant); // Break reference
 

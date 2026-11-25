@@ -53,9 +53,9 @@
                         </td>
                         <td class="column-provider">
                             {% set provider_name = assistant.provider|capitalize %}
-                            {% set is_provider_enabled = assistant.provider in enabled_providers %}
-                            {% if not is_provider_enabled %}
+                            {% if assistant.unavailable_reason %}
                                 <span style="color: #dc3232; font-weight: bold;">{{ provider_name|esc_html }}</span>
+                                <br><small style="color: #dc3232;">{{ __('Not selectable for translation: %s', 'treetank-trans')|format(assistant.unavailable_reason)|esc_html }}</small>
                             {% else %}
                                 {{ provider_name|esc_html }}
                             {% endif %}
@@ -67,7 +67,7 @@
                                 {% if assistant.has_default_model %}
                                     <span style="color: #666; font-style: italic;">{{ __('default', 'treetank-trans') }}</span>
                                 {% else %}
-                                    <span style="color: #dc3232; font-weight: bold;">{{ __('default', 'treetank-trans') }}</span>
+                                    <span style="color: #dc3232; font-weight: bold;" title="{{ __('No model set here, and no default model for this provider in Settings', 'treetank-trans')|esc_attr }}">{{ __('default', 'treetank-trans') }}</span>
                                 {% endif %}
                             {% endif %}
                         </td>

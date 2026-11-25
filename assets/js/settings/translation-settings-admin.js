@@ -385,9 +385,36 @@
                             $select.append($geminiGroup);
                         }
 
-                        // Set the selected value
+                        // Managed assistants that exist but cannot be used now (provider
+                        // disabled, no API key): listed disabled with the reason, so an
+                        // empty dropdown is never left unexplained.
+                        if (groupedAssistants.unavailable && groupedAssistants.unavailable.length > 0) {
+                            var $unavailableGroup = $('<optgroup label="Unavailable assistants"></optgroup>');
+                            groupedAssistants.unavailable.forEach(function (assistant) {
+                                var option = $('<option></option>')
+                                    .attr('value', assistant.id)
+                                    .prop('disabled', true)
+                                    .text(assistant.name + ' (' + assistant.model + ') — ' + assistant.unavailable_reason);
+                                $unavailableGroup.append(option);
+                            });
+                            $select.append($unavailableGroup);
+                        }
+
+                        // Set the selected value. A saved value whose option is disabled
+                        // or missing is still shown as selected: the hidden input keeps
+                        // it, and the dropdown must not pretend nothing is mapped.
                         if (currentValue) {
-                            $select.val(currentValue);
+                            var $current = $select.find('option').filter(function () {
+                                return this.value === currentValue;
+                            });
+                            if ($current.length === 0) {
+                                $current = $('<option></option>')
+                                    .attr('value', currentValue)
+                                    .prop('disabled', true)
+                                    .text(currentValue + ' — not found');
+                                $select.append($current);
+                            }
+                            $current.prop('selected', true);
                         }
 
                         // Handle selection changes - update the hidden input
