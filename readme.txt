@@ -4,7 +4,7 @@ Tags: translation, multilingual, ai, openai, polylang
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 1.24.4
+Stable tag: 1.24.5
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -137,6 +137,9 @@ Only the content being translated: title, body, excerpt, and SEO metadata if you
 6. Translation log viewer
 
 == Changelog ==
+
+= 1.24.5 =
+* An assistant that cannot be used for translation (provider not enabled, or no OpenAI API key) is shown disabled in the assistant mapping with the reason, instead of disappearing. Background workflows no longer fail on WordPress before 6.x, and long log source names are stored again.
 
 = 1.24.4 =
 * Post-processing workflows start again after a background translation.

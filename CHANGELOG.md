@@ -5,9 +5,16 @@ All notable changes to this plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.24.5] - 2026-11-25
 
 ### Fixed
+- An assistant that cannot be used for translation right now (its provider is not
+  enabled, or OpenAI has no API key) no longer disappears from the Provider/Assistant
+  Mapping dropdown without a word. It is listed disabled under "Unavailable assistants",
+  with the reason, and a pair already mapped to it shows that assistant instead of
+  "No provider/assistant selected". A mapping to an assistant that no longer exists is
+  shown as "not found". The AI Assistants list states the same reason under the
+  provider.
 - Workflows run in the background no longer fail on WordPress before 6.x with
   "Call to undefined function get_plugin_data()": the admin include it needs is loaded
   on demand.
