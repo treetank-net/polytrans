@@ -63,74 +63,41 @@ class TranslationCoordinator
             // Ephemeral posts skip notifications and status updates since they'll be deleted
             $is_ephemeral = $params['ephemeral'] ?? false;
 
-            // Create the translated post
-            $new_post_id = $this->post_creator->create_post($translated, $original_post_id);
-            if (is_wp_error($new_post_id)) {
-                if (!$is_ephemeral) {
+            // In "update" mode the existing translation for this language is refreshed
+            // instead of creating a new post. Ephemeral posts are scratch copies for
+            // after-workflows dispatch and are always created.
+            $existing_post_id = $is_ephemeral ? 0 : Managers\TargetPostResolver::resolve($original_post_id, $target_language);
+            $updated_existing = $existing_post_id > 0;
+
+            if ($updated_existing) {
+                $new_post_id = $this->update_existing_translation($existing_post_id, $original_post_id, $source_language, $target_language, $translated);
+                if (is_wp_error($new_post_id)) {
                     $this->status_manager->mark_as_failed($original_post_id, $target_language, $new_post_id->get_error_message());
+                    return [
+                        'success' => false,
+                        'error' => 'Could not update translated post: ' . $new_post_id->get_error_message()
+                    ];
                 }
-                return [
-                    'success' => false,
-                    'error' => 'Could not create translated post: ' . $new_post_id->get_error_message()
-                ];
-            }
-
-
-            // Setup all post properties and relationships
-            // For ephemeral posts, skip relationship setup (receiver will handle final relationships)
-            $this->setup_translated_post($new_post_id, $original_post_id, $source_language, $target_language, $translated, $is_ephemeral);
-
-            // Set slug AFTER all setup — wp_update_post calls in setup_translated_post clear post_name
-            if (!empty($translated['slug'])) {
-                global $wpdb;
-                $sanitized_slug = sanitize_title($translated['slug']);
-                $wpdb->update($wpdb->posts, ['post_name' => $sanitized_slug], ['ID' => $new_post_id]);
-                clean_post_cache($new_post_id);
-
-                // Update Permalink Manager URI if active — replace last URI segment with translated slug
-                $pm_uris = get_option('permalink-manager-uris');
-                if ($pm_uris !== false && isset($pm_uris[$original_post_id])) {
-                    $original_parts = explode('/', $pm_uris[$original_post_id]);
-                    $original_parts[count($original_parts) - 1] = $sanitized_slug;
-
-                    // Swap language prefix only if original URI already has one (Polylang adds prefix automatically)
-                    $lang = function_exists('pll_get_post_language') ? pll_get_post_language($new_post_id, 'slug') : '';
-                    $original_lang = function_exists('pll_get_post_language') ? pll_get_post_language($original_post_id, 'slug') : '';
-                    if ($lang && $original_lang && $original_parts[0] === $original_lang) {
-                        $original_parts[0] = $lang;
+            } else {
+                // Create the translated post
+                $new_post_id = $this->post_creator->create_post($translated, $original_post_id);
+                if (is_wp_error($new_post_id)) {
+                    if (!$is_ephemeral) {
+                        $this->status_manager->mark_as_failed($original_post_id, $target_language, $new_post_id->get_error_message());
                     }
-
-                    // Swap category slugs with their translations
-                    if (function_exists('pll_get_term_translations') && count($original_parts) > 2) {
-                        // Try to find and replace category slugs in the URI
-                        $original_categories = wp_get_post_categories($original_post_id, ['fields' => 'all']);
-                        foreach ($original_categories as $cat) {
-                            $cat_translations = pll_get_term_translations($cat->term_id);
-                            if (isset($cat_translations[$lang])) {
-                                $translated_cat = get_term($cat_translations[$lang]);
-                                if ($translated_cat && !is_wp_error($translated_cat)) {
-                                    // Replace original category slug with translated one
-                                    $key = array_search($cat->slug, $original_parts);
-                                    if ($key !== false) {
-                                        $original_parts[$key] = $translated_cat->slug;
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    $pm_uris[$new_post_id] = implode('/', $original_parts);
-                    update_option('permalink-manager-uris', $pm_uris, false);
-
-                    LogsManager::log("Set translated slug to '{$sanitized_slug}' for post {$new_post_id}", "info", [
-                        'source' => 'translation_coordinator',
-                        'permalink_manager_uri' => $pm_uris[$new_post_id],
-                    ]);
-                } else {
-                    LogsManager::log("Set translated slug to '{$sanitized_slug}' for post {$new_post_id}", "info", [
-                        'source' => 'translation_coordinator',
-                    ]);
+                    return [
+                        'success' => false,
+                        'error' => 'Could not create translated post: ' . $new_post_id->get_error_message()
+                    ];
                 }
+
+
+                // Setup all post properties and relationships
+                // For ephemeral posts, skip relationship setup (receiver will handle final relationships)
+                $this->setup_translated_post($new_post_id, $original_post_id, $source_language, $target_language, $translated, $is_ephemeral);
+
+                // Set slug AFTER all setup — wp_update_post calls in setup_translated_post clear post_name
+                $this->apply_translated_slug($new_post_id, $original_post_id, $translated);
             }
 
             $final_status = 'completed';
@@ -164,6 +131,7 @@ class TranslationCoordinator
             return [
                 'success' => true,
                 'created_post_id' => $new_post_id,
+                'updated_existing' => $updated_existing,
                 'status' => $final_status
             ];
         } catch (\Exception $e) {
@@ -179,6 +147,100 @@ class TranslationCoordinator
                 'error' => $error_message
             ];
         }
+    }
+
+    /**
+     * Sets the translated slug (and Permalink Manager URI) on a newly created post.
+     *
+     * Runs after all setup, because the wp_update_post() calls in
+     * setup_translated_post() clear post_name.
+     *
+     * @param int   $new_post_id      New translated post ID
+     * @param int   $original_post_id Original post ID
+     * @param array $translated       Translated content data
+     */
+    private function apply_translated_slug($new_post_id, $original_post_id, array $translated)
+    {
+        if (!empty($translated['slug'])) {
+            global $wpdb;
+            $sanitized_slug = sanitize_title($translated['slug']);
+            $wpdb->update($wpdb->posts, ['post_name' => $sanitized_slug], ['ID' => $new_post_id]);
+            clean_post_cache($new_post_id);
+
+            // Update Permalink Manager URI if active — replace last URI segment with translated slug
+            $pm_uris = get_option('permalink-manager-uris');
+            if ($pm_uris !== false && isset($pm_uris[$original_post_id])) {
+                $original_parts = explode('/', $pm_uris[$original_post_id]);
+                $original_parts[count($original_parts) - 1] = $sanitized_slug;
+
+                // Swap language prefix only if original URI already has one (Polylang adds prefix automatically)
+                $lang = function_exists('pll_get_post_language') ? pll_get_post_language($new_post_id, 'slug') : '';
+                $original_lang = function_exists('pll_get_post_language') ? pll_get_post_language($original_post_id, 'slug') : '';
+                if ($lang && $original_lang && $original_parts[0] === $original_lang) {
+                    $original_parts[0] = $lang;
+                }
+
+                // Swap category slugs with their translations
+                if (function_exists('pll_get_term_translations') && count($original_parts) > 2) {
+                    // Try to find and replace category slugs in the URI
+                    $original_categories = wp_get_post_categories($original_post_id, ['fields' => 'all']);
+                    foreach ($original_categories as $cat) {
+                        $cat_translations = pll_get_term_translations($cat->term_id);
+                        if (isset($cat_translations[$lang])) {
+                            $translated_cat = get_term($cat_translations[$lang]);
+                            if ($translated_cat && !is_wp_error($translated_cat)) {
+                                // Replace original category slug with translated one
+                                $key = array_search($cat->slug, $original_parts);
+                                if ($key !== false) {
+                                    $original_parts[$key] = $translated_cat->slug;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                $pm_uris[$new_post_id] = implode('/', $original_parts);
+                update_option('permalink-manager-uris', $pm_uris, false);
+
+                LogsManager::log("Set translated slug to '{$sanitized_slug}' for post {$new_post_id}", "info", [
+                    'source' => 'translation_coordinator',
+                    'permalink_manager_uri' => $pm_uris[$new_post_id],
+                ]);
+            } else {
+                LogsManager::log("Set translated slug to '{$sanitized_slug}' for post {$new_post_id}", "info", [
+                    'source' => 'translation_coordinator',
+                ]);
+            }
+        }
+    }
+
+    /**
+     * Refreshes an existing translation with newly translated content.
+     *
+     * Writes title, content, excerpt and translated meta, rewrites the translation
+     * markers and keeps the post in the original's Polylang group. Status, slug,
+     * author, taxonomies and featured image are left as they are.
+     *
+     * @return int|\WP_Error Post ID or error
+     */
+    private function update_existing_translation($post_id, $original_post_id, $source_language, $target_language, array $translated)
+    {
+        $result = $this->post_creator->update_post($post_id, $translated);
+        if (is_wp_error($result)) {
+            return $result;
+        }
+
+        $this->metadata_manager->update_metadata($post_id, $original_post_id, $source_language, $translated);
+        $this->language_manager->relink_existing($post_id, $original_post_id, $target_language);
+
+        LogsManager::log("Updated existing translation $post_id ($target_language) from post $original_post_id", "info", [
+            'source' => 'translation_coordinator',
+            'original_post_id' => $original_post_id,
+            'translated_post_id' => $post_id,
+            'target_language' => $target_language,
+        ]);
+
+        return $post_id;
     }
 
     /**

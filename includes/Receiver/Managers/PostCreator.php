@@ -78,6 +78,45 @@ class PostCreator
     }
 
     /**
+     * Writes translated title, content and excerpt into an existing translation.
+     *
+     * Status, author, slug and date are left as they are: the post may already be
+     * published, and an update must neither unpublish it nor change its URL.
+     *
+     * @param int   $post_id    Existing translated post
+     * @param array $translated Translated content
+     * @return int|\WP_Error Post ID or error
+     */
+    public function update_post($post_id, array $translated)
+    {
+        $postarr = ['ID' => (int) $post_id];
+
+        if (array_key_exists('title', $translated)) {
+            $postarr['post_title'] = $this->sanitize_title($translated['title']);
+        }
+        if (array_key_exists('content', $translated)) {
+            $postarr['post_content'] = $this->sanitize_content($translated['content']);
+        }
+        if (array_key_exists('excerpt', $translated)) {
+            $postarr['post_excerpt'] = $this->sanitize_excerpt($translated['excerpt']);
+        }
+
+        $result = wp_update_post($postarr, true);
+
+        if (is_wp_error($result)) {
+            \PolyTrans\Core\LogsManager::log('[polytrans] Failed to update translated post: ' . $result->get_error_message(), "error");
+            return $result;
+        }
+
+        \PolyTrans_Logs_Manager::log("Updated existing translated post {$post_id}", "info", [
+            'source' => 'translation_post_creator',
+            'translated_post_id' => (int) $post_id,
+        ]);
+
+        return (int) $post_id;
+    }
+
+    /**
      * Create an initial revision for the post with the correct author
      * 
      * @param int $post_id The post ID

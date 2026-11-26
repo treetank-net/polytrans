@@ -28,6 +28,34 @@ class MetadataManager
     }
 
     /**
+     * Refreshes metadata on an existing translation.
+     *
+     * Only the translated values are written. Meta that was copied from the original
+     * when the post was created is left alone: it may have been changed for this
+     * language since, and the source of this run may not even be that original.
+     * The markers are rewritten, so `polytrans_translation_source` names the post this
+     * content was last translated from.
+     *
+     * @param int    $post_id          Existing translated post
+     * @param int    $original_post_id Post this run translated from
+     * @param string $source_language  Source language code
+     * @param array  $translated       Translated content including meta
+     */
+    public function update_metadata($post_id, $original_post_id, $source_language, array $translated)
+    {
+        $translated_meta = isset($translated['meta']) && is_array($translated['meta']) ? $translated['meta'] : [];
+
+        foreach ($translated_meta as $key => $value) {
+            if (!is_string($key) || $this->should_skip_meta_key($key)) {
+                continue;
+            }
+            update_post_meta($post_id, $key, $value);
+        }
+
+        $this->set_translation_markers($post_id, $original_post_id, $source_language);
+    }
+
+    /**
      * Sets translation marker metadata on the new post.
      * 
      * @param int $new_post_id New translated post ID

@@ -480,6 +480,19 @@ The translation execution flow has several key stages:
    - Each step can have `output_actions` (configured in UI) processed by `WorkflowOutputProcessor`
    - `ManagedAssistantStep` generates `auto_actions` from schema mappings (informational)
 
+### Create or update
+
+`Receiver\Managers\TargetPostResolver` decides whether step 3 creates a post or
+updates the translation the Polylang group already holds for the target language
+(setting `translation_target_mode`, default `create`; filter
+`polytrans_translation_target_mode` per post). Update writes title, content, excerpt,
+translated meta and the markers, re-links the group, and leaves status, slug, author,
+taxonomies and featured image alone. Ephemeral posts (after-workflows dispatch) and
+receivers without the original locally always create. After an update the target's
+`polytrans_translation_source` names the post of *that* run, so translating the
+Polish original from English makes it a translation target — and the scheduler meta
+box refuses to translate from a translation target.
+
 ### Key Files in Translation Flow
 
 - `includes/Core/TranslationPathExecutor.php` - Routes to provider/assistant

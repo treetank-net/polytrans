@@ -37,6 +37,20 @@ class LanguageManager
     }
 
     /**
+     * Keeps an existing translation in its language and in the original's group,
+     * without touching its status (it may already be published).
+     *
+     * @param int    $post_id          Existing translated post
+     * @param int    $original_post_id Post this run translated from
+     * @param string $target_language  Target language code
+     */
+    public function relink_existing($post_id, $original_post_id, $target_language)
+    {
+        $this->assign_language($post_id, $target_language);
+        $this->setup_translation_relationship($post_id, $original_post_id, $target_language);
+    }
+
+    /**
      * Assigns the target language to the new post using Polylang.
      * 
      * @param int $new_post_id New translated post ID

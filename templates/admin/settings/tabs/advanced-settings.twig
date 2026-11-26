@@ -22,6 +22,23 @@
 </div>
 <br><br>
 
+{# ========== EXISTING TRANSLATIONS ========== #}
+{% set target_mode = settings.translation_target_mode|default('create') %}
+
+<h2>{{ __('Existing Translations', 'treetank-trans') }}</h2>
+<select name="translation_target_mode" id="translation-target-mode" style="width:100%;max-width:400px;">
+    <option value="create" {{ target_mode == 'create' ? 'selected' : '' }}>{{ __('Create a new post every time (Default)', 'treetank-trans') }}</option>
+    <option value="update" {{ target_mode == 'update' ? 'selected' : '' }}>{{ __('Update the existing translation', 'treetank-trans') }}</option>
+</select>
+<div style="margin-top:8px;">
+    <small>
+        {{ __('What happens when a post is translated into a language it already has a translation in:', 'treetank-trans') }}<br>
+        <strong>{{ __('Create:', 'treetank-trans') }}</strong> {{ __("A new post is created and takes the previous translation's place in the language group. The previous post stays, detached.", 'treetank-trans') }}<br>
+        <strong>{{ __('Update:', 'treetank-trans') }}</strong> {{ __('Title, content, excerpt and translated fields of the existing translation are overwritten. Its status, slug, author, categories and featured image are kept, and workflows run on it as usual.', 'treetank-trans') }}
+    </small>
+</div>
+<br><br>
+
 {# ========== TRANSLATION SERVER ROLE ========== #}
 {% set server_role = settings.translation_server_role|default('full') %}
 

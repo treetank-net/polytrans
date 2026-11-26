@@ -229,6 +229,11 @@ class TranslationSettings
         $settings['dirty_check_field_whitelist'] = sanitize_textarea_field(wp_unslash($_POST['dirty_check_field_whitelist'] ?? ''));
         $settings['logs_retention_days'] = max(1, min(365, intval($_POST['logs_retention_days'] ?? 30)));
 
+        // Whether a delivered translation creates a new post or updates the existing one
+        // (Receiver\Managers\TargetPostResolver). Anything unknown falls back to "create".
+        $target_mode = sanitize_text_field(wp_unslash($_POST['translation_target_mode'] ?? 'create'));
+        $settings['translation_target_mode'] = in_array($target_mode, ['create', 'update'], true) ? $target_mode : 'create';
+
         $prompt_template_keys = [
             PromptRefinementSettings::ASSISTANT_EVALUATOR_SYSTEM_KEY,
             PromptRefinementSettings::ASSISTANT_EVALUATOR_KEY,
