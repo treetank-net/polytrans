@@ -5,6 +5,17 @@ All notable changes to this plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.25.0] - 2026-11-26
+
+### Added
+- Settings → Advanced → "Existing Translations": translating a post into a language
+  it already has a translation in can now update that translation instead of creating
+  a new post. Title, content, excerpt and translated fields are overwritten; status,
+  slug, author, categories and featured image are kept, and workflows run on the
+  updated post. The default stays "Create a new post every time". The
+  `polytrans_translation_target_mode` filter overrides the setting per post, e.g. for
+  one post type only.
+
 ## [1.24.5] - 2026-11-25
 
 ### Fixed
