@@ -562,7 +562,16 @@ class ClaudeSettingsProvider implements SettingsProviderInterface
         if (strpos($model_id, 'claude-3') !== false) {
             return 'Claude 3 Models';
         }
-        
+
+        // Later generations (Opus/Sonnet/Haiku 5+, Fable, Mythos). Without this they
+        // were dropped from the dropdown although ModelCapabilities knows them.
+        if (preg_match('/^claude-(opus|sonnet|haiku|fable|mythos)-(\d+)/', $model_id, $m)) {
+            return 'Claude ' . ucfirst($m[1]) . ' ' . $m[2] . ' Models';
+        }
+        if (preg_match('/^claude-(fable|mythos)/', $model_id, $m)) {
+            return 'Claude ' . ucfirst($m[1]) . ' Models';
+        }
+
         return '';
     }
     

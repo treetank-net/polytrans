@@ -573,6 +573,11 @@ class OpenAISettingsProvider implements SettingsProviderInterface
             return 'GPT-4 Models';
         } elseif (strpos($model_id, 'gpt-3.5') === 0) {
             return 'GPT-3.5 Turbo Models';
+        } elseif (preg_match('/^gpt-(\d+)/', $model_id, $m)) {
+            // Generations this list was not written for (GPT-6 and later). Without
+            // this they were dropped from the dropdown although ModelCapabilities
+            // knows how to call them.
+            return 'GPT-' . $m[1] . ' Models';
         }
 
         return '';
