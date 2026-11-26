@@ -109,7 +109,83 @@ add_action('polytrans_template_render_admin_settings_page', function($template, 
 
 ---
 
+### `polytrans_settings_save`
+Fires when the PolyTrans settings form is saved, after `check_admin_referer('polytrans_settings')`
+and after the PolyTrans option is written. An extension tab (`polytrans_settings_tabs`) reads and
+sanitises its own `$_POST` keys here and stores them in its own option.
+
+```php
+add_action('polytrans_settings_save', function (array $settings) {
+    $value = sanitize_text_field(wp_unslash($_POST['my_addon_field'] ?? ''));
+    update_option('my_addon_settings', ['field' => $value]);
+});
+```
+
+**Location:** `includes/Core/TranslationSettings.php` (`save_settings()`)
+
+---
+
+### `polytrans_register_data_providers`
+Fires once while the workflow manager registers its built-in variable providers. Add your own
+`VariableProviderInterface` implementation to expose more variables to workflow prompts.
+
+```php
+add_action('polytrans_register_data_providers', function ($manager) {
+    $manager->register_data_provider(new My_Variable_Provider());
+});
+```
+
+**Location:** `includes/PostProcessing/WorkflowManager.php`
+
+---
+
 ## Filters
+
+### `polytrans_translation_settings`
+Settings for one translation, applied at the start of `TranslationPathExecutor::execute()`. Route a
+post type or a language pair to another assistant (`assistants_mapping`, keys `<src>_to_<tgt>`) or
+path (`translation_path_rules`) without changing the saved option.
+
+```php
+add_filter('polytrans_translation_settings', function ($settings, $source_lang, $target_lang, $context) {
+    $post_id = (int) ($context['source_post_id'] ?? 0);
+    if ($post_id && get_post_type($post_id) === 'my_type') {
+        $settings['translation_path_rules'] = [];            // direct, no relay
+        $settings['assistants_mapping']["{$source_lang}_to_{$target_lang}"] = 'managed_7';
+    }
+    return $settings;
+}, 10, 4);
+```
+
+`$context` holds `source_post_id` and optionally `post_id` and `run_id`. A non-array return is ignored.
+
+**Location:** `includes/Core/TranslationPathExecutor.php` (`execute()`)
+
+---
+
+### `polytrans_settings_tabs`
+Adds tabs to the PolyTrans settings page. Each entry is
+`['id' => 'my-addon', 'label' => 'My add-on', 'render' => callable($settings)]`. The callback
+echoes form fields; they sit inside the PolyTrans form and are submitted with it, so save them in
+`polytrans_settings_save`. The page is filtered by `wp_kses` with `AdminMarkup::allowed_html()`,
+so no `<script>`/`<style>` — enqueue those on the settings screen instead.
+
+**Location:** `includes/Core/TranslationSettings.php` (`extension_tabs()`)
+
+---
+
+### `polytrans_workflow_change`
+The last word on a workflow output change before it is applied (or previewed in test mode).
+Return the change, possibly modified, or `false` to skip it — e.g. to protect fields edited by
+hand. Arguments: `$change` (`action`, `value`, optional `meta_key`/`option_name`), `$context`,
+`$test_mode`.
+
+**Location:** `includes/PostProcessing/WorkflowOutputProcessor.php` (`process_step_outputs()`)
+
+Output action `update_post_meta_object` writes every scalar key of an object (or JSON string) as
+post meta — one action for a reply such as `{"meta": {...}}` whose keys differ between posts.
+
+---
 
 ### `polytrans_register_providers`
 
@@ -371,6 +447,8 @@ ACTIONS:
 - polytrans_translation_completed($original_post_id, $translated_post_id, $target_language)
 - polytrans_bg_process_{action}($args)
 - polytrans_template_render_{template}($template, $context)
+- polytrans_settings_save($settings)
+- polytrans_register_data_providers($workflow_manager)
 
 FILTERS:
 - polytrans_register_providers($providers) → $providers
@@ -378,6 +456,9 @@ FILTERS:
 - polytrans_assistant_client_factory_create($client, $assistant_id, $settings) → $client
 - polytrans_assistant_client_factory_get_provider_id($provider_id, $assistant_id) → $provider_id
 - polytrans_validate_api_key_{provider_id}($is_valid, $api_key) → bool
+- polytrans_translation_settings($settings, $source_lang, $target_lang, $context) → $settings
+- polytrans_settings_tabs($tabs, $settings) → [['id', 'label', 'render'], …]
+- polytrans_workflow_change($change, $context, $test_mode) → $change|false
 ```
 
 ---

@@ -98,6 +98,15 @@ class WorkflowManager
         $this->register_data_provider(new MetaDataProvider());
         $this->register_data_provider(new ContextDataProvider());
         $this->register_data_provider(new ArticlesDataProvider());
+
+        /**
+         * Lets another plugin add workflow variables: call
+         * $manager->register_data_provider(new MyProvider()) with a
+         * VariableProviderInterface implementation.
+         *
+         * @param WorkflowManager $manager
+         */
+        do_action('polytrans_register_data_providers', $this);
     }
 
     /**

@@ -18,6 +18,9 @@
                 {{ settings_provider.get_tab_label()|esc_html }}
             </a>
         {% endfor %}
+        {% for tab in extension_tabs %}
+            <a href="#{{ tab.id|esc_attr }}-settings" class="nav-tab extension-settings-tab" id="{{ tab.id|esc_attr }}-tab">{{ tab.label|esc_html }}</a>
+        {% endfor %}
         <a href="#advanced-settings" class="nav-tab" id="advanced-tab">{{ __('Advanced Settings', 'treetank-trans') }}</a>
     </div>
 
@@ -110,6 +113,14 @@
                         'settings': settings
                     }) }}
                 {% endif %}
+            </div>
+        {% endfor %}
+
+        <!-- Tabs added by other plugins (polytrans_settings_tabs) -->
+        {% for tab in extension_tabs %}
+            <div id="{{ tab.id|esc_attr }}-settings" class="tab-content extension-settings-content" style="display:none;">
+                {# Rendered by the extension's own callback; the page passes through wp_kses in TemplateRenderer::display(). #}
+                {{ tab.html|raw }}
             </div>
         {% endfor %}
 

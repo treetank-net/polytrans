@@ -5,6 +5,29 @@ All notable changes to this plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.26.0] - 2026-11-26
+
+### Added
+- Extension hooks for add-ons that bring their own post types
+  (`docs/developer/HOOKS_AND_FILTERS.md`):
+  - `polytrans_translation_settings` filter: settings for one translation, with the
+    language pair and the source post. An add-on can pick another assistant or skip the
+    intermediate language for its own posts without changing the saved settings.
+  - `polytrans_settings_tabs` filter and `polytrans_settings_save` action: an add-on
+    adds its own tab to the settings page and saves its fields with the same form.
+  - `polytrans_register_data_providers` action: an add-on adds workflow variables.
+  - `polytrans_workflow_change` filter: an add-on can change or skip a workflow's
+    output before it is written, e.g. to keep fields someone corrected by hand.
+- Workflow output action "Update Post Meta Fields (from object)"
+  (`update_post_meta_object`): writes every key of an object such as the `meta` of an
+  assistant's JSON reply, so one action covers replies whose fields differ from post
+  to post.
+- Workflow editor → Trigger Settings: "Only for post types". A workflow can be limited to
+  posts, pages or a type an add-on registers (also non-public ones with an admin UI).
+  The condition existed in the engine, but the editor had no control for it and saving
+  a workflow cleared any condition set another way; conditions without a control are
+  now kept on save.
+
 ## [1.25.0] - 2026-11-26
 
 ### Added

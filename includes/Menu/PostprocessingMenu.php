@@ -169,6 +169,7 @@ class PostprocessingMenu
                 'chatProviders' => $chat_providers,
                 'modelCapabilities' => $model_capabilities,
                 'defaultModels' => $default_models,
+                'postTypes' => $this->workflow_post_types(),
                 'strings' => [
                     'confirmDelete' => __('Are you sure you want to delete this workflow?', 'treetank-trans'),
                     'confirmDuplicate' => __('Create a copy of this workflow?', 'treetank-trans'),
@@ -1729,6 +1730,25 @@ class PostprocessingMenu
             ],
             'steps' => $this->sanitize_workflow_steps($workflow_data['steps'] ?? [])
         ];
+    }
+
+    /**
+     * Post types a workflow can be limited to: everything with an admin UI, including
+     * non-public types that add-ons register (e.g. translation assets), minus core
+     * internals.
+     *
+     * @return array<int, array{name: string, label: string}>
+     */
+    private function workflow_post_types(): array
+    {
+        $types = [];
+        foreach (get_post_types(['show_ui' => true], 'objects') as $name => $object) {
+            if ($name === 'attachment' || strpos($name, 'wp_') === 0) {
+                continue;
+            }
+            $types[] = ['name' => $name, 'label' => $object->labels->singular_name ?? $object->label ?? $name];
+        }
+        return $types;
     }
 
     /**

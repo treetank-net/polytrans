@@ -356,6 +356,17 @@ class TranslationSettings
         );
 
         update_option('polytrans_settings', $settings);
+
+        /**
+         * Lets an extension tab (polytrans_settings_tabs) save its own fields. Fires
+         * after check_admin_referer('polytrans_settings'), so the request is verified;
+         * the extension reads and sanitises its own $_POST keys and stores them in its
+         * own option.
+         *
+         * @param array $settings The PolyTrans settings just saved.
+         */
+        do_action('polytrans_settings_save', $settings);
+
         echo '<div class="updated"><p>' . esc_html__('Settings saved.', 'treetank-trans') . '</p></div>';
     }
 
@@ -426,8 +437,11 @@ class TranslationSettings
             }
         }
 
+        $extension_tabs = $this->extension_tabs($settings);
+
         // Prepare template context
         $template_context = [
+            'extension_tabs' => $extension_tabs,
             'providers' => $providers,
             'settings_providers' => $settings_providers,
             'provider_custom_ui' => $provider_custom_ui,
@@ -458,6 +472,47 @@ class TranslationSettings
         );
         
         TemplateRenderer::display('admin/settings/page.twig', $template_context);
+    }
+
+    /**
+     * Tabs added by other plugins through the polytrans_settings_tabs filter.
+     *
+     * Each entry is ['id' => string, 'label' => string, 'render' => callable($settings)].
+     * The fields go inside the PolyTrans settings form, so they are submitted with it
+     * and saved by the extension in the polytrans_settings_save action.
+     *
+     * @return array<int, array{id: string, label: string, html: string}>
+     */
+    private function extension_tabs(array $settings): array
+    {
+        $tabs = apply_filters('polytrans_settings_tabs', [], $settings);
+        if (!is_array($tabs)) {
+            return [];
+        }
+
+        $result = [];
+        foreach ($tabs as $tab) {
+            if (!is_array($tab) || empty($tab['id']) || empty($tab['label']) || !isset($tab['render']) || !is_callable($tab['render'])) {
+                continue;
+            }
+            $id = sanitize_key($tab['id']);
+            if ($id === '') {
+                continue;
+            }
+            ob_start();
+            try {
+                call_user_func($tab['render'], $settings);
+            } catch (\Throwable $e) {
+                Diagnostics::log('Settings tab "' . $id . '" failed to render: ' . $e->getMessage());
+            }
+            $result[] = [
+                'id' => $id,
+                'label' => (string) $tab['label'],
+                'html' => (string) ob_get_clean(),
+            ];
+        }
+
+        return $result;
     }
 
     /**

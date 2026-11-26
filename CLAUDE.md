@@ -289,6 +289,18 @@ without reactivating it does not silently drop data.
 **Trap**: `polytrans_create_tables()` in `treetank-trans.php` is dead code — nothing
 calls it. Adding table creation there has no effect.
 
+### Extension hooks for add-ons
+
+Add-ons with their own post types (e.g. `treetank-trans-assets`, banners and social
+posts) plug in without patches — all documented in `docs/developer/HOOKS_AND_FILTERS.md`:
+`polytrans_translation_settings` (per-translation assistant/path, applied in
+`TranslationPathExecutor::execute()`; the saved option is untouched),
+`polytrans_settings_tabs` + `polytrans_settings_save` (own tab in the settings form; the
+add-on keeps its own option), `polytrans_register_data_providers` (workflow variables)
+and `polytrans_workflow_change` (veto or trim a workflow write; used to keep hand-made
+corrections). The output action `update_post_meta_object` writes a whole `meta` object,
+for replies whose keys differ per post.
+
 ### Long-running admin actions
 
 Anything that waits on a model must go through `Core\AsyncJobRunner`

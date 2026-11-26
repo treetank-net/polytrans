@@ -33,6 +33,21 @@ class TranslationPathExecutor
      */
     public static function execute($content, $source_lang, $target_lang, $settings, $usage_context = [])
     {
+        /**
+         * Settings for this one translation. An add-on can route a post type or a
+         * language pair to a different assistant ('assistants_mapping') or path
+         * ('translation_path_rules') without touching the saved option.
+         *
+         * @param array  $settings      Translation settings (polytrans_settings).
+         * @param string $source_lang   Source language code.
+         * @param string $target_lang   Final target language code.
+         * @param array  $usage_context 'source_post_id', optionally 'post_id' and 'run_id'.
+         */
+        $filtered = apply_filters('polytrans_translation_settings', $settings, $source_lang, $target_lang, $usage_context);
+        if (is_array($filtered)) {
+            $settings = $filtered;
+        }
+
         // Use universal names with backward compatibility
         $path_rules = $settings['translation_path_rules'] ?? $settings['openai_path_rules'] ?? [];
         $assistants_mapping = $settings['assistants_mapping'] ?? $settings['openai_assistants'] ?? [];

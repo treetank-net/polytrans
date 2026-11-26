@@ -501,6 +501,7 @@
                             Manual execution only
                         </label>
                     </div>
+                    ${renderPostTypeCondition(workflowData)}
                 </div>
             </div>
 
@@ -1128,6 +1129,7 @@
                             <option value="update_post_status" ${actionType === 'update_post_status' ? 'selected' : ''}>Update Post Status</option>
                             <option value="update_post_date" ${actionType === 'update_post_date' ? 'selected' : ''}>Update Post Date/Schedule</option>
                             <option value="update_post_meta" ${actionType === 'update_post_meta' ? 'selected' : ''}>Update Post Meta Field</option>
+                            <option value="update_post_meta_object" ${actionType === 'update_post_meta_object' ? 'selected' : ''}>Update Post Meta Fields (from object)</option>
                             <option value="append_to_post_content" ${actionType === 'append_to_post_content' ? 'selected' : ''}>Append to Post Content</option>
                             <option value="prepend_to_post_content" ${actionType === 'prepend_to_post_content' ? 'selected' : ''}>Prepend to Post Content</option>
                             <option value="save_to_option" ${actionType === 'save_to_option' ? 'selected' : ''}>Save to WordPress Option</option>
@@ -1566,6 +1568,54 @@
     }
 
     /**
+     * "Only for post types" checkboxes. Conditions this editor has no controls for
+     * (e.g. category) are carried in a data attribute so saving keeps them.
+     */
+    function renderPostTypeCondition(workflowData) {
+        const conditions = (workflowData.triggers && workflowData.triggers.conditions && typeof workflowData.triggers.conditions === 'object' && !Array.isArray(workflowData.triggers.conditions))
+            ? workflowData.triggers.conditions : {};
+        const selected = Array.isArray(conditions.post_type) ? conditions.post_type : [];
+        const types = (window.polytransWorkflows && Array.isArray(polytransWorkflows.postTypes)) ? polytransWorkflows.postTypes.slice() : [];
+        selected.forEach(name => {
+            if (!types.some(t => t.name === name)) {
+                types.push({ name: name, label: name });
+            }
+        });
+        if (!types.length) {
+            return `<div id="workflow-conditions" data-conditions="${escapeHtml(JSON.stringify(conditions)).replace(/"/g, '&quot;')}"></div>`;
+        }
+        const boxes = types.map(t => `
+            <label style="margin-right:12px;">
+                <input type="checkbox" class="workflow-condition-post-type" value="${escapeHtml(t.name).replace(/"/g, '&quot;')}" ${selected.includes(t.name) ? 'checked' : ''}>
+                ${escapeHtml(t.label)} <code>${escapeHtml(t.name)}</code>
+            </label>`).join('');
+        return `
+            <div id="workflow-conditions" class="trigger-conditions" data-conditions="${escapeHtml(JSON.stringify(conditions)).replace(/"/g, '&quot;')}">
+                <p><strong>Only for post types</strong> <small>(none checked = all)</small></p>
+                <div>${boxes}</div>
+            </div>`;
+    }
+
+    function collectConditions() {
+        let conditions = {};
+        try {
+            conditions = JSON.parse($('#workflow-conditions').attr('data-conditions') || '{}') || {};
+        } catch (e) {
+            conditions = {};
+        }
+        if (typeof conditions !== 'object' || Array.isArray(conditions)) {
+            conditions = {};
+        }
+        const postTypes = $('.workflow-condition-post-type:checked').map(function () { return $(this).val(); }).get();
+        if (postTypes.length) {
+            conditions.post_type = postTypes;
+        } else {
+            delete conditions.post_type;
+        }
+        return conditions;
+    }
+
+    /**
      * Collect current workflow editor state.
      */
     function collectWorkflowFromForm() {
@@ -1580,7 +1630,7 @@
             triggers: {
                 on_translation_complete: $('input[name="trigger_on_translation"]').is(':checked'),
                 manual_only: $('input[name="trigger_manual_only"]').is(':checked'),
-                conditions: {}
+                conditions: collectConditions()
             },
             steps: []
         };

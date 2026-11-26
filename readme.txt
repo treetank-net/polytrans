@@ -4,7 +4,7 @@ Tags: translation, multilingual, ai, openai, polylang
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 1.25.0
+Stable tag: 1.26.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -137,6 +137,9 @@ Only the content being translated: title, body, excerpt, and SEO metadata if you
 6. Translation log viewer
 
 == Changelog ==
+
+= 1.26.0 =
+* Hooks for add-ons: per-translation settings (assistant and path for one post type or language pair), extra settings tabs, workflow variables, and a last check on workflow changes before they are written. New workflow output action that updates several meta fields from one object. Workflows can be limited to chosen post types in the editor.
 
 = 1.25.0 =
 * New setting (Advanced → Existing Translations): translating a post into a language it already has can update that translation instead of creating a new post. Status, slug, author, categories and featured image are kept. The default is unchanged.

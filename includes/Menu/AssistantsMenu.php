@@ -134,8 +134,8 @@ class AssistantsMenu
         // Get current model and provider from assistant being edited (if any)
         $current_model = '';
         $current_provider = 'openai';
-        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Page rendering parameter, no state change
         // The editor is linked as action=edit&assistant_id=N (see render_assistants_page()).
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Page rendering parameter, no state change
         if (isset($_GET['action']) && sanitize_text_field(wp_unslash($_GET['action'])) === 'edit' && isset($_GET['assistant_id'])) {
             // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Page rendering parameter, no state change
             $assistant_id = intval($_GET['assistant_id']);

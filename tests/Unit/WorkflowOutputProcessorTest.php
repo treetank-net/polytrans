@@ -244,3 +244,71 @@ it('does not swap users in test mode', function () {
 
     expect($GLOBALS['polytrans_test_user_swaps'])->toBe([]);
 });
+
+/*
+ * update_post_meta_object: one action for a reply whose meta keys vary per post
+ * (assets of different types), and polytrans_workflow_change as the last word.
+ */
+
+it('writes every scalar key of a meta object', function () {
+    $processor = WorkflowOutputProcessor::get_instance();
+
+    $result = $processor->process_step_outputs(
+        ['success' => true, 'data' => ['meta' => ['tta_f_headline' => 'Neu', 'tta_f_cta' => 'Los', 'nested' => ['x' => 1]]]],
+        [['type' => 'update_post_meta_object', 'source_variable' => 'meta']],
+        ['translated_post_id' => 123, 'target_language' => 'de'],
+        false
+    );
+
+    expect($result['success'])->toBeTrue();
+    expect($GLOBALS['polytrans_test_post_meta'][123]['tta_f_headline'])->toBe(['Neu']);
+    expect($GLOBALS['polytrans_test_post_meta'][123]['tta_f_cta'])->toBe(['Los']);
+    expect($GLOBALS['polytrans_test_post_meta'][123])->not->toHaveKey('nested');
+});
+
+it('accepts the meta object as a JSON string and previews it in test mode', function () {
+    $processor = WorkflowOutputProcessor::get_instance();
+
+    $result = $processor->process_step_outputs(
+        ['success' => true, 'data' => ['meta' => '{"tta_f_headline":"Neu"}']],
+        [['type' => 'update_post_meta_object', 'source_variable' => 'meta']],
+        ['translated_post_id' => 123, 'target_language' => 'de'],
+        true
+    );
+
+    expect($result['success'])->toBeTrue();
+    expect($GLOBALS['polytrans_test_post_meta'][123])->toBe([]);
+    expect($result['updated_context']['translated']['meta']['tta_f_headline'])->toBe('Neu');
+    expect($result['changes'][0]['target_description'])->toBe('Post Meta: tta_f_headline');
+});
+
+it('lets polytrans_workflow_change modify or skip a change', function () {
+    $GLOBALS['polytrans_test_filters']['polytrans_workflow_change'] = function ($change, $context, $test_mode) {
+        if ($change['action'] === 'update_post_title') {
+            return false;
+        }
+        unset($change['value']['tta_f_cta']);
+        return $change;
+    };
+    $processor = WorkflowOutputProcessor::get_instance();
+
+    try {
+        $result = $processor->process_step_outputs(
+            ['success' => true, 'data' => ['title' => 'Kept', 'meta' => ['tta_f_headline' => 'Neu', 'tta_f_cta' => 'Locked']]],
+            [
+                ['type' => 'update_post_title', 'source_variable' => 'title'],
+                ['type' => 'update_post_meta_object', 'source_variable' => 'meta'],
+            ],
+            ['translated_post_id' => 123, 'target_language' => 'de'],
+            false
+        );
+    } finally {
+        unset($GLOBALS['polytrans_test_filters']['polytrans_workflow_change']);
+    }
+
+    expect($result['success'])->toBeTrue();
+    expect($result['processed_actions'])->toBe(1);
+    expect($GLOBALS['polytrans_test_posts'][123]->post_title)->toBe('Translated title');
+    expect($GLOBALS['polytrans_test_post_meta'][123]['tta_f_headline'])->toBe(['Neu']);
+    expect($GLOBALS['polytrans_test_post_meta'][123])->not->toHaveKey('tta_f_cta');
+});

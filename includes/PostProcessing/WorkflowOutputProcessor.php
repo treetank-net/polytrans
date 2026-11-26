@@ -143,6 +143,20 @@ class WorkflowOutputProcessor
             try {
                 $change_result = $this->create_change_object($step_results, $action, $updated_context);
                 if ($change_result['success']) {
+                    /**
+                     * Last word on a workflow change before it is applied (or, in test
+                     * mode, previewed). Return the change, possibly modified, or false
+                     * to skip it — e.g. to protect fields a person edited by hand.
+                     *
+                     * @param array $change    'action', 'value', optional 'meta_key'/'option_name'.
+                     * @param array $context   Execution context (translated_post_id, languages…).
+                     * @param bool  $test_mode Whether this is a test run.
+                     */
+                    $filtered = apply_filters('polytrans_workflow_change', $change_result['change'], $updated_context, $test_mode);
+                    if ($filtered === false || !is_array($filtered)) {
+                        continue;
+                    }
+                    $change_result['change'] = $filtered;
                     $changes[] = $change_result['change'];
 
                     // Update context with the new value for subsequent actions
@@ -470,6 +484,48 @@ class WorkflowOutputProcessor
         return [
             'success' => true,
             'message' => sprintf('Updated post meta "%s" for post ID %d', $meta_key, $post_id)
+        ];
+    }
+
+    /**
+     * Update several meta fields at once from an object such as {"key": "value"} —
+     * the "meta" part of an assistant reply. Lets one action cover a reply whose keys
+     * vary from post to post. Non-scalar values are skipped.
+     */
+    private function update_post_meta_object($value, $context)
+    {
+        if (is_string($value)) {
+            $decoded = json_decode($value, true);
+            $value = is_array($decoded) ? $decoded : null;
+        }
+        if (!is_array($value)) {
+            return [
+                'success' => false,
+                'error' => 'update_post_meta_object expects an object of meta keys and values'
+            ];
+        }
+
+        $post_id = $context['translated_post_id'] ?? $context['original_post_id'] ?? null;
+        if (!$post_id) {
+            return [
+                'success' => false,
+                'error' => 'No post ID found in context'
+            ];
+        }
+
+        $updated = [];
+        foreach ($value as $meta_key => $meta_value) {
+            $meta_key = $this->sanitize_meta_key_preserving_case((string) $meta_key);
+            if ($meta_key === '' || !is_scalar($meta_value)) {
+                continue;
+            }
+            update_post_meta($post_id, $meta_key, (string) $meta_value);
+            $updated[] = $meta_key;
+        }
+
+        return [
+            'success' => true,
+            'message' => sprintf('Updated %d post meta fields (%s) for post ID %d', count($updated), implode(', ', $updated), $post_id)
         ];
     }
 
@@ -908,6 +964,19 @@ class WorkflowOutputProcessor
                 $target_description = "Post Meta: {$meta_key}";
                 break;
 
+            case 'update_post_meta_object':
+                $object = is_string($new_value) ? json_decode($new_value, true) : $new_value;
+                $keys = is_array($object) ? array_keys($object) : [];
+                $current_value = [];
+                foreach ($keys as $meta_key) {
+                    $current_value[$meta_key] = $context['meta'][$meta_key] ?? '';
+                }
+                $target_description = 'Post Meta: ' . implode(', ', $keys);
+                // The preview shows strings; one JSON block per side keeps keys aligned.
+                $current_value = (string) wp_json_encode($current_value, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+                $new_value = is_array($object) ? (string) wp_json_encode($object, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) : $new_value;
+                break;
+
             case 'save_to_option':
                 $option_name = $change['original_action']['target'] ?? 'unknown';
                 $current_value = get_option($option_name, '');
@@ -1022,6 +1091,22 @@ class WorkflowOutputProcessor
                 }
                 break;
 
+            case 'update_post_meta_object':
+                $object = is_string($change['value']) ? json_decode($change['value'], true) : $change['value'];
+                if (is_array($object)) {
+                    foreach ($object as $meta_key => $meta_value) {
+                        if (is_scalar($meta_value)) {
+                            $updated_context = $this->apply_change_to_context($updated_context, [
+                                'action' => 'update_post_meta',
+                                // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- Array key of an in-memory change object, not a WP_Query argument.
+                                'meta_key' => (string) $meta_key,
+                                'value' => (string) $meta_value,
+                            ]);
+                        }
+                    }
+                }
+                break;
+
             case 'update_post_meta':
                 // Legacy
                 if (!isset($updated_context['meta'])) {
@@ -1095,6 +1180,8 @@ class WorkflowOutputProcessor
                     return $this->update_post_date($value, $context);
                 case 'update_post_meta':
                     return $this->update_post_meta($value, $change['meta_key'], $context);
+                case 'update_post_meta_object':
+                    return $this->update_post_meta_object($value, $context);
                 case 'append_to_post_content':
                     return $this->append_to_post_content($value, $context);
                 case 'prepend_to_post_content':
