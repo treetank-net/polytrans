@@ -5,6 +5,18 @@ All notable changes to this plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.26.2] - 2026-11-27
+
+### Fixed
+- Translations keep the embeds of the original: video iframes (YouTube, Facebook,
+  Vimeo, LinkedIn) and the script behind X/Instagram/TikTok embeds. The receiver and
+  the workflows after translation wrote as nobody, so kses stripped them on the first
+  insert and again on every later `wp_update_post()` (status, author, slug, workflow
+  writes). The write now runs as the person who last saved the original, then its
+  author (`Core\ContentWriter`), so the translation keeps exactly what that person can
+  save; without `unfiltered_html` kses still applies. Workflow content writes no longer
+  call `wp_kses_post()` themselves and leave filtering to WordPress.
+
 ## [1.26.1] - 2026-11-26
 
 ### Fixed
