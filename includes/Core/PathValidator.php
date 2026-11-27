@@ -288,9 +288,10 @@ class PathValidator
      * @param array $path Path array, e.g. ['pl', 'en', 'fr']
      * @param array $assistants_mapping Assistant mapping array
      * @param array $settings Translation settings
+     * @param string $rule_translator Translator from a path rule, used for steps without a mapping
      * @return array ['valid' => bool, 'errors' => array, 'warnings' => array]
      */
-    public static function validate_path($path, $assistants_mapping, $settings)
+    public static function validate_path($path, $assistants_mapping, $settings, $rule_translator = '')
     {
         $errors = [];
         $warnings = [];
@@ -309,9 +310,9 @@ class PathValidator
             $step_target = $path[$i + 1];
             $assistant_key = $step_source . '_to_' . $step_target;
             
-            $assistant_id = $assistants_mapping[$assistant_key] ?? null;
+            $assistant_id = TranslatorResolver::step_translator($step_source, $step_target, $assistants_mapping, $rule_translator);
             
-            if (empty($assistant_id)) {
+            if ($assistant_id === '') {
                 $errors[$assistant_key] = "No provider/assistant configured for step $step_source -> $step_target";
                 continue;
             }

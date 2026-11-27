@@ -435,3 +435,53 @@ select {
    6.1 strips minmax() from inline styles in wp_kses(). */
 .polytrans-refinement-grid { display: grid; grid-template-columns: minmax(260px, 1fr) 2fr; gap: 6px 16px; margin-top: 10px; }
 .polytrans-refinement-grid--narrow { grid-template-columns: minmax(220px, 1fr) 2fr; }
+
+/* Path rules with a translator column: six columns must fit next to each other. */
+#path-rules-table .path-rule-col-lang { width: 14%; }
+#path-rules-table .path-rule-col-translator { width: 30%; }
+#path-rules-table .path-rule-col-route { width: auto; }
+#path-rules-table .path-rule-col-actions { width: 44px; }
+
+#path-rules-table thead th,
+#path-rules-table tbody td {
+    padding: 10px 8px;
+}
+
+#path-rules-table thead th:first-child,
+#path-rules-table tbody td:first-child {
+    padding-left: 15px;
+}
+
+#path-rules-table .path-rule-select {
+    max-width: 100%;
+    min-width: 0;
+    padding: 6px 28px 6px 10px;
+    text-overflow: ellipsis;
+}
+
+#path-rules-table .path-rule-visual {
+    display: block;
+    margin-top: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+#path-rules-table .path-rule-visual > span:first-child {
+    margin-left: 0;
+}
+
+#path-rules-table .remove-rule {
+    color: #b32d2e;
+    text-decoration: none;
+}
+
+#path-rules-table .remove-rule:hover,
+#path-rules-table .remove-rule:focus {
+    color: #8a2424;
+}
+
+@media screen and (max-width: 1100px) {
+    #path-rules-table .path-rule-col-route { display: none; }
+    #path-rules-table tbody td:nth-child(5) { display: none; }
+    #path-rules-table .path-rule-col-lang { width: 17%; }
+}

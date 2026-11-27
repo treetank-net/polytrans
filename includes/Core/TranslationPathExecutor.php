@@ -65,7 +65,9 @@ class TranslationPathExecutor
         }
         
         // Validate entire path before execution (optional - shows all errors at once)
-        $path_validation = \PolyTrans\Core\PathValidator::validate_path($path, $assistants_mapping, $settings);
+        // A path rule may name a translator for every step without its own mapping.
+        $rule_translator = TranslatorResolver::rule_translator($source_lang, $target_lang, $path_rules);
+        $path_validation = \PolyTrans\Core\PathValidator::validate_path($path, $assistants_mapping, $settings, $rule_translator);
         
         if (!$path_validation['valid'] && !empty($path_validation['errors'])) {
             $error_messages = [];
@@ -95,33 +97,19 @@ class TranslationPathExecutor
                 "info"
             );
             
-            // Get provider/assistant for this step
-            $assistant_id = $assistants_mapping[$assistant_key] ?? null;
-            
-            if (!$assistant_id || empty($assistant_id)) {
-                // Fallback: try to find any available assistant for this direction
-                $available_assistants = array_filter($assistants_mapping, function ($assistant) {
-                    return !empty($assistant);
-                });
-                
-                if (!empty($available_assistants)) {
-                    $assistant_id = reset($available_assistants);
-                    $used_direction = array_search($assistant_id, $assistants_mapping);
-                    \PolyTrans_Logs_Manager::log(
-                        "No specific mapping for $assistant_key, using fallback: $used_direction ($assistant_id)",
-                        "info"
-                    );
-                } else {
-                    $error_msg = "No provider/assistant configured for translation step ($step_source -> $step_target). Please configure a provider or assistant for '$assistant_key' in Language Paths.";
-                    \PolyTrans_Logs_Manager::log($error_msg, "error");
-                    return [
-                        'success' => false,
-                        'translated_content' => null,
-                        'error' => $error_msg
-                    ];
-                }
+            // Get provider/assistant for this step: its own mapping, else the rule's translator.
+            $assistant_id = TranslatorResolver::step_translator($step_source, $step_target, $assistants_mapping, $rule_translator);
+
+            if ($assistant_id === '') {
+                $error_msg = "No provider/assistant configured for translation step ($step_source -> $step_target). Map '$assistant_key' in Language Paths or set a translator on a path rule that covers it.";
+                \PolyTrans_Logs_Manager::log($error_msg, "error");
+                return [
+                    'success' => false,
+                    'translated_content' => null,
+                    'error' => $error_msg
+                ];
             }
-            
+
             // Validate assistant/provider before executing step
             $validation = \PolyTrans\Core\PathValidator::validate_assistant_id($assistant_id, $settings);
             
@@ -247,45 +235,7 @@ class TranslationPathExecutor
      */
     private static function resolve_path($source_lang, $target_lang, $path_rules)
     {
-        // Find the most specific rule, breaking ties by last-in-list
-        $best_rule = null;
-        $best_score = 0;
-        $best_index = -1;
-        
-        foreach ($path_rules as $idx => $rule) {
-            $score = 0;
-            
-            if ($rule['source'] === $source_lang && $rule['target'] === $target_lang) {
-                $score = 3; // exact match
-            } elseif (
-                ($rule['source'] === $source_lang && $rule['target'] === 'all') ||
-                ($rule['source'] === 'all' && $rule['target'] === $target_lang)
-            ) {
-                $score = 2; // semi-wildcard
-            } elseif ($rule['source'] === 'all' && $rule['target'] === 'all') {
-                $score = 1; // full wildcard
-            }
-            
-            if ($score > 0 && ($score > $best_score || ($score === $best_score && $idx > $best_index))) {
-                $best_rule = $rule;
-                $best_score = $score;
-                $best_index = $idx;
-            }
-        }
-        
-        if ($best_rule) {
-            $intermediate = isset($best_rule['intermediate']) ? trim($best_rule['intermediate']) : '';
-            
-            if ($intermediate === '' || strtolower($intermediate) === 'none' || 
-                $intermediate === $source_lang || $intermediate === $target_lang) {
-                return [$source_lang, $target_lang];
-            } else {
-                return [$source_lang, $intermediate, $target_lang];
-            }
-        }
-        
-        // No rule found, use direct path
-        return [$source_lang, $target_lang];
+        return TranslatorResolver::resolve_path($source_lang, $target_lang, $path_rules);
     }
     
     /**

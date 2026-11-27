@@ -201,12 +201,15 @@ class OpenAISettingsProvider implements SettingsProviderInterface
                 $source = isset($rule['source']) ? sanitize_text_field($rule['source']) : 'all';
                 $target = isset($rule['target']) ? sanitize_text_field($rule['target']) : 'all';
                 $intermediate = isset($rule['intermediate']) ? sanitize_text_field($rule['intermediate']) : 'none';
+                // Translator for every translation the rule covers (TranslatorResolver).
+                $assistant = isset($rule['assistant']) ? sanitize_text_field($rule['assistant']) : '';
                 // Only save rules with at least source and target
                 if ($source !== '' && $target !== '') {
                     $validated['openai_path_rules'][] = [
                         'source' => $source,
                         'target' => $target,
                         'intermediate' => $intermediate,
+                        'assistant' => $assistant,
                     ];
                 }
             }

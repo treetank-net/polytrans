@@ -4,6 +4,7 @@
 <h2>{{ __('Translation Path Rules', 'treetank-trans') }}</h2>
 <p class="description">
     {{ __('Define routing rules for translations. Use intermediate languages for better quality (e.g., PL → EN → FR instead of direct PL → FR).', 'treetank-trans') }}
+    {{ __('A rule can also name a translator: it then handles every translation the rule covers, unless a language pair has its own entry below. One rule "All → All" with a translator is enough to translate every language.', 'treetank-trans') }}
 </p>
 
 <div id="path-rules-container">
@@ -23,6 +24,7 @@
 <h2>{{ __('Provider/Assistant Mapping', 'treetank-trans') }}</h2>
 <p class="description">
     {{ __('Select which translation provider or assistant to use for each language pair. You can choose from AI providers or AI assistants (Managed or Provider API assistants).', 'treetank-trans') }}
+    {{ __('Leave a pair empty to use the translator of the path rule that covers it.', 'treetank-trans') }}
 </p>
 
 <div id="assistants-loading" style="display:none; padding: 10px; background: #f0f0f1; margin: 10px 0;">

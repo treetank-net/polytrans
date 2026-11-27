@@ -2,10 +2,12 @@
     <table class="widefat fixed" id="path-rules-table">
         <thead>
             <tr>
-                <th style="width: 25%;">{{ __('Source Language', 'treetank-trans') }}</th>
-                <th style="width: 25%;">{{ __('Target Language', 'treetank-trans') }}</th>
-                <th style="width: 35%;">{{ __('Intermediate Language', 'treetank-trans') }}</th>
-                <th style="width: 15%;">{{ __('Actions', 'treetank-trans') }}</th>
+                <th class="path-rule-col-lang">{{ __('Source Language', 'treetank-trans') }}</th>
+                <th class="path-rule-col-lang">{{ __('Target Language', 'treetank-trans') }}</th>
+                <th class="path-rule-col-lang">{{ __('Intermediate Language', 'treetank-trans') }}</th>
+                <th class="path-rule-col-translator">{{ __('Translator', 'treetank-trans') }}</th>
+                <th class="path-rule-col-route">{{ __('Route', 'treetank-trans') }}</th>
+                <th class="path-rule-col-actions"><span class="screen-reader-text">{{ __('Actions', 'treetank-trans') }}</span></th>
             </tr>
         </thead>
         <tbody>
@@ -14,6 +16,7 @@
                     {% set source_val = rule.source|default('all') %}
                     {% set target_val = rule.target|default('all') %}
                     {% set intermediate_val = rule.intermediate|default('') %}
+                    {% set assistant_val = rule.assistant|default('') %}
                     {% set source_index = source_val == 'all' ? -1 : (langs|keys|filter(v => langs[v] == source_val)|first) %}
                     {% set target_index = target_val == 'all' ? -1 : (langs|keys|filter(v => langs[v] == target_val)|first) %}
                     {% set intermediate_index = intermediate_val == '' ? -1 : (langs|keys|filter(v => langs[v] == intermediate_val)|first) %}
@@ -50,6 +53,16 @@
                                     </option>
                                 {% endfor %}
                             </select>
+                        </td>
+                        <td>
+                            <select name="openai_path_rules[{{ index|esc_attr }}][assistant]" class="path-rule-assistant path-rule-select" data-selected="{{ assistant_val|esc_attr }}">
+                                <option value="">{{ __('From mapping only', 'treetank-trans') }}</option>
+                                {% if assistant_val is not empty %}
+                                    <option value="{{ assistant_val|esc_attr }}" selected="selected">{{ assistant_val|esc_html }}</option>
+                                {% endif %}
+                            </select>
+                        </td>
+                        <td>
                             <div class="path-rule-visual">
                                 {% if intermediate_val == '' %}
                                     <span class="path-rule-direct">{{ source_name|esc_html }} → {{ target_name|esc_html }}</span>
@@ -63,13 +76,13 @@
                             </div>
                         </td>
                         <td>
-                            <button type="button" class="button remove-rule">{{ __('Remove', 'treetank-trans') }}</button>
+                            <button type="button" class="button-link remove-rule" title="{{ __('Remove', 'treetank-trans')|esc_attr }}" aria-label="{{ __('Remove', 'treetank-trans')|esc_attr }}"><span class="dashicons dashicons-trash" aria-hidden="true"></span></button>
                         </td>
                     </tr>
                 {% endfor %}
             {% else %}
                 <tr>
-                    <td colspan="4" style="text-align: center; padding: 30px; color: #646970;">
+                    <td colspan="6" style="text-align: center; padding: 30px; color: #646970;">
                         <em>{{ __('No path rules defined. Click "Add Rule" to create one.', 'treetank-trans') }}</em>
                     </td>
                 </tr>

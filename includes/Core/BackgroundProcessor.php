@@ -410,9 +410,20 @@ class BackgroundProcessor
             $assistants_mapping = $settings['assistants_mapping'] ?? $settings['openai_assistants'] ?? [];
             $has_paths = !empty($path_rules) || !empty($assistants_mapping);
 
-            // Find managed assistant ID if any
+            // Find managed assistant ID if any: the one that will run this
+            // translation's first step, else any mapped one.
             $managed_assistant_id = null;
-            foreach ($assistants_mapping as $assistant_id) {
+            $first_step = TranslatorResolver::resolve_path($source_lang, $target_lang, $path_rules);
+            $candidates = array_merge(
+                [TranslatorResolver::step_translator(
+                    $first_step[0],
+                    $first_step[1],
+                    $assistants_mapping,
+                    TranslatorResolver::rule_translator($source_lang, $target_lang, $path_rules)
+                )],
+                is_array($assistants_mapping) ? array_values($assistants_mapping) : []
+            );
+            foreach ($candidates as $assistant_id) {
                 if (is_string($assistant_id) && strpos($assistant_id, 'managed_') === 0) {
                     $managed_assistant_id = $assistant_id;
                     break;

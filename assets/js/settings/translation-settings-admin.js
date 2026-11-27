@@ -301,6 +301,137 @@
                 });
             },
 
+            // Name of an assistant/provider id, for labels.
+            assistantName: function (id) {
+                var groups = this.assistants || {};
+                var found = '';
+                Object.keys(groups).forEach(function (group) {
+                    (groups[group] || []).forEach(function (assistant) {
+                        if (!found && assistant.id === id) {
+                            found = assistant.name;
+                        }
+                    });
+                });
+                return found || id;
+            },
+
+            // One provider/assistant dropdown: an empty option, then every group.
+            fillSelect: function ($select, currentValue, emptyLabel) {
+                var groupedAssistants = this.assistants || {};
+
+                // Clear existing options
+                $select.empty();
+                $select.append($('<option></option>')
+                    .attr('value', '')
+                    .text(emptyLabel));
+
+                // Add Translation Providers group
+                if (groupedAssistants.providers && groupedAssistants.providers.length > 0) {
+                    var $providersGroup = $('<optgroup label="Translation Providers"></optgroup>');
+                    groupedAssistants.providers.forEach(function (provider) {
+                        var option = $('<option></option>')
+                            .attr('value', provider.id)
+                            .text(provider.name + (provider.description ? ' - ' + provider.description : ''));
+                        $providersGroup.append(option);
+                    });
+                    $select.append($providersGroup);
+                }
+
+                // Add Managed Assistants group
+                if (groupedAssistants.managed && groupedAssistants.managed.length > 0) {
+                    var $managedGroup = $('<optgroup label="Managed Assistants"></optgroup>');
+                    groupedAssistants.managed.forEach(function (assistant) {
+                        var option = $('<option></option>')
+                            .attr('value', assistant.id)
+                            .text(assistant.name + ' (' + assistant.model + ')');
+                        $managedGroup.append(option);
+                    });
+                    $select.append($managedGroup);
+                }
+
+                // Add OpenAI API Assistants group
+                if (groupedAssistants.openai && groupedAssistants.openai.length > 0) {
+                    var $openaiGroup = $('<optgroup label="OpenAI API Assistants"></optgroup>');
+                    groupedAssistants.openai.forEach(function (assistant) {
+                        var option = $('<option></option>')
+                            .attr('value', assistant.id)
+                            .text(assistant.name + ' (' + assistant.model + ')');
+                        $openaiGroup.append(option);
+                    });
+                    $select.append($openaiGroup);
+                }
+
+                // Add Claude Projects group (future)
+                if (groupedAssistants.claude && groupedAssistants.claude.length > 0) {
+                    var $claudeGroup = $('<optgroup label="Claude Projects"></optgroup>');
+                    groupedAssistants.claude.forEach(function (assistant) {
+                        var option = $('<option></option>')
+                            .attr('value', assistant.id)
+                            .text(assistant.name + ' (' + assistant.model + ')');
+                        $claudeGroup.append(option);
+                    });
+                    $select.append($claudeGroup);
+                }
+
+                // Add Gemini Tuned Models group (future)
+                if (groupedAssistants.gemini && groupedAssistants.gemini.length > 0) {
+                    var $geminiGroup = $('<optgroup label="Gemini Tuned Models"></optgroup>');
+                    groupedAssistants.gemini.forEach(function (assistant) {
+                        var option = $('<option></option>')
+                            .attr('value', assistant.id)
+                            .text(assistant.name + ' (' + assistant.model + ')');
+                        $geminiGroup.append(option);
+                    });
+                    $select.append($geminiGroup);
+                }
+
+                // Managed assistants that exist but cannot be used now (provider
+                // disabled, no API key): listed disabled with the reason, so an
+                // empty dropdown is never left unexplained.
+                if (groupedAssistants.unavailable && groupedAssistants.unavailable.length > 0) {
+                    var $unavailableGroup = $('<optgroup label="Unavailable assistants"></optgroup>');
+                    groupedAssistants.unavailable.forEach(function (assistant) {
+                        var option = $('<option></option>')
+                            .attr('value', assistant.id)
+                            .prop('disabled', true)
+                            .text(assistant.name + ' (' + assistant.model + ') — ' + assistant.unavailable_reason);
+                        $unavailableGroup.append(option);
+                    });
+                    $select.append($unavailableGroup);
+                }
+
+                // Set the selected value. A saved value whose option is disabled
+                // or missing is still shown as selected: the hidden input keeps
+                // it, and the dropdown must not pretend nothing is mapped.
+                if (currentValue) {
+                    var $current = $select.find('option').filter(function () {
+                        return this.value === currentValue;
+                    });
+                    if ($current.length === 0) {
+                        $current = $('<option></option>')
+                            .attr('value', currentValue)
+                            .prop('disabled', true)
+                            .text(currentValue + ' — not found');
+                        $select.append($current);
+                    }
+                    $current.prop('selected', true);
+                }
+
+            },
+
+            // Translator of a path rule's dropdown, filled from the same list.
+            populateRuleSelects: function ($scope) {
+                var self = this;
+                ($scope || $(document)).find('.path-rule-assistant').each(function () {
+                    var $select = $(this);
+                    var currentValue = $select.val() || $select.data('selected') || '';
+                    self.fillSelect($select, currentValue, 'From mapping only');
+                    // A disabled option is not submitted: keep a saved translator
+                    // that is missing or unavailable instead of dropping it on save.
+                    $select.find('option:selected').prop('disabled', false);
+                });
+            },
+
             populateAssistantSelects: function () {
                 var groupedAssistants = this.assistants || {};
 
@@ -309,113 +440,13 @@
                 setTimeout(function () {
                     var $selects = $('.openai-assistant-select');
 
-                    if ($selects.length === 0) {
-                        return;
-                    }
-
                     $selects.each(function () {
                         var $select = $(this);
                         var pairKey = $select.data('pair');
                         var currentValue = $select.data('selected') || '';
                         var $hiddenInput = $('.openai-assistant-hidden[data-pair="' + pairKey + '"]');
 
-                        // Clear existing options
-                        $select.empty();
-                        $select.append($('<option></option>')
-                            .attr('value', '')
-                            .text('No provider/assistant selected'));
-
-                        // Add Translation Providers group
-                        if (groupedAssistants.providers && groupedAssistants.providers.length > 0) {
-                            var $providersGroup = $('<optgroup label="Translation Providers"></optgroup>');
-                            groupedAssistants.providers.forEach(function (provider) {
-                                var option = $('<option></option>')
-                                    .attr('value', provider.id)
-                                    .text(provider.name + (provider.description ? ' - ' + provider.description : ''));
-                                $providersGroup.append(option);
-                            });
-                            $select.append($providersGroup);
-                        }
-
-                        // Add Managed Assistants group
-                        if (groupedAssistants.managed && groupedAssistants.managed.length > 0) {
-                            var $managedGroup = $('<optgroup label="Managed Assistants"></optgroup>');
-                            groupedAssistants.managed.forEach(function (assistant) {
-                                var option = $('<option></option>')
-                                    .attr('value', assistant.id)
-                                    .text(assistant.name + ' (' + assistant.model + ')');
-                                $managedGroup.append(option);
-                            });
-                            $select.append($managedGroup);
-                        }
-
-                        // Add OpenAI API Assistants group
-                        if (groupedAssistants.openai && groupedAssistants.openai.length > 0) {
-                            var $openaiGroup = $('<optgroup label="OpenAI API Assistants"></optgroup>');
-                            groupedAssistants.openai.forEach(function (assistant) {
-                                var option = $('<option></option>')
-                                    .attr('value', assistant.id)
-                                    .text(assistant.name + ' (' + assistant.model + ')');
-                                $openaiGroup.append(option);
-                            });
-                            $select.append($openaiGroup);
-                        }
-
-                        // Add Claude Projects group (future)
-                        if (groupedAssistants.claude && groupedAssistants.claude.length > 0) {
-                            var $claudeGroup = $('<optgroup label="Claude Projects"></optgroup>');
-                            groupedAssistants.claude.forEach(function (assistant) {
-                                var option = $('<option></option>')
-                                    .attr('value', assistant.id)
-                                    .text(assistant.name + ' (' + assistant.model + ')');
-                                $claudeGroup.append(option);
-                            });
-                            $select.append($claudeGroup);
-                        }
-
-                        // Add Gemini Tuned Models group (future)
-                        if (groupedAssistants.gemini && groupedAssistants.gemini.length > 0) {
-                            var $geminiGroup = $('<optgroup label="Gemini Tuned Models"></optgroup>');
-                            groupedAssistants.gemini.forEach(function (assistant) {
-                                var option = $('<option></option>')
-                                    .attr('value', assistant.id)
-                                    .text(assistant.name + ' (' + assistant.model + ')');
-                                $geminiGroup.append(option);
-                            });
-                            $select.append($geminiGroup);
-                        }
-
-                        // Managed assistants that exist but cannot be used now (provider
-                        // disabled, no API key): listed disabled with the reason, so an
-                        // empty dropdown is never left unexplained.
-                        if (groupedAssistants.unavailable && groupedAssistants.unavailable.length > 0) {
-                            var $unavailableGroup = $('<optgroup label="Unavailable assistants"></optgroup>');
-                            groupedAssistants.unavailable.forEach(function (assistant) {
-                                var option = $('<option></option>')
-                                    .attr('value', assistant.id)
-                                    .prop('disabled', true)
-                                    .text(assistant.name + ' (' + assistant.model + ') — ' + assistant.unavailable_reason);
-                                $unavailableGroup.append(option);
-                            });
-                            $select.append($unavailableGroup);
-                        }
-
-                        // Set the selected value. A saved value whose option is disabled
-                        // or missing is still shown as selected: the hidden input keeps
-                        // it, and the dropdown must not pretend nothing is mapped.
-                        if (currentValue) {
-                            var $current = $select.find('option').filter(function () {
-                                return this.value === currentValue;
-                            });
-                            if ($current.length === 0) {
-                                $current = $('<option></option>')
-                                    .attr('value', currentValue)
-                                    .prop('disabled', true)
-                                    .text(currentValue + ' — not found');
-                                $select.append($current);
-                            }
-                            $current.prop('selected', true);
-                        }
+                        self.fillSelect($select, currentValue, 'No provider/assistant selected');
 
                         // Handle selection changes - update the hidden input
                         $select.off('change.assistants').on('change.assistants', function () {
@@ -425,7 +456,57 @@
                             }
                         });
                     });
+                    self.populateRuleSelects();
+                    self.refreshMappingDefaults();
                 }, 100);
+            },
+
+            // Empty mapping entries say which rule translator will be used instead.
+            refreshMappingDefaults: function () {
+                var self = this;
+                if (!this.assistantsLoaded) {
+                    return;
+                }
+                var rules = [];
+                $('#path-rules-table .path-rule-row').each(function () {
+                    var $rule = $(this);
+                    rules.push({
+                        source: $rule.find('.path-rule-source').val(),
+                        target: $rule.find('.path-rule-target').val(),
+                        intermediate: $rule.find('.path-rule-intermediate').val() || '',
+                        assistant: $rule.find('.path-rule-assistant').val() || ''
+                    });
+                });
+                var matches = function (ruleLang, lang) {
+                    return ruleLang === 'all' || ruleLang === lang;
+                };
+                $('.language-pair-row').each(function () {
+                    var src = $(this).data('source');
+                    var tgt = $(this).data('target');
+                    var best = null;
+                    var bestScore = 0;
+                    rules.forEach(function (rule) {
+                        if (!rule.assistant) {
+                            return;
+                        }
+                        var inter = rule.intermediate;
+                        var covers = inter === ''
+                            ? (matches(rule.source, src) && matches(rule.target, tgt))
+                            : ((inter === tgt && matches(rule.source, src)) || (inter === src && matches(rule.target, tgt)));
+                        if (!covers) {
+                            return;
+                        }
+                        var score = (rule.source === 'all' ? 0 : 1) + (rule.target === 'all' ? 0 : 1) + 1;
+                        if (score >= bestScore) {
+                            best = rule;
+                            bestScore = score;
+                        }
+                    });
+                    var label = best
+                        ? 'Default from path rule: ' + self.assistantName(best.assistant)
+                        : 'No provider/assistant selected';
+                    $(this).find('.openai-assistant-select option[value=""]').text(label);
+                });
             },
 
             handleAssistantLoadingError: function (errorMessage) {
@@ -641,7 +722,8 @@
         
         // Add path rule
         $('#add-path-rule').on('click', function() {
-            var ruleIndex = $('#path-rules-container tbody tr, #path-rules-table tbody tr').length;
+            // Unique key: counting rows reused an index after a removal and overwrote that rule.
+            var ruleIndex = 'n' + Date.now();
             var langs = window.polytransLanguages || {};
             var langOptions = '';
             for (var langCode in langs) {
@@ -666,10 +748,17 @@
                         '<option value="">' + (PolyTransAjax.i18n.none_direct || 'None (Direct)') + '</option>' +
                         langOptions +
                     '</select>' +
+                '</td>' +
+                '<td>' +
+                    '<select name="openai_path_rules[' + ruleIndex + '][assistant]" class="path-rule-assistant path-rule-select">' +
+                        '<option value="">From mapping only</option>' +
+                    '</select>' +
+                '</td>' +
+                '<td>' +
                     '<div class="path-rule-visual"></div>' +
                 '</td>' +
                 '<td>' +
-                    '<button type="button" class="button remove-rule">' + (PolyTransAjax.i18n.remove || 'Remove') + '</button>' +
+                    '<button type="button" class="button-link remove-rule"><span class="dashicons dashicons-trash" aria-hidden="true"></span></button>' +
                 '</td>' +
             '</tr>');
             
@@ -683,6 +772,11 @@
             
             // Initialize visual for new row
             updatePathRuleVisual(newRow);
+            var removeLabel = PolyTransAjax.i18n.remove || 'Remove';
+            newRow.find('.remove-rule').attr({ title: removeLabel, 'aria-label': removeLabel });
+            if (window.PolyTransAssistants && window.PolyTransAssistants.assistantsLoaded) {
+                window.PolyTransAssistants.populateRuleSelects(newRow);
+            }
             
             // Trigger filtering after adding new rule
             if (window.PolyTransLanguagePaths && window.PolyTransLanguagePaths.updateLanguagePairVisibility) {
@@ -693,6 +787,9 @@
         // Remove path rule
         $(document).on('click', '.remove-rule', function() {
             $(this).closest('tr').remove();
+            if (window.PolyTransAssistants) {
+                window.PolyTransAssistants.refreshMappingDefaults();
+            }
             // Trigger filtering after removing rule
             if (window.PolyTransLanguagePaths && window.PolyTransLanguagePaths.updateLanguagePairVisibility) {
                 window.PolyTransLanguagePaths.updateLanguagePairVisibility();
@@ -700,7 +797,10 @@
         });
 
         // Trigger filtering when path rule values change
-        $(document).on('change', '.path-rule-source, .path-rule-target, .path-rule-intermediate', function() {
+        $(document).on('change', '.path-rule-source, .path-rule-target, .path-rule-intermediate, .path-rule-assistant', function() {
+            if (window.PolyTransAssistants) {
+                window.PolyTransAssistants.refreshMappingDefaults();
+            }
             if (window.PolyTransLanguagePaths && window.PolyTransLanguagePaths.updateLanguagePairVisibility) {
                 window.PolyTransLanguagePaths.updateLanguagePairVisibility();
             }
