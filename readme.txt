@@ -4,7 +4,7 @@ Tags: translation, multilingual, ai, openai, polylang
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 1.26.2
+Stable tag: 1.27.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -137,6 +137,9 @@ Only the content being translated: title, body, excerpt, and SEO metadata if you
 6. Translation log viewer
 
 == Changelog ==
+
+= 1.27.0 =
+* Language Paths: a path rule can name a translator, used for every translation the rule covers. One rule "All → All" with a translator is enough; the per-pair mapping can stay empty and still overrides the rule where set.
 
 = 1.26.2 =
 * Translations keep video embeds (YouTube, Facebook, Vimeo, LinkedIn iframes) and the scripts behind X, Instagram and TikTok embeds. Translated content is now saved as the person who last saved the original, so it keeps what that person may save.

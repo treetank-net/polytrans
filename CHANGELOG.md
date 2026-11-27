@@ -5,6 +5,28 @@ All notable changes to this plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.27.0] - 2026-11-27
+
+### Added
+- A path rule can name a translator (Language Paths → Translation Path Rules →
+  Translator). It handles every translation the rule covers, so one rule
+  "All → All" with a translator translates every language and the
+  Provider/Assistant Mapping can stay empty. A pair's own mapping still wins; the most
+  specific rule naming a translator is used, independently of the rule that decides the
+  route (`Core\TranslatorResolver`). Empty mapping rows show which rule translator
+  they fall back to.
+
+### Changed
+- The path rules table fits six columns (translator and route added, remove as an
+  icon).
+- Removed the "any mapped assistant" fallback for an unmapped step. It was unreachable
+  — path validation rejected the step first — and would have picked an arbitrary one.
+
+### Fixed
+- Path rules saved only source, target and intermediate language; any other field was
+  dropped on save.
+- A rule added after removing another could reuse its form index and overwrite it.
+
 ## [1.26.2] - 2026-11-27
 
 ### Fixed
