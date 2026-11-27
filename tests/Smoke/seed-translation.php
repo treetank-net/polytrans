@@ -5,7 +5,8 @@
  *
  * Two Polylang languages (en, de), a source post in English, a managed assistant that
  * translates en → de, internal transport (BackgroundProcessor loopback), and a workflow
- * triggered on translation completion whose one AI step writes a post meta. OpenAI is
+ * triggered on translation completion whose one AI step appends to the content and
+ * writes a post meta. The source carries embeds (TREETANK_SMOKE_EMBEDS). OpenAI is
  * answered by the stub in smoke-observer.php, which only answers requests carrying
  * TREETANK_SMOKE_STUB_KEY, so this is the only place that turns it on.
  *
@@ -44,7 +45,7 @@ PLL()->model->clean_languages_cache();
 
 $post_id = wp_insert_post([
     'post_title' => 'Smoke source post',
-    'post_content' => '<p>Hello from the smoke test.</p>',
+    'post_content' => '<p>Hello from the smoke test.</p>' . TREETANK_SMOKE_EMBEDS,
     'post_excerpt' => 'Smoke excerpt',
     'post_status' => 'publish',
     'post_author' => 1,
@@ -101,11 +102,18 @@ $result = $storage->save_workflow([
         'system_prompt' => 'SMOKE-WORKFLOW: reply with a fixed marker.',
         'user_message' => 'Mark the translated post.',
         'expected_format' => 'text',
-        'output_actions' => [[
-            'type' => 'update_post_meta',
-            'source_variable' => '',
-            'target' => 'smoke_workflow_marker',
-        ]],
+        // The content write comes first: translate.php stops waiting once the marker is set.
+        'output_actions' => [
+            [
+                'type' => 'append_to_post_content',
+                'source_variable' => '',
+            ],
+            [
+                'type' => 'update_post_meta',
+                'source_variable' => '',
+                'target' => 'smoke_workflow_marker',
+            ],
+        ],
     ]],
 ]);
 if (empty($result['success'])) {

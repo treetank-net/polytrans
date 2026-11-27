@@ -33,6 +33,17 @@ function treetank_smoke_called_from_plugin(): bool
 define('TREETANK_SMOKE_STUB_KEY', 'sk-smoke-stub-not-a-real-key');
 
 /**
+ * Embeds an editor puts in an article: a video iframe and a social post with its script.
+ * The translation writes them as nobody (the background loopback), where kses strips
+ * iframe and script unless the write runs as a user with unfiltered_html. The source
+ * post (seed-translation.php) and the stubbed translation both carry them, and
+ * translate.php requires them in the translated post after the workflow wrote to it.
+ */
+define('TREETANK_SMOKE_EMBEDS', '<iframe width="560" height="315" src="https://www.youtube.com/embed/smoke" allowfullscreen></iframe>'
+    . '<blockquote class="twitter-tweet"><p>Smoke tweet</p><a href="https://twitter.com/smoke/status/1">link</a></blockquote>'
+    . '<script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>');
+
+/**
  * Canned OpenAI answers for the background translation check (translate.php): the
  * translation step gets the JSON a managed assistant returns, the workflow step a fixed
  * marker its output action writes to post meta. Both API surfaces are answered, so the
@@ -63,7 +74,7 @@ add_filter('pre_http_request', static function ($pre, $args, $url) {
 
     $request = is_string($args['body'] ?? null) ? $args['body'] : wp_json_encode($args['body'] ?? '');
     $text = strpos($request, 'SMOKE-TRANSLATE') !== false
-        ? wp_json_encode(['title' => 'Smoke Beitrag', 'content' => '<p>Hallo vom Smoke-Test.</p>', 'excerpt' => 'Smoke Auszug'])
+        ? wp_json_encode(['title' => 'Smoke Beitrag', 'content' => '<p>Hallo vom Smoke-Test.</p>' . TREETANK_SMOKE_EMBEDS, 'excerpt' => 'Smoke Auszug'])
         : 'smoke-workflow-ok';
     file_put_contents(TREETANK_SMOKE_DIR . '/openai-stub.log', $url . ' ' . (strpos($request, 'SMOKE-TRANSLATE') !== false ? 'translate' : 'other') . "\n", FILE_APPEND);
 

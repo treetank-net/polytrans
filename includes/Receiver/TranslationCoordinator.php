@@ -2,7 +2,9 @@
 
 namespace PolyTrans\Receiver;
 
+use PolyTrans\Core\ContentWriter;
 use PolyTrans\Core\LogsManager;
+use PolyTrans\Core\UserContext;
 
 /**
  * Coordinates the translation process by orchestrating all translation managers.
@@ -69,35 +71,39 @@ class TranslationCoordinator
             $existing_post_id = $is_ephemeral ? 0 : Managers\TargetPostResolver::resolve($original_post_id, $target_language);
             $updated_existing = $existing_post_id > 0;
 
-            if ($updated_existing) {
-                $new_post_id = $this->update_existing_translation($existing_post_id, $original_post_id, $source_language, $target_language, $translated);
-                if (is_wp_error($new_post_id)) {
-                    $this->status_manager->mark_as_failed($original_post_id, $target_language, $new_post_id->get_error_message());
-                    return [
-                        'success' => false,
-                        'error' => 'Could not update translated post: ' . $new_post_id->get_error_message()
-                    ];
-                }
-            } else {
-                // Create the translated post
-                $new_post_id = $this->post_creator->create_post($translated, $original_post_id);
-                if (is_wp_error($new_post_id)) {
-                    if (!$is_ephemeral) {
-                        $this->status_manager->mark_as_failed($original_post_id, $target_language, $new_post_id->get_error_message());
-                    }
-                    return [
-                        'success' => false,
-                        'error' => 'Could not create translated post: ' . $new_post_id->get_error_message()
-                    ];
+            // Written as the person who last saved the original, not as nobody: every
+            // write below (insert, then status/author/slug updates) runs the content
+            // through kses, which strips iframes and scripts for nobody. See ContentWriter.
+            $writer_id = ContentWriter::resolve($original_post_id, $existing_post_id);
+            $new_post_id = UserContext::run_as($writer_id, function () use ($updated_existing, $existing_post_id, $original_post_id, $source_language, $target_language, $translated, $is_ephemeral) {
+                if ($updated_existing) {
+                    return $this->update_existing_translation($existing_post_id, $original_post_id, $source_language, $target_language, $translated);
                 }
 
+                $created_post_id = $this->post_creator->create_post($translated, $original_post_id);
+                if (is_wp_error($created_post_id)) {
+                    return $created_post_id;
+                }
 
                 // Setup all post properties and relationships
                 // For ephemeral posts, skip relationship setup (receiver will handle final relationships)
-                $this->setup_translated_post($new_post_id, $original_post_id, $source_language, $target_language, $translated, $is_ephemeral);
+                $this->setup_translated_post($created_post_id, $original_post_id, $source_language, $target_language, $translated, $is_ephemeral);
 
                 // Set slug AFTER all setup — wp_update_post calls in setup_translated_post clear post_name
-                $this->apply_translated_slug($new_post_id, $original_post_id, $translated);
+                $this->apply_translated_slug($created_post_id, $original_post_id, $translated);
+
+                return $created_post_id;
+            });
+
+            if (is_wp_error($new_post_id)) {
+                if ($updated_existing || !$is_ephemeral) {
+                    $this->status_manager->mark_as_failed($original_post_id, $target_language, $new_post_id->get_error_message());
+                }
+                return [
+                    'success' => false,
+                    'error' => ($updated_existing ? 'Could not update translated post: ' : 'Could not create translated post: ')
+                        . $new_post_id->get_error_message()
+                ];
             }
 
             $final_status = 'completed';

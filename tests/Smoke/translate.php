@@ -73,7 +73,8 @@ for ($i = 0; $i < 60; $i++) {
         . ' $t = (int) get_post_meta(' . $post_id . ', "_polytrans_translation_post_id_de", true);'
         . ' echo wp_json_encode(["status" => $s, "post" => $t, "title" => $t ? get_the_title($t) : null,'
         . ' "lang" => $t && function_exists("pll_get_post_language") ? pll_get_post_language($t) : null,'
-        . ' "marker" => $t ? get_post_meta($t, "smoke_workflow_marker", true) : null]);');
+        . ' "marker" => $t ? get_post_meta($t, "smoke_workflow_marker", true) : null,'
+        . ' "content" => $t ? get_post_field("post_content", $t) : null]);');
     if (($state['status'] ?? '') === 'failed' || (!empty($state['post']) && ($state['marker'] ?? '') !== '')) {
         break;
     }
@@ -95,6 +96,23 @@ if (($state['status'] ?? '') !== 'completed' || empty($state['post'])) {
         smoke_fail('the workflow triggered on translation completion did not run (no smoke_workflow_marker on the translated post)', 'background translation');
     } else {
         echo "  ✓ workflow after translation ran: smoke_workflow_marker = {$state['marker']}\n";
+    }
+    // Embeds survive the whole write path: the receiver's insert and its later
+    // wp_update_post() calls (status, author), and the workflow's content write. All of
+    // them run as nobody in the loopback, where kses strips iframe and script.
+    $content = (string) ($state['content'] ?? '');
+    $missing = [];
+    foreach (['<iframe' => 'iframe', '<script' => 'script', 'twitter.com/smoke/status/1' => 'tweet link'] as $needle => $label) {
+        if (strpos($content, $needle) === false) {
+            $missing[] = $label;
+        }
+    }
+    if ($missing) {
+        smoke_fail('embeds stripped from the translated post (' . implode(', ', $missing) . '): ' . substr($content, 0, 300), 'background translation');
+    } elseif (strpos($content, 'smoke-workflow-ok') === false) {
+        smoke_fail('the workflow did not append to the translated post content', 'background translation');
+    } else {
+        echo "  ✓ embeds kept in the translated post (iframe, script, tweet) after the workflow wrote to it\n";
     }
 }
 if ($failures) {

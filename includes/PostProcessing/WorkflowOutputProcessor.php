@@ -3,6 +3,7 @@
 namespace PolyTrans\PostProcessing;
 
 use PolyTrans\Core\LogsManager;
+use PolyTrans\Core\ContentWriter;
 use PolyTrans\Core\UserContext;
 use PolyTrans\PostProcessing\Providers\PostDataProvider;
 
@@ -138,6 +139,15 @@ class WorkflowOutputProcessor
         // Who gets credited for these changes. Resolving is all that happens here — the
         // swap itself is scoped to each individual write, in with_attribution().
         $attribution_user_id = $this->resolve_attribution_user($workflow, $updated_context, $test_mode);
+        if (!$attribution_user_id && !$test_mode) {
+            // Without an attributed user a workflow after translation writes as nobody,
+            // and kses then strips iframes and scripts from the whole post content on
+            // every write, a status or slug change included. See Core\ContentWriter.
+            $attribution_user_id = ContentWriter::resolve(
+                $updated_context['original_post_id'] ?? 0,
+                $updated_context['translated_post_id'] ?? 0
+            ) ?: null;
+        }
 
         foreach ($output_actions as $action) {
             try {
@@ -404,7 +414,9 @@ class WorkflowOutputProcessor
 
         $result = wp_update_post([
             'ID' => $post_id,
-            'post_content' => wp_kses_post($value)
+            // kses is WordPress's job here: it filters by the current user, which is the
+            // attributed user or the content writer (process_step_outputs), not nobody.
+            'post_content' => $value
         ]);
 
         if (is_wp_error($result)) {
@@ -550,7 +562,7 @@ class WorkflowOutputProcessor
             ];
         }
 
-        $new_content = $post->post_content . "\n\n" . wp_kses_post($value);
+        $new_content = $post->post_content . "\n\n" . $value;
 
         $result = wp_update_post([
             'ID' => $post_id,
@@ -591,7 +603,7 @@ class WorkflowOutputProcessor
             ];
         }
 
-        $new_content = wp_kses_post($value) . "\n\n" . $post->post_content;
+        $new_content = $value . "\n\n" . $post->post_content;
 
         $result = wp_update_post([
             'ID' => $post_id,
